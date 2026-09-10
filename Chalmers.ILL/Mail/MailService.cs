@@ -7,7 +7,6 @@ using System.Configuration;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Web.Hosting;
 
 namespace Chalmers.ILL.Mail
 {

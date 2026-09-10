@@ -6,7 +6,6 @@ using System.Web.Mvc;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
 using Chalmers.ILL.Extensions;
-using Microsoft.Exchange.WebServices.Data;
 using System.Configuration;
 using System.Globalization;
 using System.Text.RegularExpressions;

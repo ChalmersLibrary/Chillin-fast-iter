@@ -116,13 +116,13 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
             QRCodeData qrCodeData = qrGenerator.CreateQrCode(_config.BaseUrl + "/OrderItemReceivedAtBranchSurface/RenderResponse?nodeId=" + pageModel.OrderItem.NodeId, QRCodeGenerator.ECCLevel.Q);
             QRCode qrCode = new QRCode(qrCodeData);
-            Bitmap qrCodeImage = qrCode.GetGraphic(4);
+            using (Bitmap qrCodeImage = qrCode.GetGraphic(4))
             using (MemoryStream stream = new MemoryStream())
             {
                 qrCodeImage.Save(stream, ImageFormat.Png);
                 stream.Close();
-                var base64 = Convert.ToBase64String(stream.ToArray()); 
-                pageModel.RegisterReceivedQrCode = "data:image/gif;base64," + base64;
+                var base64 = Convert.ToBase64String(stream.ToArray());
+                pageModel.RegisterReceivedQrCode = "data:image/png;base64," + base64;
             }
 
             return PartialView("DeliveryType/ArticleInTransit", pageModel);

@@ -210,7 +210,7 @@ annars måste migreras i onödan. Gör detta först. Liksom fas 0a hör det hemm
     `<Content Include>`-ad i csproj rad 313.
   - `Notifier.SetOrderItemManager` sätter ett `_orderItemManager`-fält som aldrig läses.
 
-- [ ] **Ta bort orörda Umbraco-kvarlämningar på disk innan SDK-style-konverteringen**
+- [x] **Ta bort orörda Umbraco-kvarlämningar på disk innan SDK-style-konverteringen**
   Följande mappar under `Chalmers.ILL/` har **noll git-spårade filer** men ligger kvar på disk:
   `Install/`, `Umbraco/`, `Umbraco_Client/`, `App_Plugins/`, `MacroScripts/`, `Masterpages/`, `Xslt/`,
   `App_Browsers/`, `aspnet_client/`, `UserControls/`, `App_Code/`, `Media/`.
@@ -220,7 +220,7 @@ annars måste migreras i onödan. Gör detta först. Liksom fas 0a hör det hemm
   **innan** konverteringen, annars blir de plötsligt del av bygget. Samma sak gäller `bower_components/`
   — se fas 5.
 
-- [ ] **Ta bort döda `using`-rader som ger falska träffar vid inventering**
+- [x] **Ta bort döda `using`-rader som ger falska träffar vid inventering**
   `using Microsoft.Exchange.WebServices.Data;` utan någon EWS-typanvändning i filen:
   `OrderItems/EntityFrameworkOrderItemManager.cs:19`,
   `Controllers/SurfaceControllers/OrderItemResetAllAnonymizationFlagsSurfaceController.cs:3`,
@@ -234,7 +234,7 @@ annars måste migreras i onödan. Gör detta först. Liksom fas 0a hör det hemm
   `using System.Web.Mvc;` i modeller: `Models/Page/ChalmersILLLogoutPageModel.cs:5`,
   `Mail/ChalmersOrderItemsMailSource.cs:8`.
 
-- [ ] **Fixa QR-kodens felaktiga MIME-typ och GDI-läcka**
+- [x] **Fixa QR-kodens felaktiga MIME-typ och GDI-läcka**
   `OrderItemDeliverySurfaceController.cs:115-126` sparar bilden som `ImageFormat.Png` men bygger
   data-URI:n som `data:image/gif;base64,`. Fungerar via browser-sniffing men är fel. `qrCodeImage`
   (`Bitmap`, `IDisposable`) disposas dessutom aldrig — `using`-blocket omsluter bara `MemoryStream`,

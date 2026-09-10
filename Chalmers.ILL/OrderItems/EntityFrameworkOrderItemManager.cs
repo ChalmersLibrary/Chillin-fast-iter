@@ -16,7 +16,6 @@ using System.Threading;
 using static Chalmers.ILL.Models.OrderItemModel;
 using Nest;
 using System.IdentityModel.Tokens;
-using Microsoft.Exchange.WebServices.Data;
 
 namespace Chalmers.ILL.OrderItems
 {

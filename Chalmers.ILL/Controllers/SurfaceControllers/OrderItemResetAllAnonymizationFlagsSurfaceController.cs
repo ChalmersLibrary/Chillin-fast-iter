@@ -1,6 +1,5 @@
 ﻿using Chalmers.ILL.Models;
 using Chalmers.ILL.OrderItems;
-using Microsoft.Exchange.WebServices.Data;
 using Nest;
 using Newtonsoft.Json;
 using System;

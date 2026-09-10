@@ -14,7 +14,6 @@ using System.Globalization;
 using HtmlAgilityPack;
 using System.Configuration;
 using System.Diagnostics;
-using Npgsql;
 using Chalmers.ILL.Utilities;
 using Chalmers.ILL.Models.Mail;
 

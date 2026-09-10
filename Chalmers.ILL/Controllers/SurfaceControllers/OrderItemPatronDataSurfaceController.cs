@@ -1,7 +1,6 @@
 ﻿using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
 using Chalmers.ILL.Extensions;
-using Npgsql;
 using System;
 using System.Collections;
 using System.Collections.Generic;

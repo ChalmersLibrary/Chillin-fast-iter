@@ -13,7 +13,6 @@ using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Models.Mail;
 using Chalmers.ILL.Utilities;
 using HtmlAgilityPack;
-using Microsoft.Exchange.WebServices.Data;
 using Microsoft.Identity.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
