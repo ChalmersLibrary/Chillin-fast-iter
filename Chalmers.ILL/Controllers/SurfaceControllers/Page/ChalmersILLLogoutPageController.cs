@@ -5,6 +5,10 @@ using System.Web.Security;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
 {
+    // A user whose auth cookie has already expired must still be able to reach this page to
+    // clear the separate, unsigned ChalmersILL cookie (see MemberInfoManager) — without
+    // [AllowAnonymous] the global AuthorizeAttribute would redirect them to login instead.
+    [AllowAnonymous]
     public class ChalmersILLLogoutPageController : Controller
     {
         IMemberInfoManager _memberInfoManager;

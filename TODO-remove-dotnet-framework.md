@@ -129,11 +129,12 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   `Uri.EscapeDataString`. Faller sannolikt bort helt när cookiehanteringen skrivs om i fas 3 — men om
   den överlever dit ska den fixas.
 
-- [ ] **Utloggning kräver inloggning**
-  `ChalmersILLLogoutPageController` har varken `[AllowAnonymous]` eller `[Authorize]` och täcks därmed
-  av det globala filtret. En användare vars auth-cookie gått ut men som har kvar den osignerade
-  `ChalmersILL`-cookien kan alltså inte nå utloggningssidan för att rensa den. Troligen ofarligt, men
-  bekräfta att det är avsiktligt när fas 3 görs — annars `[AllowAnonymous]`.
+- [x] **Utloggning kräver inloggning**
+  `ChalmersILLLogoutPageController` hade varken `[AllowAnonymous]` eller `[Authorize]` och täcktes
+  därmed av det globala filtret. En användare vars auth-cookie gått ut men som har kvar den osignerade
+  `ChalmersILL`-cookien kunde alltså inte nå utloggningssidan för att rensa den. Avstämt med användaren
+  2026-09-10: inte avsiktligt. Åtgärdat med `[AllowAnonymous]`; characterization-test tillagt i
+  `AuthorizationTest.cs`.
 
 - [x] **`MemberFileStore` är varken trådsäker eller atomisk, och sväljer läsfel tyst**
   `MemberFileStore.cs` — `Load`/`Save` saknar låsning helt. `FileMembershipProvider.ChangePassword` och
@@ -148,13 +149,14 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   men inte mot `Roles == null`. Default-initialiseringen i `MemberAccount.cs:9` gäller bara när nyckeln
   saknas helt, inte när den står som `"Roles": null`.
 
-- [ ] **`members.json` saknas fortfarande**
-  `Chalmers.ILL/Config/` innehåller bara `members.example.json`. Utan den riktiga filen kan ingen logga
-  in (och `MemberFileStore` säger det inte, se ovan). Filen är dessutom inte `<Content Include>`-ad i
-  `Chalmers.ILL.csproj`, till skillnad från `chillinPrevalues.json` — den kopieras alltså inte av
-  bygget utan måste placeras manuellt på servern. Exempelfilens `"see below"`-kommentar pekar
-  dessutom på ingenting (JSON stödjer inte kommentarer); instruktionen för hur en hash genereras finns
-  bara i [TODO-remove-umbraco.md](TODO-remove-umbraco.md).
+- [x] **`members.json` saknas fortfarande**
+  `Chalmers.ILL/Config/` innehåller bara `members.example.json`. Filen är dessutom inte
+  `<Content Include>`-ad i `Chalmers.ILL.csproj`, till skillnad från `chillinPrevalues.json` — det
+  läggs till i fas 1a, se detaljer där. Exempelfilens `"see below"`-referens pekade på ingenting (JSON
+  stödjer inte kommentarer) — rättat 2026-09-10 till att peka på
+  [TODO-remove-umbraco.md](TODO-remove-umbraco.md).
+  Att den riktiga produktionsfilen med kontona saknas är inte längre kvar här — det är en
+  driftsättningsfråga, se fas 10 (punkten om bootstrap-SuperAdmin-kontot).
 
 ---
 
@@ -1183,6 +1185,15 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Linux lokalt och Windows i Azure.
 
   Låsningen och den atomiska skrivningen från fas 0a behövs fortfarande.
+
+- [ ] **Lägg upp ett bootstrap-SuperAdmin-konto i `members.json` innan första driftsättning**
+  Kontohantering sker via `MemberAdminSurfaceController`/`MemberAdminService` (inställningssidan,
+  skyddat av `[Authorize(Roles = "SuperAdmin")]`), som skapar konton och hashar lösenord åt användaren
+  — de ~20 kontona ska skapas där, inte skrivas för hand. Men verktyget kräver att man redan är
+  inloggad som `SuperAdmin`, så minst ett konto måste ändå läggas i `members.json` manuellt (samma
+  `System.Web.Helpers.Crypto.HashPassword`-metod som i [TODO-remove-umbraco.md](TODO-remove-umbraco.md))
+  innan resten kan skapas via gränssnittet. Görs i samband med att filen läggs upp under `/home/data/`
+  ovan.
 
 - [ ] **Flytta statiska filer till `wwwroot/`**
   `Scripts/` (bara `chalmers.ill.js`), `Css/` (2 filer), `images/`, och det som ersätter

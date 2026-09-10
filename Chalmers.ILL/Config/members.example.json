@@ -1,12 +1,12 @@
 [
   {
     "Login": "alice",
-    "PasswordHash": "<generate with System.Web.Helpers.Crypto.HashPassword, see below>",
+    "PasswordHash": "<generate with System.Web.Helpers.Crypto.HashPassword, see TODO-remove-umbraco.md>",
     "Roles": [ "Desk", "Administrator" ]
   },
   {
     "Login": "bob",
-    "PasswordHash": "<generate with System.Web.Helpers.Crypto.HashPassword, see below>",
+    "PasswordHash": "<generate with System.Web.Helpers.Crypto.HashPassword, see TODO-remove-umbraco.md>",
     "Roles": [ "Desk" ]
   }
 ]

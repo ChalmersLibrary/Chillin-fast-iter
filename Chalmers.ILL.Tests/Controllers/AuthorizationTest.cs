@@ -86,6 +86,14 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.IsTrue(IsAllowAnonymous(typeof(PublicDataSurfaceController)));
         }
 
+        [TestMethod]
+        public void ChalmersILLLogoutPageController_IsAllowAnonymous()
+        {
+            // A user whose auth cookie already expired must still be able to reach this page
+            // to clear the separate, unsigned ChalmersILL cookie (see MemberInfoManager).
+            Assert.IsTrue(IsAllowAnonymous(typeof(ChalmersILLLogoutPageController)));
+        }
+
         private static bool IsAllowAnonymous(System.Type controllerType)
         {
             return controllerType.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Any();
