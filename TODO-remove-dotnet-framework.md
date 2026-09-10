@@ -135,7 +135,7 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   `ChalmersILL`-cookien kan alltså inte nå utloggningssidan för att rensa den. Troligen ofarligt, men
   bekräfta att det är avsiktligt när fas 3 görs — annars `[AllowAnonymous]`.
 
-- [ ] **`MemberFileStore` är varken trådsäker eller atomisk, och sväljer läsfel tyst**
+- [x] **`MemberFileStore` är varken trådsäker eller atomisk, och sväljer läsfel tyst**
   `MemberFileStore.cs` — `Load`/`Save` saknar låsning helt. `FileMembershipProvider.ChangePassword` och
   hela `MemberAdminService` gör `Load → mutera → Save`, vilket är en lost-update-race vid samtidiga
   ändringar. `File.WriteAllText` trunkerar först, så en krasch mitt i skrivningen kan förstöra hela

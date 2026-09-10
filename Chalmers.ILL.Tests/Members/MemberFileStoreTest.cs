@@ -56,5 +56,29 @@ namespace Chalmers.ILL.Tests.Members
             Assert.AreEqual("hash", loaded[0].PasswordHash);
             CollectionAssert.AreEqual(new[] { "Desk", "Administrator" }, loaded[0].Roles);
         }
+
+        [TestMethod]
+        public void Save_CalledTwice_OverwritesExistingFileContent()
+        {
+            MemberFileStore.Save(new List<MemberAccount> { new MemberAccount { Login = "alice" } }, _path);
+            MemberFileStore.Save(new List<MemberAccount> { new MemberAccount { Login = "bob" } }, _path);
+
+            var loaded = MemberFileStore.Load(_path);
+
+            Assert.AreEqual(1, loaded.Count);
+            Assert.AreEqual("bob", loaded[0].Login);
+        }
+
+        [TestMethod]
+        public void Save_DoesNotLeaveTempFilesBehindInTargetDirectory()
+        {
+            MemberFileStore.Save(new List<MemberAccount> { new MemberAccount { Login = "alice" } }, _path);
+            MemberFileStore.Save(new List<MemberAccount> { new MemberAccount { Login = "bob" } }, _path);
+
+            var directory = Path.GetDirectoryName(_path);
+            var leftoverTempFiles = Directory.GetFiles(directory, Path.GetFileName(_path) + ".*.tmp");
+
+            Assert.AreEqual(0, leftoverTempFiles.Length);
+        }
     }
 }
