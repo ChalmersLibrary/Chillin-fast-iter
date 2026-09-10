@@ -106,7 +106,7 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   controllers som *ska* vara nåbara faktiskt är det. Ta med båda i den avslutande genomtestningen: de
   är inte klickbara i gränssnittet och missas därför lätt vid manuell avprovning.
 
-- [ ] **`PasswordSurfaceController` ignorerar returvärdet från lösenordsbytet**
+- [x] **`PasswordSurfaceController` ignorerar returvärdet från lösenordsbytet**
   `PasswordSurfaceController.cs:43` — `user.ChangePassword(...)` returnerar `bool` som kastas bort, och
   redirect sker till `?success=true` oavsett utfall. Användaren får "lösenordet ändrat" även när det
   inte ändrades. `catch (Exception)` på rad 40-49 sväljer dessutom allt utan loggning.

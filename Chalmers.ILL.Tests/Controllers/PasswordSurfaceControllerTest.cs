@@ -36,6 +36,53 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-model", fakeResponse.RedirectLocation);
         }
 
+        [TestMethod]
+        public void ChangePassword_WrongCurrentPassword_RedirectsWithInvalidMemberError()
+        {
+            var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => false, (u, o, n) => true);
+            var fakeResponse = SetHttpContext(controller);
+
+            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "wrong", NewPassword = "newpass" });
+
+            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", fakeResponse.RedirectLocation);
+        }
+
+        [TestMethod]
+        public void ChangePassword_ChangeSucceeds_RedirectsWithSuccess()
+        {
+            var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => true, (u, o, n) => true);
+            var fakeResponse = SetHttpContext(controller);
+
+            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" });
+
+            Assert.AreEqual("/bestaellningar/instaellningar/?success=true", fakeResponse.RedirectLocation);
+        }
+
+        [TestMethod]
+        public void ChangePassword_ChangeReturnsFalse_RedirectsWithInvalidMemberErrorInsteadOfSuccess()
+        {
+            // Regression test: the underlying ChangePassword call can return false (e.g. new password
+            // fails a policy check) without throwing. That return value used to be discarded and the
+            // user was redirected to the success page regardless.
+            var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => true, (u, o, n) => false);
+            var fakeResponse = SetHttpContext(controller);
+
+            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" });
+
+            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", fakeResponse.RedirectLocation);
+        }
+
+        [TestMethod]
+        public void ChangePassword_ChangeThrows_RedirectsWithInvalidMemberError()
+        {
+            var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => true, (u, o, n) => throw new InvalidOperationException("boom"));
+            var fakeResponse = SetHttpContext(controller);
+
+            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" });
+
+            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", fakeResponse.RedirectLocation);
+        }
+
         private static FakeHttpResponse SetHttpContext(Controller controller)
         {
             var response = new FakeHttpResponse();
