@@ -74,7 +74,7 @@ under arbetet — inloggningsskyddet och `~/Views/Partials/`-sökvägen. Båda f
 nådde drift, men ingen av dem syntes i bygget eller testsviten: de gick bara att se genom att köra
 appen. Det är den egenskapen som gör dem värda att ta tidigt.
 
-- [ ] **log4net är helt okonfigurerat sedan Umbraco-borttagningen**
+- [x] **log4net är helt okonfigurerat sedan Umbraco-borttagningen**
   `Chalmers.ILL/Config/log4net.config` deklarerar sin enda appender som
   `type="Umbraco.Core.Logging.AsynchronousRollingFileAppender, Umbraco.Core"` — en typ i ett paket som
   är borttaget. Dessutom finns **ingen** `[assembly: XmlConfigurator]`-attribut och **inget**
@@ -87,7 +87,7 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   **Prioritera denna högt** — utan fungerande loggning blir resten av migreringen betydligt svårare att
   felsöka, och den avslutande genomtestningen får inga spår att gå på när något beter sig fel.
 
-- [ ] **De två maskin-till-maskin-endpointsen blockeras av det globala `[Authorize]`**
+- [x] **De två maskin-till-maskin-endpointsen blockeras av det globala `[Authorize]`**
   Det globala `AuthorizeAttribute` som lades till i commit 9426bf1 ("Authorization required", 2026-09-01)
   saknar undantag för två controllers som anropas av externa system utan inloggning:
   - `SystemSurfaceController` (`Update`, `SendOutAutomaticMailsThatAreDue`) — anropas av en cron-server.
@@ -121,7 +121,7 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   `[Authorize(Roles="SuperAdmin")]`), men designen är fel. Byt till `User.Identity.Name`/`User.IsInRole`.
   Görs lämpligen som en del av fas 3, men noteras här eftersom det är ett befintligt fel.
 
-- [ ] **`Uri.EscapeUriString` korrumperar cookien vid vissa tecken**
+- [x] **`Uri.EscapeUriString` korrumperar cookien vid vissa tecken**
   `MemberInfoManager.cs:53-55` och `:67-69` escapar cookie-subvärden med `Uri.EscapeUriString`. Den
   escapar inte `&`, `=` eller `;` — precis de tecken som avgränsar subvärden i en `System.Web`-cookie.
   Ett `memberText` som innehåller något av dem gör cookien osammanhängande. Metoden är dessutom
@@ -143,7 +143,7 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   — en låst eller korrupt fil ger alltså "alla inloggningar misslyckas" helt utan spår. Åtgärd: lås runt
   läs/skriv, skriv till temporär fil + `File.Replace`, logga fel istället för att svälja dem.
 
-- [ ] **`FileRoleProvider` kastar `NullReferenceException` om `Roles` är explicit `null` i JSON**
+- [x] **`FileRoleProvider` kastar `NullReferenceException` om `Roles` är explicit `null` i JSON**
   `FileRoleProvider.cs` rad 31, 37 och 41 gör `account?.Roles...` — `?.` skyddar mot `account == null`
   men inte mot `Roles == null`. Default-initialiseringen i `MemberAccount.cs:9` gäller bara när nyckeln
   saknas helt, inte när den står som `"Roles": null`.

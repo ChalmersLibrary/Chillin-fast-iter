@@ -126,6 +126,28 @@ namespace Chalmers.ILL.Tests.Members
             Assert.AreEqual(7, result);
         }
 
+        [TestMethod]
+        public void AddMemberToCache_MemberTextContainsCookieDelimiters_SurvivesWireRoundTrip()
+        {
+            // HttpCookie multiplexes subkeys into a single "key1=val1&key2=val2" string on the
+            // wire (via the Value property) and re-splits on '&'/'=' when parsed back from a real
+            // request. Uri.EscapeUriString does not escape those characters, so a memberText
+            // containing them used to corrupt the cookie. Round-tripping through cookie.Value
+            // (instead of copying subkey objects directly) reproduces that wire format.
+            var response = new FakeHttpResponse();
+            _manager.AddMemberToCache(response, 1, "A&B;C=D", "user");
+            var wireValue = response.Cookies[MemberInfoManager.cookieKey].Value;
+
+            var parsedCookie = new HttpCookie(MemberInfoManager.cookieKey) { Value = wireValue };
+            var requestCookies = new HttpCookieCollection();
+            requestCookies.Add(parsedCookie);
+            var request = new FakeHttpRequest(requestCookies);
+
+            var result = _manager.GetCurrentMemberText(request, new FakeHttpResponse());
+
+            Assert.AreEqual("A&B;C=D", result);
+        }
+
         // --- helpers ---
 
         private HttpCookieCollection BuildRequestCookies(int memberId, string memberText, string memberLoginName)

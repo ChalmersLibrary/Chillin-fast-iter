@@ -69,6 +69,23 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.IsFalse(IsAllowAnonymous(typeof(ChalmersILLDiskPageController)));
         }
 
+        [TestMethod]
+        public void SystemSurfaceController_IsAllowAnonymous()
+        {
+            // Called by an external cron server with no user login; its own IP-based
+            // IsRequestAuthorized() check runs after the global AuthorizeAttribute would
+            // otherwise redirect the cron server to the login page.
+            Assert.IsTrue(IsAllowAnonymous(typeof(SystemSurfaceController)));
+        }
+
+        [TestMethod]
+        public void PublicDataSurfaceController_IsAllowAnonymous()
+        {
+            // Documented public API (see ILL-status-api.md) called cross-origin by the
+            // library system with no user login.
+            Assert.IsTrue(IsAllowAnonymous(typeof(PublicDataSurfaceController)));
+        }
+
         private static bool IsAllowAnonymous(System.Type controllerType)
         {
             return controllerType.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Any();

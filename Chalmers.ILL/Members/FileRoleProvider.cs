@@ -28,17 +28,17 @@ namespace Chalmers.ILL.Members
         public override bool IsUserInRole(string username, string roleName)
         {
             var account = FindAccount(username);
-            return account != null && account.Roles.Any(r => string.Equals(r, roleName, StringComparison.OrdinalIgnoreCase));
+            return account?.Roles?.Any(r => string.Equals(r, roleName, StringComparison.OrdinalIgnoreCase)) ?? false;
         }
 
         public override string[] GetRolesForUser(string username)
         {
             var account = FindAccount(username);
-            return account?.Roles.ToArray() ?? new string[0];
+            return account?.Roles?.ToArray() ?? new string[0];
         }
 
         public override string[] GetAllRoles() =>
-            _loadAccounts().SelectMany(a => a.Roles).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            _loadAccounts().SelectMany(a => a.Roles ?? new System.Collections.Generic.List<string>()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
         public override bool RoleExists(string roleName) =>
             GetAllRoles().Any(r => string.Equals(r, roleName, StringComparison.OrdinalIgnoreCase));

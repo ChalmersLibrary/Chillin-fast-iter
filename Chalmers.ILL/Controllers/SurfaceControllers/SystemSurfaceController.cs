@@ -14,6 +14,10 @@ using Nest;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
+    // Called by an external cron server with no user login (see IsRequestAuthorized's IP check
+    // below), so it must be exempt from the global AuthorizeAttribute or the cron server just
+    // gets redirected to the login page and every automated job silently stops running.
+    [System.Web.Mvc.AllowAnonymous]
     public class SystemSurfaceController : Controller
     {
         public static int TIME_BASED_UPDATE_OF_ORDER_EVENT_TYPE { get { return 19; } }

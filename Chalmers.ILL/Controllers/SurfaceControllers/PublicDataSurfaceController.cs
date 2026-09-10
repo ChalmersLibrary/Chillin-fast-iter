@@ -10,6 +10,9 @@ using Chalmers.ILL.OrderItems;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
+    // Documented public API (see ILL-status-api.md) called cross-origin by the library system
+    // with no user login, so it must be exempt from the global AuthorizeAttribute.
+    [System.Web.Mvc.AllowAnonymous]
     public class PublicDataSurfaceController : Controller
     {
         IBulkDataManager _bulkDataManager;

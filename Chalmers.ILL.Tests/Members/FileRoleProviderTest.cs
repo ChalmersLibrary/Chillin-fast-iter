@@ -55,6 +55,32 @@ namespace Chalmers.ILL.Tests.Members
             Assert.AreEqual(0, provider.GetRolesForUser("bob").Length);
         }
 
+        [TestMethod]
+        public void IsUserInRole_AccountHasNullRoles_ReturnsFalseWithoutThrowing()
+        {
+            var provider = MakeProvider(new MemberAccount { Login = "alice", PasswordHash = "irrelevant", Roles = null });
+
+            Assert.IsFalse(provider.IsUserInRole("alice", "Desk"));
+        }
+
+        [TestMethod]
+        public void GetRolesForUser_AccountHasNullRoles_ReturnsEmptyWithoutThrowing()
+        {
+            var provider = MakeProvider(new MemberAccount { Login = "alice", PasswordHash = "irrelevant", Roles = null });
+
+            Assert.AreEqual(0, provider.GetRolesForUser("alice").Length);
+        }
+
+        [TestMethod]
+        public void GetAllRoles_OneAccountHasNullRoles_IgnoresItWithoutThrowing()
+        {
+            var provider = MakeProvider(
+                new MemberAccount { Login = "alice", PasswordHash = "irrelevant", Roles = null },
+                Account("bob", "Desk"));
+
+            CollectionAssert.AreEquivalent(new[] { "Desk" }, provider.GetAllRoles());
+        }
+
         private static MemberAccount Account(string login, params string[] roles) =>
             new MemberAccount { Login = login, PasswordHash = "irrelevant", Roles = new List<string>(roles) };
 

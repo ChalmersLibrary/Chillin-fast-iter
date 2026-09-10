@@ -67,6 +67,9 @@
     <Reference Include="Chalmers.ILL.Fakes">
       <HintPath>FakesAssemblies\Chalmers.ILL.Fakes.dll</HintPath>
     </Reference>
+    <Reference Include="log4net">
+      <HintPath>..\packages\log4net.2.0.12\lib\net45\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.Exchange.WebServices, Version=15.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <Private>True</Private>
@@ -118,6 +121,7 @@
     <Compile Include="Mail\AutomaticMailSendingEngineTest.cs" />
     <Compile Include="Mail\MailBodyFixerTest.cs" />
     <Compile Include="Controllers\AuthorizationTest.cs" />
+    <Compile Include="Log4NetConfigurationTest.cs" />
     <Compile Include="Controllers\MediaItemControllersTest.cs" />
     <Compile Include="Controllers\ChillinTextSurfaceControllerTest.cs" />
     <Compile Include="Controllers\MaintenanceSurfaceControllerTest.cs" />

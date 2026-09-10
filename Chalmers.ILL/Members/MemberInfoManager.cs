@@ -50,9 +50,9 @@ namespace Chalmers.ILL.Members
 
         public void AddMemberToCache(HttpResponseBase response, int memberId, string memberText, string memberLoginName)
         {
-            response.Cookies[cookieKey][memberIdKey] = Uri.EscapeUriString(Convert.ToString(memberId));
-            response.Cookies[cookieKey][memberTextKey] = Uri.EscapeUriString(memberText);
-            response.Cookies[cookieKey][memberLoginNameKey] = Uri.EscapeUriString(memberLoginName);
+            response.Cookies[cookieKey][memberIdKey] = Uri.EscapeDataString(Convert.ToString(memberId));
+            response.Cookies[cookieKey][memberTextKey] = Uri.EscapeDataString(memberText);
+            response.Cookies[cookieKey][memberLoginNameKey] = Uri.EscapeDataString(memberLoginName);
             response.Cookies[cookieKey].Expires = DateTime.Now.AddDays(1);
         }
 
@@ -64,9 +64,9 @@ namespace Chalmers.ILL.Members
         private void PopulateCookieFromCurrentUser(HttpResponseBase response)
         {
             var username = HttpContext.Current?.User?.Identity?.Name ?? "";
-            response.Cookies[cookieKey][memberIdKey] = Uri.EscapeUriString("0");
-            response.Cookies[cookieKey][memberTextKey] = Uri.EscapeUriString(username);
-            response.Cookies[cookieKey][memberLoginNameKey] = Uri.EscapeUriString(username);
+            response.Cookies[cookieKey][memberIdKey] = Uri.EscapeDataString("0");
+            response.Cookies[cookieKey][memberTextKey] = Uri.EscapeDataString(username);
+            response.Cookies[cookieKey][memberLoginNameKey] = Uri.EscapeDataString(username);
         }
     }
 }
