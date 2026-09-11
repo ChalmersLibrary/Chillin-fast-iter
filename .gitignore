@@ -239,3 +239,6 @@ desktop.ini
 .claude/settings.local.json
 
 git-diff-viewer.py
+
+# Do not track devcontainer
+.devcontainer
