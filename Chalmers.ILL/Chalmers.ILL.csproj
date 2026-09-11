@@ -1,747 +1,79 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.props" Condition="Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.props')" />
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>
-    </ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{57218F89-EF67-4430-89C2-8B40C7C5EA2E}</ProjectGuid>
-    <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Chalmers.ILL</RootNamespace>
     <AssemblyName>Chalmers.ILL</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
-    <UseIISExpress>true</UseIISExpress>
-    <IISExpressSSLPort />
-    <IISExpressAnonymousAuthentication />
-    <IISExpressWindowsAuthentication />
-    <IISExpressUseClassicPipelineMode />
-    <SccProjectName>SAK</SccProjectName>
-    <SccLocalPath>SAK</SccLocalPath>
-    <SccAuxPath>SAK</SccAuxPath>
-    <SccProvider>SAK</SccProvider>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-    <UseGlobalApplicationHostFile />
-    <TargetFrameworkProfile />
-    <Use64BitIISExpress />
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="Elasticsearch.Net, Version=6.0.0.0, Culture=neutral, PublicKeyToken=96c599bbe3e70f5d, processorArchitecture=MSIL">
-      <HintPath>..\packages\Elasticsearch.Net.6.3.1\lib\net461\Elasticsearch.Net.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.SqlServer.dll</HintPath>
-    </Reference>
-    <Reference Include="HtmlAgilityPack, Version=1.4.6.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\HtmlAgilityPack.1.4.6\lib\Net45\HtmlAgilityPack.dll</HintPath>
-    </Reference>
-    <Reference Include="log4net">
-      <HintPath>..\packages\log4net.2.0.12\lib\net45\log4net.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.AspNet.SignalR.Core, Version=2.0.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Microsoft.AspNet.SignalR.Core.2.0.3\lib\net45\Microsoft.AspNet.SignalR.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.AspNet.SignalR.SystemWeb, Version=2.0.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Microsoft.AspNet.SignalR.SystemWeb.2.0.3\lib\net45\Microsoft.AspNet.SignalR.SystemWeb.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Azure.KeyVault.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.KeyVault.Core.1.0.0\lib\net40\Microsoft.Azure.KeyVault.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
+    <Content Update="Config\chillinPrevalues.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Config\members.example.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Config\members.json" Condition="Exists('Config\members.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="Microsoft.Data.Edm, Version=5.8.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Data.Edm.5.8.4\lib\net40\Microsoft.Data.Edm.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.OData, Version=5.8.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Data.OData.5.8.4\lib\net40\Microsoft.Data.OData.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.Services.Client, Version=5.8.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Data.Services.Client.5.8.4\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Exchange.WebServices, Version=15.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <Private>True</Private>
-      <HintPath>..\packages\EWS-Api-2.0.1.0.1\lib\net35\Microsoft.Exchange.WebServices.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Identity.Client, Version=4.48.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Identity.Client.4.48.1\lib\net461\Microsoft.Identity.Client.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.IdentityModel.Abstractions, Version=6.22.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.IdentityModel.Abstractions.6.22.0\lib\net461\Microsoft.IdentityModel.Abstractions.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Owin, Version=4.2.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Owin.4.2.2\lib\net45\Microsoft.Owin.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Owin.Host.SystemWeb, Version=4.2.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Owin.Host.SystemWeb.4.2.2\lib\net45\Microsoft.Owin.Host.SystemWeb.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Owin.Security, Version=4.2.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Owin.Security.4.2.2\lib\net45\Microsoft.Owin.Security.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Practices.Unity, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Unity.3.0.1304.1\lib\Net45\Microsoft.Practices.Unity.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Practices.Unity.Configuration">
-      <HintPath>..\packages\Unity.3.0.1304.1\lib\Net45\Microsoft.Practices.Unity.Configuration.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Web.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <Private>True</Private>
-      <HintPath>..\packages\Microsoft.Web.Infrastructure.1.0.0.0\lib\net40\Microsoft.Web.Infrastructure.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Web.Mvc.FixedDisplayModes">
-      <HintPath>..\packages\Microsoft.AspNet.Mvc.FixedDisplayModes.1.0.0\lib\net40\Microsoft.Web.Mvc.FixedDisplayModes.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Storage, Version=7.1.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\WindowsAzure.Storage.7.1.2\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Mono.Security">
-      <HintPath>..\packages\Npgsql.2.0.14.3\lib\net45\Mono.Security.dll</HintPath>
-    </Reference>
-    <Reference Include="MySql.Data">
-      <HintPath>..\packages\MySql.Data.6.6.5\lib\net40\MySql.Data.dll</HintPath>
-    </Reference>
-    <Reference Include="Nest, Version=6.0.0.0, Culture=neutral, PublicKeyToken=96c599bbe3e70f5d, processorArchitecture=MSIL">
-      <HintPath>..\packages\NEST.6.3.1\lib\net461\Nest.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Npgsql">
-      <HintPath>..\packages\Npgsql.2.0.14.3\lib\net45\Npgsql.dll</HintPath>
-    </Reference>
-    <Reference Include="Owin">
-      <HintPath>..\packages\Owin.1.0\lib\net40\Owin.dll</HintPath>
-    </Reference>
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="QRCoder, Version=1.4.3.0, Culture=neutral, PublicKeyToken=c4ed5b9ae8358a28, processorArchitecture=MSIL">
-      <HintPath>..\packages\QRCoder.1.4.3\lib\net40\QRCoder.dll</HintPath>
-    </Reference>
     <Reference Include="System.ComponentModel.DataAnnotations" />
-    <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.IdentityModel" />
     <Reference Include="System.Net.Http" />
-    <Reference Include="System.Net.Http.Formatting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Microsoft.AspNet.WebApi.Client.5.2.0\lib\net45\System.Net.Http.Formatting.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Net.Http.WebRequest">
-      <Private>True</Private>
-      <HintPath>..\packages\Microsoft.Net.Http.2.0.20505.0\lib\net40\System.Net.Http.WebRequest.dll</HintPath>
-    </Reference>
     <Reference Include="System.Security" />
-    <Reference Include="System.Spatial, Version=5.8.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Spatial.5.8.4\lib\net40\System.Spatial.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System.Web" />
     <Reference Include="System.Web.ApplicationServices" />
     <Reference Include="System.Web.DynamicData" />
     <Reference Include="System.Web.Entity" />
     <Reference Include="System.Web.Extensions" />
-    <Reference Include="System.Web.Helpers, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <Private>True</Private>
-      <HintPath>..\packages\Microsoft.AspNet.WebPages.2.0.20710.0\lib\net40\System.Web.Helpers.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Web.Http, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Microsoft.AspNet.WebApi.Core.5.2.0\lib\net45\System.Web.Http.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Web.Http.WebHost, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Microsoft.AspNet.WebApi.WebHost.5.2.0\lib\net45\System.Web.Http.WebHost.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Web.Mvc, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Microsoft.AspNet.Mvc.4.0.20710.0\lib\net40\System.Web.Mvc.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Web.Razor, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <Private>True</Private>
-      <HintPath>..\packages\Microsoft.AspNet.Razor.2.0.20710.0\lib\net40\System.Web.Razor.dll</HintPath>
-    </Reference>
     <Reference Include="System.Web.Routing" />
-    <Reference Include="System.Web.WebPages, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <Private>True</Private>
-      <HintPath>..\packages\Microsoft.AspNet.WebPages.2.0.20710.0\lib\net40\System.Web.WebPages.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Web.WebPages.Deployment, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <Private>True</Private>
-      <HintPath>..\packages\Microsoft.AspNet.WebPages.2.0.20710.0\lib\net40\System.Web.WebPages.Deployment.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Web.WebPages.Razor, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <Private>True</Private>
-      <HintPath>..\packages\Microsoft.AspNet.WebPages.2.0.20710.0\lib\net40\System.Web.WebPages.Razor.dll</HintPath>
-    </Reference>
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Configuration" />
-    <Reference Include="System.EnterpriseServices" />
     <Reference Include="System.Xml.Linq" />
-    <Reference Include="WindowsBase" />
   </ItemGroup>
+
   <ItemGroup>
-    <Content Include="bin\amd64\Microsoft.VC90.CRT\msvcr90.dll" />
-    <Content Include="bin\amd64\Microsoft.VC90.CRT\README_ENU.txt" />
-    <Content Include="bin\amd64\sqlceca40.dll" />
-    <Content Include="bin\amd64\sqlcecompact40.dll" />
-    <Content Include="bin\amd64\sqlceer40EN.dll" />
-    <Content Include="bin\amd64\sqlceme40.dll" />
-    <Content Include="bin\amd64\sqlceqp40.dll" />
-    <Content Include="bin\amd64\sqlcese40.dll" />
-    <Content Include="bin\System.Web.Mvc.dll" />
-    <Content Include="bin\x86\Microsoft.VC90.CRT\msvcr90.dll" />
-    <Content Include="bin\x86\Microsoft.VC90.CRT\README_ENU.txt" />
-    <Content Include="bin\x86\sqlceca40.dll" />
-    <Content Include="bin\x86\sqlcecompact40.dll" />
-    <Content Include="bin\x86\sqlceer40EN.dll" />
-    <Content Include="bin\x86\sqlceme40.dll" />
-    <Content Include="bin\x86\sqlceqp40.dll" />
-    <Content Include="bin\x86\sqlcese40.dll" />
-    <Content Include="Config\log4net.config">
-      <SubType>Designer</SubType>
-    </Content>
-    <Content Include="Css\chalmers.ill.print.css" />
-    <Content Include="Css\dummy.txt" />
-    <Content Include="images\cth_logo.png" />
-    <Content Include="images\chilli-plain.svg" />
-    <Content Include="images\chilli.png" />
-    <Content Include="images\cth_logo.svg" />
-    <Content Include="images\help.png" />
-    <Content Include="images\help.svg" />
-    <Content Include="bower.json" />
-    <Content Include="Config\chillinPrevalues.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="images\lock-plain.svg" />
-    <Content Include="images\lock.png" />
-    <Content Include="MacroScripts\dummy.txt" />
-    <Content Include="Masterpages\dummy.txt" />
-    <Content Include="media\dummy.txt" />
-    <Content Include="Scripts\chalmers.ill.js" />
-    <Content Include="packages.config">
-      <SubType>Designer</SubType>
-    </Content>
-    <Content Include="Scripts\dummy.txt" />
-    <Content Include="UserControls\dummy.txt" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.Return.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.Claim.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.ProviderReturnDate.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.PatronReturnDate.cshtml" />
-    <Content Include="Views\Partials\DeliveryType\ArticleByEmail.cshtml" />
-    <Content Include="Views\Partials\DeliveryType\BookInstantLoan.cshtml" />
-    <Content Include="Views\Partials\DeliveryType\ArticleByMailOrInternalMail.cshtml" />
-    <Content Include="Views\Partials\DeliveryType\ArticleInTransit.cshtml" />
-    <Content Include="Views\Partials\DeliveryType\ArticleInInfodisk.cshtml" />
-    <Content Include="Views\Partials\DeliveryType\BookReadAtLibrary.cshtml" />
-    <Content Include="Views\Partials\Settings\ChangePassword.cshtml" />
-    <Content Include="Views\Partials\Settings\EditTemplates.cshtml" />
-    <Content Include="Views\Partials\Settings\MemberAdmin.cshtml" />
-    <Content Include="Views\Partials\Settings\ModifyProviderData.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.ReceiveBook.cshtml" />
-    <Content Include="Views\ChalmersILLDiskPage.cshtml" />
-    <Content Include="Views\Partials\DeliveryType\ArticleFromProvider.cshtml" />
-    <Content Include="Views\Partials\Settings\ChillinText.cshtml" />
-    <Content Include="Views\Shared\ReceivedAtBranchResult.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.Anonymize.cshtml" />
-    <None Include="Views\Web.config" />
-    <Content Include="Views\ChalmersILL.cshtml" />
-    <Content Include="Views\ChalmersILLOrderListPage.cshtml" />
-    <Content Include="Views\ChalmersILLStartPage.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Login.cshtml" />
-    <Content Include="Views\ChalmersILLLogoutPage.cshtml">
-      <SubType>Code</SubType>
-    </Content>
-    <Content Include="Views\ChalmersILLLoginPage.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.LogItem.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.OrderItem.cshtml">
-      <SubType>Code</SubType>
-    </Content>
-    <Content Include="Views\Partials\Chalmers.ILL.Action.Provider.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.Reference.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.Mail.cshtml" />
-    <Content Include="Views\ChalmersILLSettingsPage.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.LogEntry.cshtml" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.Delivery.cshtml" />
-    <Content Include="Views\ChalmersILLStatisticsPage.cshtml" />
-    <Content Include="Xslt\dummy.txt" />
-    <Content Include="Views\Partials\Chalmers.ILL.Action.PatronData.cshtml" />
-    <Content Include="bin\x86\Microsoft.VC90.CRT\Microsoft.VC90.CRT.manifest" />
-    <Content Include="bin\amd64\Microsoft.VC90.CRT\Microsoft.VC90.CRT.manifest" />
+    <PackageReference Include="Elasticsearch.Net" Version="6.3.1" />
+    <PackageReference Include="EntityFramework" Version="6.5.1" />
+    <PackageReference Include="EWS-Api-2.0" Version="1.0.1" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.4.6" />
+    <PackageReference Include="log4net" Version="2.0.12" />
+    <PackageReference Include="Microsoft.AspNet.Mvc" Version="4.0.20710.0" />
+    <PackageReference Include="Microsoft.AspNet.Mvc.FixedDisplayModes" Version="1.0.0" />
+    <PackageReference Include="Microsoft.AspNet.Razor" Version="2.0.20710.0" />
+    <PackageReference Include="Microsoft.AspNet.SignalR.Core" Version="2.0.3" />
+    <PackageReference Include="Microsoft.AspNet.SignalR.SystemWeb" Version="2.0.3" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.0" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.0" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.WebHost" Version="5.2.0" />
+    <PackageReference Include="Microsoft.AspNet.WebPages" Version="2.0.20710.0" />
+    <PackageReference Include="Microsoft.Azure.KeyVault.Core" Version="1.0.0" />
+    <PackageReference Include="Microsoft.Data.Edm" Version="5.8.4" />
+    <PackageReference Include="Microsoft.Data.OData" Version="5.8.4" />
+    <PackageReference Include="Microsoft.Data.Services.Client" Version="5.8.4" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.48.1" />
+    <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="6.22.0" />
+    <PackageReference Include="Microsoft.Owin" Version="4.2.2" />
+    <PackageReference Include="Microsoft.Owin.Host.SystemWeb" Version="4.2.2" />
+    <PackageReference Include="Microsoft.Owin.Security" Version="4.2.2" />
+    <PackageReference Include="Microsoft.Web.Infrastructure" Version="1.0.0.0" />
+    <PackageReference Include="MySql.Data" Version="6.6.5" />
+    <PackageReference Include="NEST" Version="6.3.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="8.0.1" />
+    <PackageReference Include="Npgsql" Version="2.0.14.3" />
+    <PackageReference Include="Owin" Version="1.0" />
+    <PackageReference Include="QRCoder" Version="1.4.3" />
+    <PackageReference Include="System.Spatial" Version="5.8.4" />
+    <PackageReference Include="Unity" Version="3.0.1304.1" />
+    <PackageReference Include="WindowsAzure.Storage" Version="7.1.2" />
   </ItemGroup>
-  <ItemGroup>
-    <Content Include="Css\chalmers.ill.main.css" />
-    <Content Include="Global.asax" />
-    <Content Include="Web.config">
-      <SubType>Designer</SubType>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Bootstrapper.cs" />
-    <Compile Include="Configuration\DefaultChillinConfiguration.cs" />
-    <Compile Include="DependencyResolution\UnityMvcDependencyResolver.cs" />
-    <Compile Include="DependencyResolution\UnityWebApiDependencyResolver.cs" />
-    <Compile Include="Configuration\IConfiguration.cs" />
-    <Compile Include="Connections\FolioConnection.cs" />
-    <Compile Include="Connections\IFolioConnection.cs" />
-    <Compile Include="Controllers\SurfaceControllers\ChillinTextSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemResetAllAnonymizationFlagsSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemAnonymizationSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemPurchaseLibrarySurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemReceivedAtBranchSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemSearchSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\BookCirculationSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\MediaItemSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemClaimSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemPatronReturnDateSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemProviderReturnDateSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemReceiveBookSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemReturnSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemDuplicateSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\Page\ChalmersILLController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\Page\ChalmersILLDiskPageController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\Page\ChalmersILLLoginPageController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\Page\ChalmersILLLogoutPageController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\Page\ChalmersILLOrderListPageController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\Page\ChalmersILLSettingsPageController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\Page\ChalmersILLStartPageController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\Page\ChalmersILLStatisticsPageController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\LoginSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\LogItemSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\MaintenanceSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\MemberAdminSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemDeliveryLibrarySurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemDeliverySurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemMailSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemProviderSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemReferenceSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemStatusSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemTypeSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\OrderItemPatronDataSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\ProviderDataSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\PublicDataSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\SystemSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\StatisticsSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\ImportDocumentSurfaceController.cs" />
-    <Compile Include="Controllers\SurfaceControllers\TemplatesSurfaceController.cs" />
-    <Compile Include="Database\OrderItemsDbContext.cs" />
-    <Compile Include="Exceptions\FolioRequestException.cs" />
-    <Compile Include="Exceptions\FolioUserException.cs" />
-    <Compile Include="Exceptions\ItemNotFoundException.cs" />
-    <Compile Include="Extensions\DateTimeExtensions.cs" />
-    <Compile Include="Extensions\DictionaryExtensions.cs" />
-    <Compile Include="Mail\AutomaticMailSendingEngine.cs" />
-    <Compile Include="Mail\MailBodyFixer.cs" />
-    <Compile Include="Mail\MailOperationResult.cs" />
-    <Compile Include="Mail\ChalmersOrderItemsMailSource.cs" />
-    <Compile Include="Mail\DelayedMailOperation.cs" />
-    <Compile Include="Mail\IAutomaticMailSendingEngine.cs" />
-    <Compile Include="Mail\IExchangeMailWebApi.cs" />
-    <Compile Include="Mail\IMailService.cs" />
-    <Compile Include="Mail\LogMessage.cs" />
-    <Compile Include="Mail\MailService.cs" />
-    <Compile Include="Mail\MicrosoftGraphMailWebApi.cs" />
-    <Compile Include="MediaItems\BlobStorageMediaItemManager.cs" />
-    <Compile Include="MediaItems\IMediaItemManager.cs" />
-    <Compile Include="MediaItems\MediaItemNotFoundException.cs" />
-    <Compile Include="Members\FileMembershipProvider.cs" />
-    <Compile Include="Members\FileRoleProvider.cs" />
-    <Compile Include="Members\IMemberAdminService.cs" />
-    <Compile Include="Members\IMemberInfoManager.cs" />
-    <Compile Include="Members\MemberAccount.cs" />
-    <Compile Include="Members\MemberAdminService.cs" />
-    <Compile Include="Members\MemberFileStore.cs" />
-    <Compile Include="Migrations\201606291112079_InitialDatabaseModel.cs" />
-    <Compile Include="Migrations\201606291112079_InitialDatabaseModel.Designer.cs">
-      <DependentUpon>201606291112079_InitialDatabaseModel.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201607050813528_RemovedRequiredOnOrderId.cs" />
-    <Compile Include="Migrations\201607050813528_RemovedRequiredOnOrderId.Designer.cs">
-      <DependentUpon>201607050813528_RemovedRequiredOnOrderId.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201607051057242_RenamedSomeStuff.cs" />
-    <Compile Include="Migrations\201607051057242_RenamedSomeStuff.Designer.cs">
-      <DependentUpon>201607051057242_RenamedSomeStuff.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201607151346190_MediaIdAsString.cs" />
-    <Compile Include="Migrations\201607151346190_MediaIdAsString.Designer.cs">
-      <DependentUpon>201607151346190_MediaIdAsString.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201607181406146_AddReadOnlyAtLibrary.cs" />
-    <Compile Include="Migrations\201607181406146_AddReadOnlyAtLibrary.Designer.cs">
-      <DependentUpon>201607181406146_AddReadOnlyAtLibrary.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201612131055240_AddSeedId.cs" />
-    <Compile Include="Migrations\201612131055240_AddSeedId.Designer.cs">
-      <DependentUpon>201612131055240_AddSeedId.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201901230658356_AddPatronAffiliation.cs" />
-    <Compile Include="Migrations\201901230658356_AddPatronAffiliation.Designer.cs">
-      <DependentUpon>201901230658356_AddPatronAffiliation.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201901230733453_AddPnumToPatronData.cs" />
-    <Compile Include="Migrations\201901230733453_AddPnumToPatronData.Designer.cs">
-      <DependentUpon>201901230733453_AddPnumToPatronData.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201901230823510_AddAffToPatronData.cs" />
-    <Compile Include="Migrations\201901230823510_AddAffToPatronData.Designer.cs">
-      <DependentUpon>201901230823510_AddAffToPatronData.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201901230959428_AddPurchaseLibrary.cs" />
-    <Compile Include="Migrations\201901230959428_AddPurchaseLibrary.Designer.cs">
-      <DependentUpon>201901230959428_AddPurchaseLibrary.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\201910030614091_ExpandedSierraModel.cs" />
-    <Compile Include="Migrations\201910030614091_ExpandedSierraModel.Designer.cs">
-      <DependentUpon>201910030614091_ExpandedSierraModel.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202104130744460_AddOrderItemModelTitleInformation.cs" />
-    <Compile Include="Migrations\202104130744460_AddOrderItemModelTitleInformation.Designer.cs">
-      <DependentUpon>202104130744460_AddOrderItemModelTitleInformation.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202104140631003_RemovedOrderItemModelTitleInformation.cs" />
-    <Compile Include="Migrations\202104140631003_RemovedOrderItemModelTitleInformation.Designer.cs">
-      <DependentUpon>202104140631003_RemovedOrderItemModelTitleInformation.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202104140635033_AddOrderItemModelTitleInformation1.cs" />
-    <Compile Include="Migrations\202104140635033_AddOrderItemModelTitleInformation1.Designer.cs">
-      <DependentUpon>202104140635033_AddOrderItemModelTitleInformation1.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202209270520498_AddActiveToSierraModel.cs" />
-    <Compile Include="Migrations\202209270520498_AddActiveToSierraModel.Designer.cs">
-      <DependentUpon>202209270520498_AddActiveToSierraModel.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202211221457293_AddEResourceAccess.cs" />
-    <Compile Include="Migrations\202211221457293_AddEResourceAccess.Designer.cs">
-      <DependentUpon>202211221457293_AddEResourceAccess.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202211221509378_AddCid.cs" />
-    <Compile Include="Migrations\202211221509378_AddCid.Designer.cs">
-      <DependentUpon>202211221509378_AddCid.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202410170822183_AnonymizationField.cs" />
-    <Compile Include="Migrations\202410170822183_AnonymizationField.Designer.cs">
-      <DependentUpon>202410170822183_AnonymizationField.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202410240950285_AddIsAnonymizedAutomatically.cs" />
-    <Compile Include="Migrations\202410240950285_AddIsAnonymizedAutomatically.Designer.cs">
-      <DependentUpon>202410240950285_AddIsAnonymizedAutomatically.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\Configuration.cs" />
-    <Compile Include="Models\ChillinText.cs" />
-    <Compile Include="Models\DropdownOption.cs" />
-    <Compile Include="Models\ItemBasic.cs" />
-    <Compile Include="Models\Page\ReceivedAtBranchResultModel.cs" />
-    <Compile Include="Models\PartialPage\Settings\ChillinTextDto.cs" />
-    <Compile Include="Models\ItemQuery.cs" />
-    <Compile Include="Models\CircualtionBasic.cs" />
-    <Compile Include="Models\Circulation.cs" />
-    <Compile Include="Models\FolioUserNameQuery.cs" />
-    <Compile Include="Models\Holding.cs" />
-    <Compile Include="Models\HoldingBasic.cs" />
-    <Compile Include="Models\Instance.cs" />
-    <Compile Include="Models\InstanceBasic.cs" />
-    <Compile Include="Models\Item.cs" />
-    <Compile Include="Models\BarCodeQuery.cs" />
-    <Compile Include="Models\Mail\OutgoingMailModel.cs" />
-    <Compile Include="Models\MediaItemIdAndOrderItemId.cs" />
-    <Compile Include="Models\MediaItemModel.cs" />
-    <Compile Include="Models\OrderItemPageModelBase.cs" />
-    <Compile Include="Models\OrderItemSeedModel.cs" />
-    <Compile Include="Models\Page\ChalmersILLDiskPageModel.cs" />
-    <Compile Include="Models\Page\ChalmersILLLogoutPageModel.cs" />
-    <Compile Include="Models\Page\ChalmersILLModel.cs" />
-    <Compile Include="Models\Page\ChalmersILLOrderListPageModel.cs" />
-    <Compile Include="Models\Page\ChalmersILLSettingsPageModel.cs" />
-    <Compile Include="Models\Page\ChalmersILLStartPageModel.cs" />
-    <Compile Include="Models\Page\ChalmersILLStatisticsPageModel.cs" />
-    <Compile Include="Models\KeyValue.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionClaimModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionDeliveryModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionLogEntryModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionMailModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionPatronReturnDateModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionProviderModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionProviderReturnDateModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionReceiveBookModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLActionReturnModel.cs" />
-    <Compile Include="Models\PartialPage\DeliveryType\ArticleByEmail.cs" />
-    <Compile Include="Models\PartialPage\DeliveryType\ArticleByMailOrInternalMail.cs" />
-    <Compile Include="Models\PartialPage\DeliveryType\ArticleFromProvider.cs" />
-    <Compile Include="Models\PartialPage\DeliveryType\ArticleInInfodisk.cs" />
-    <Compile Include="Models\PartialPage\DeliveryType\ArticleInTransit.cs" />
-    <Compile Include="Models\PartialPage\DeliveryType\BookInstantLoan.cs" />
-    <Compile Include="Models\PartialPage\DeliveryType\BookReadAtLibrary.cs" />
-    <Compile Include="Models\PartialPage\Settings\ChangePassword.cs" />
-    <Compile Include="Models\PartialPage\Settings\EditTemplates.cs" />
-    <Compile Include="Models\PartialPage\Settings\MemberAdmin.cs" />
-    <Compile Include="Models\PartialPage\Settings\ModifyProviderData.cs" />
-    <Compile Include="Models\Personal.cs" />
-    <Compile Include="Models\ResultResponseWithData.cs" />
-    <Compile Include="Models\ResultResponseWithStringData.cs" />
-    <Compile Include="Models\SearchResult.cs" />
-    <Compile Include="Models\Template.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLEditTemplatesModel.cs" />
-    <Compile Include="Models\PartialPage\ChalmersILLOrderItemModel.cs" />
-    <Compile Include="Models\StatisticsVariable.cs" />
-    <Compile Include="Models\Mail\MailAttachment.cs" />
-    <Compile Include="Models\OrderAttachment.cs" />
-    <Compile Include="Models\Lock.cs" />
-    <Compile Include="Models\Mail\MailQueueModel.cs" />
-    <Compile Include="Models\Mail\OutgoingMailPackageModel.cs" />
-    <Compile Include="Controllers\SurfaceControllers\PasswordSurfaceController.cs" />
-    <Compile Include="EventHandlers\OwinStartup.cs" />
-    <Compile Include="Global.asax.cs">
-      <DependentUpon>Global.asax</DependentUpon>
-    </Compile>
-    <Compile Include="Models\LoginModel.cs" />
-    <Compile Include="Models\LogItem.cs" />
-    <Compile Include="Models\OrderItemModel.cs" />
-    <Compile Include="Models\ResultResponse.cs" />
-    <Compile Include="Models\SierraModel.cs" />
-    <Compile Include="OrderItems\ChalmersSourceFactory.cs" />
-    <Compile Include="OrderItems\ElasticSearchOrderItemSearcher.cs" />
-    <Compile Include="OrderItems\EntityFrameworkOrderItemManager.cs" />
-    <Compile Include="OrderItems\IBulkDataManager.cs" />
-    <Compile Include="OrderItems\IOrderItemManager.cs" />
-    <Compile Include="OrderItems\IOrderItemSearcher.cs" />
-    <Compile Include="OrderItems\ISource.cs" />
-    <Compile Include="OrderItems\ISourceFactory.cs" />
-    <Compile Include="OrderItems\BulkDataManager.cs" />
-    <Compile Include="OrderItems\OrderItemNotFoundException.cs" />
-    <Compile Include="OrderItems\OrderItemSearchIndexingException.cs" />
-    <Compile Include="OrderItems\SaveException.cs" />
-    <Compile Include="OrderItems\SourcePollingException.cs" />
-    <Compile Include="OrderItems\SourcePollingResult.cs" />
-    <Compile Include="Patron\FolioPatronDataProvider.cs" />
-    <Compile Include="Patron\IAffiliationDataProvider.cs" />
-    <Compile Include="Patron\InvalidTokenException.cs" />
-    <Compile Include="Patron\IPatronDataProvider.cs" />
-    <Compile Include="Patron\IPersonDataProvider.cs" />
-    <Compile Include="Patron\PdbAffiliationDataProvider.cs" />
-    <Compile Include="Patron\PdbPersonDataProvider.cs" />
-    <Compile Include="Patron\SierraCache.cs" />
-    <Compile Include="Patron\SierraConnectionException.cs" />
-    <Compile Include="Patron\SolrLibcdksAffiliationDataProvider.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Providers\IProviderService.cs" />
-    <Compile Include="Providers\LibrisOrderItemsSource.cs" />
-    <Compile Include="Providers\ProviderService.cs" />
-    <Compile Include="Repositories\ChillinTextRepository.cs" />
-    <Compile Include="Repositories\FolioRepository.cs" />
-    <Compile Include="Models\FolioRequest.cs" />
-    <Compile Include="Repositories\IChillinTextRepository.cs" />
-    <Compile Include="Repositories\IFolioRepository.cs" />
-    <Compile Include="Services\BarCodeException.cs" />
-    <Compile Include="Services\FakeFolio.cs" />
-    <Compile Include="Services\FolioCirculationService.cs" />
-    <Compile Include="Services\FolioHoldingService.cs" />
-    <Compile Include="Services\FolioInstanceService.cs" />
-    <Compile Include="Services\FolioItemService.cs" />
-    <Compile Include="Services\FolioService.cs" />
-    <Compile Include="Services\FolioUserException.cs" />
-    <Compile Include="Services\FolioUserService.cs" />
-    <Compile Include="Services\IFolioCirculationService.cs" />
-    <Compile Include="Services\IFolioHoldingService.cs" />
-    <Compile Include="Services\IFolioInstanceService.cs" />
-    <Compile Include="Services\IFolioItemService.cs" />
-    <Compile Include="Services\IFolioService.cs" />
-    <Compile Include="Services\IFolioUserService.cs" />
-    <Compile Include="Services\IJsonService.cs" />
-    <Compile Include="Services\JsonService.cs" />
-    <Compile Include="SignalR\INotifier.cs" />
-    <Compile Include="SignalR\NotificationHub.cs" />
-    <Compile Include="SignalR\Notifier.cs" />
-    <Compile Include="Statistics\DefaultStatCalc.cs" />
-    <Compile Include="Statistics\DefaultStatMngr.cs" />
-    <Compile Include="Statistics\IStatisticsCalculator.cs" />
-    <Compile Include="Statistics\IStatisticsManager.cs" />
-    <Compile Include="Mail\ExchangeMailWebApi.cs" />
-    <Compile Include="Templates\ElasticsearchTemplateService.cs" />
-    <Compile Include="Templates\ITemplateService.cs" />
-    <Compile Include="Templates\TemplateServiceException.cs" />
-    <Compile Include="UmbracoApi\IChillinOrderConfiguration.cs" />
-    <Compile Include="UmbracoApi\ChillinOrderConfiguration.cs" />
-    <Compile Include="Utilities\Helpers.cs" />
-    <Compile Include="Members\MemberInfoManager.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="App_Start\FilterConfig.cs" />
-    <Compile Include="App_Start\RouteConfig.cs" />
-    <Compile Include="App_Start\ViewEngineConfig.cs" />
-    <Folder Include="Properties\PublishProfiles\" />
-    <Folder Include="Startup\" />
-    <Folder Include="Views\Home\" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Migrations\201606291112079_InitialDatabaseModel.resx">
-      <DependentUpon>201606291112079_InitialDatabaseModel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201607050813528_RemovedRequiredOnOrderId.resx">
-      <DependentUpon>201607050813528_RemovedRequiredOnOrderId.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201607051057242_RenamedSomeStuff.resx">
-      <DependentUpon>201607051057242_RenamedSomeStuff.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201607151346190_MediaIdAsString.resx">
-      <DependentUpon>201607151346190_MediaIdAsString.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201607181406146_AddReadOnlyAtLibrary.resx">
-      <DependentUpon>201607181406146_AddReadOnlyAtLibrary.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201612131055240_AddSeedId.resx">
-      <DependentUpon>201612131055240_AddSeedId.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201901230658356_AddPatronAffiliation.resx">
-      <DependentUpon>201901230658356_AddPatronAffiliation.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201901230733453_AddPnumToPatronData.resx">
-      <DependentUpon>201901230733453_AddPnumToPatronData.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201901230823510_AddAffToPatronData.resx">
-      <DependentUpon>201901230823510_AddAffToPatronData.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201901230959428_AddPurchaseLibrary.resx">
-      <DependentUpon>201901230959428_AddPurchaseLibrary.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\201910030614091_ExpandedSierraModel.resx">
-      <DependentUpon>201910030614091_ExpandedSierraModel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202104130744460_AddOrderItemModelTitleInformation.resx">
-      <DependentUpon>202104130744460_AddOrderItemModelTitleInformation.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202104140631003_RemovedOrderItemModelTitleInformation.resx">
-      <DependentUpon>202104140631003_RemovedOrderItemModelTitleInformation.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202104140635033_AddOrderItemModelTitleInformation1.resx">
-      <DependentUpon>202104140635033_AddOrderItemModelTitleInformation1.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202209270520498_AddActiveToSierraModel.resx">
-      <DependentUpon>202209270520498_AddActiveToSierraModel.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202211221457293_AddEResourceAccess.resx">
-      <DependentUpon>202211221457293_AddEResourceAccess.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202211221509378_AddCid.resx">
-      <DependentUpon>202211221509378_AddCid.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202410170822183_AnonymizationField.resx">
-      <DependentUpon>202410170822183_AnonymizationField.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202410240950285_AddIsAnonymizedAutomatically.resx">
-      <DependentUpon>202410240950285_AddIsAnonymizedAutomatically.cs</DependentUpon>
-    </EmbeddedResource>
-  </ItemGroup>
-  <PropertyGroup>
-    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
-    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'ChillinTest.Release|AnyCPU'">
-    <OutputPath>bin\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <ExcludeFilesFromDeployment>Local.config</ExcludeFilesFromDeployment>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'ChalmersILL|AnyCPU'">
-    <OutputPath>bin\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <ExcludeFilesFromDeployment>Local.config</ExcludeFilesFromDeployment>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'ChillinTest.Debug|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <ExcludeFilesFromDeployment>Local.config</ExcludeFilesFromDeployment>
-  </PropertyGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' != ''" />
-  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
-  <ProjectExtensions>
-    <VisualStudio>
-      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
-        <WebProjectProperties>
-          <UseIIS>True</UseIIS>
-          <AutoAssignPort>True</AutoAssignPort>
-          <DevelopmentServerPort>49387</DevelopmentServerPort>
-          <DevelopmentServerVPath>/</DevelopmentServerVPath>
-          <IISUrl>http://localhost:52758/</IISUrl>
-          <NTLMAuthentication>False</NTLMAuthentication>
-          <UseCustomServer>False</UseCustomServer>
-          <CustomServerUrl>
-          </CustomServerUrl>
-          <SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
-        </WebProjectProperties>
-      </FlavorProperties>
-    </VisualStudio>
-  </ProjectExtensions>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\EntityFramework.6.5.1\build\EntityFramework.props'))" />
-    <Error Condition="!Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\EntityFramework.6.5.1\build\EntityFramework.targets'))" />
-  </Target>
-  <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
-  </PropertyGroup>
-  <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.targets" Condition="Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.targets')" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

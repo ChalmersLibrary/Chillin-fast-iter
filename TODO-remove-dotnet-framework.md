@@ -256,7 +256,7 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
 
 ### Fas 1a: SDK-style, behåll `net48`
 
-- [ ] **Konvertera båda projekten till SDK-style med `<TargetFramework>net48</TargetFramework>`**
+- [x] **Konvertera båda projekten till SDK-style med `<TargetFramework>net48</TargetFramework>`**
   Nuvarande filer är det gamla verbosa MSBuild-formatet: `ToolsVersion="12.0"`,
   `<TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>`, 252 `<Compile Include>`, 82
   `<Content Include>`, `packages.config`. Byt till `<Project Sdk="Microsoft.NET.Sdk.Web">` respektive
@@ -293,26 +293,31 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   - **Glöm inte** `<Content Include>` för `Config/members.json` och `Config/members.example.json` —
     saknas idag.
 
-- [ ] **Byt testramverk i samma steg — det är det som gör `dotnet test` möjligt**
+- [x] **Byt testramverk i samma steg — det är det som gör `dotnet test` möjligt**
   MSTest v1 (`Microsoft.VisualStudio.QualityTools.UnitTestFramework`, GAC-referens) byts mot
   `MSTest.TestFramework` + `MSTest.TestAdapter` + `Microsoft.NET.Test.Sdk` som PackageReference.
   **Microsoft Fakes måste vara borttaget först** (fas 0b) — det kräver Visual Studios testprofiler
   och fungerar inte under `dotnet test`. Se fas 9 för detaljerna.
   Ta bort legacy-testprojekt-GUID:t, `<TestProjectType>` och `Microsoft.TestTools.targets`-importen.
 
-- [ ] **Uppdatera bygg-/testkommandon i [CLAUDE.md](CLAUDE.md) och `.claude/settings.local.json`**
+- [x] **Uppdatera bygg-/testkommandon i [CLAUDE.md](CLAUDE.md) och `.claude/settings.local.json`**
   MSBuild + `vstest.console.exe` byts mot `dotnet build`/`dotnet test`. Båda `dotnet`-varianterna finns
   redan i vitlistan, så det räcker att ta bort de två gamla raderna och uppdatera CLAUDE.md:s
   Testrutiner-sektion. Görs i samma commit som konverteringen.
 
-- [ ] **Kontrollpunkt: kör hela sviten och bekräfta 151 gröna tester**
-  Fortfarande på Windows, nu via `dotnet test`. Samma antal som baseline (verifierad 2026-09-10).
-  Avviker antalet ska orsaken redas ut här — inte senare, när TFM-bytet gör allt svårare att felsöka.
-  **Committa vid grönt.** Det är den punkt man vill kunna gå tillbaka till.
+- [x] **Kontrollpunkt: kör hela sviten och bekräfta 151 gröna tester**
+  Fortfarande på Windows, nu via `dotnet test`. **165 gröna, 0 röda** (2026-09-11) — fler än baseline på
+  151 (verifierad 2026-09-10), men avstämt mot källan: `grep -rc "\[TestMethod\]" Chalmers.ILL.Tests`
+  ger exakt 165 träffar, dvs. samtliga testmetoder som finns i koden kördes och gick igenom. Ökningen
+  förklaras av "More tests."-committen (`3b28120`) som landade efter att 151-baseline togs, inte av
+  något som tappades i konverteringen.
+  **Committa vid grönt.** Det är den punkt man vill kunna gå tillbaka till. *(Ej gjort här — enligt
+  CLAUDE.md:s TODO-lista-regel committar Claude aldrig utan explicit användarbegäran; användaren bör
+  committa denna checkpoint manuellt.)*
 
 ### Fas 1b: byt till `net10.0`
 
-- [ ] **Installera .NET SDK 10**
+- [x] **Installera .NET SDK 10**
   Maskinen har idag bara SDK 9.0.109 (runtimes 8.0.19 och 9.0.8). Kan göras när som helst innan
   detta steg — även parallellt med fas 0 och 1a.
   *(Tidigare stod här att EF6 måste verifieras mot `net10.0`. Det behövs inte längre — EF6 tas bort

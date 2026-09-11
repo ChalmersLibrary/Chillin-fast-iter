@@ -57,26 +57,20 @@ oskäligt stort.
 ## Testrutiner
 
 Kör alltid testerna **innan** och **efter** kodändringar för att säkerställa att befintligt beteende
-inte brutits. Kör bygge och tester som **två separata PowerShell-anrop** — båda är förhandsgodkända
-i `.claude/settings.local.json`:
+inte brutits. Båda projekten är sedan fas 1a SDK-style (`net48`), så bygge och tester körs med
+`dotnet`, förhandsgodkänt i `.claude/settings.local.json`:
 
 **1. Bygg:**
 ```powershell
-& "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe" "Chalmers.ILL.Tests\Chalmers.ILL.Tests.csproj" /p:Configuration=Debug /v:minimal
+dotnet build Chalmers.ILL.Tests\Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal
 ```
 
 **2. Kör tester (bara om bygget lyckades):**
 ```powershell
-& "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" "Chalmers.ILL.Tests\bin\Debug\Chalmers.ILL.Tests.dll"
+dotnet test Chalmers.ILL.Tests\Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal
 ```
 
 Alla tester ska vara gröna innan arbetet rapporteras klart.
-
-**OBS:** dessa kommandon gäller de nuvarande `.csproj`/`packages.config`-baserade projekten. När
-`Chalmers.ILL.Tests.csproj` konverteras till SDK-style som en del av .NET Framework-borttagningen
-(se [TODO-remove-dotnet-framework.md](TODO-remove-dotnet-framework.md)) byts dessa ut mot `dotnet build`/
-`dotnet test` — uppdatera den här sektionen och `.claude/settings.local.json`s vitlista i samma steg som
-den konverteringen görs.
 
 ## Arkitekturnoter
 
