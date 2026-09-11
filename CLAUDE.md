@@ -54,6 +54,12 @@ edits är förhandsgodkända och inte kräver användarinteraktion. Använd scri
 ett Edit-alternativ (t.ex. ta bort filer, köra byggen/tester), eller när antalet edits skulle bli
 oskäligt stort.
 
+Committa och pusha alltid ändringar direkt när en avgränsad uppgift är klar och testerna är gröna
+(se [Testrutiner](#testrutiner)) — utan att fråga om lov varje gång. Detta gäller enbart grenen
+`remove-dotnet-framework`; pusha aldrig till `master` (se [Driftläge](#driftläge)). Skriv commit-
+meddelanden på samma sätt som befintlig historik. Om testerna inte är gröna: committa inte, utan
+rapportera felet istället.
+
 ## Testrutiner
 
 Kör alltid testerna **innan** och **efter** kodändringar för att säkerställa att befintligt beteende
@@ -93,4 +99,5 @@ Följande gäller läget efter Umbraco-borttagningen, dvs. utgångspunkten för 
 
 När en punkt i [TODO-remove-umbraco.md](TODO-remove-umbraco.md) eller
 [TODO-remove-dotnet-framework.md](TODO-remove-dotnet-framework.md) är genomförd, kryssa i den (`[ ]` → `[x]`)
-direkt. Committa aldrig kod eller ändringar utan att användaren explicit ber om det.
+direkt, som en del av den commit som avslutar punkten (se [Arbetsrutiner](#arbetsrutiner) om
+commit/push).
