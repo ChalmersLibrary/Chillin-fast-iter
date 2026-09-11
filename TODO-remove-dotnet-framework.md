@@ -293,6 +293,20 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   - **Glöm inte** `<Content Include>` för `Config/members.json` och `Config/members.example.json` —
     saknas idag.
 
+  **Tre icke-uppenbara saker som krävdes för att SDK-style-konverteringen faktiskt skulle bygga**
+  (gäller båda csproj, gjort 2026-09-11 — rör inte dessa utan att förstå varför):
+  - `Microsoft.NET.Sdk.Web` sätter `OutputType` till `Exe` som default. Måste explicit sättas till
+    `<OutputType>Library</OutputType>` i det här steget eftersom `Program.cs`/`Main` inte finns än
+    (kommer i fas 2) — annars felar bygget med att ingen entry point hittas.
+  - `Microsoft.NET.Sdk.Web` behandlar content-filer som `Content` by default (till skillnad från vanlig
+    `Sdk`, som behandlar dem som `None`). Filer som redan täcks av den implicita globben
+    (t.ex. `Config/chillinPrevalues.json`) får **inte** ha `<Content Include>` — det ger `NETSDK1022`
+    (duplicate item). Använd `<Content Update>` när målet bara är att sätta metadata
+    (`CopyToOutputDirectory`) på en redan implicit inkluderad fil.
+  - Båda `Properties/AssemblyInfo.cs` finns kvar med manuella `[assembly: AssemblyVersion(...)]` m.fl.
+    — SDK:n genererar motsvarande attribut automatiskt, vilket krockar. Krävde
+    `<GenerateAssemblyInfo>false</GenerateAssemblyInfo>` i båda projekten.
+
 - [x] **Byt testramverk i samma steg — det är det som gör `dotnet test` möjligt**
   MSTest v1 (`Microsoft.VisualStudio.QualityTools.UnitTestFramework`, GAC-referens) byts mot
   `MSTest.TestFramework` + `MSTest.TestAdapter` + `Microsoft.NET.Test.Sdk` som PackageReference.
@@ -331,6 +345,20 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   Räkna med att fas 1b och fas 2 utförs i ett svep. Försök inte kryssa av dem var för sig.
   Multitargeting (`net48;net10.0`) är teoretiskt möjligt men avrådes: hostinglagret ska ändå ersättas
   helt, så det skulle innebära `#if`-direktiv genom hela kodbasen till ingen nytta.
+
+  **⚠️ Rättelse upptäckt 2026-09-11, gäller innan detta steg påbörjas:** fas-indelningen nedan är
+  tematisk, inte kompileringsbar var för sig — svepet är i praktiken större än fas 1b+2. Tre saker
+  till försvinner i samma ögonblick som TFM byts, men är formellt tilldelade *senare* faser:
+  - `System.Web.Security.MembershipProvider`/`RoleProvider` (basklasserna för
+    `FileMembershipProvider`/`FileRoleProvider`, se fas 3) finns inte i `net10.0`.
+  - `System.Web.Mvc.Controller` (basklassen för samtliga 42 controllers, se fas 4) finns inte heller,
+    och därmed inte `JsonRequestBehavior`/`[ValidateInput]` som används på ett 90-tal ställen i dem.
+  - Klassisk `Microsoft.AspNet.SignalR.*` (`Notifier`/`NotificationHub`, se fas 5) är net45-only och
+    går inte att paketreferera mot `net10.0` alls.
+
+  Ett grönt `dotnet build` efter TFM-bytet kräver alltså fas 1b, 2, 3, 4 **och** SignalR-serverdelen
+  av fas 5 i samma svep — inte bara 1b+2. (Klient-JS/bower-delen av fas 5 är fristående och kan vänta.)
+  Planera om detta steg påbörjas som ett svep över samtliga dessa punkter, inte bara fas 1b+2.
 
 ---
 
