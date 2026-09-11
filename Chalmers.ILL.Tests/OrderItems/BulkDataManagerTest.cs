@@ -1,9 +1,7 @@
-﻿using System;
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using System.Collections.Generic;
-using Microsoft.QualityTools.Testing.Fakes;
-using System.Collections;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.Models;
 
@@ -14,17 +12,11 @@ namespace Chalmers.ILL.Tests.OrderItems
     {
         private IOrderItemSearcher CreateFakeSearcher(IEnumerable<OrderItemModel> searchResults)
         {
-            return new Chalmers.ILL.OrderItems.Fakes.StubIOrderItemSearcher()
-            {
-                SearchString = (query) => { return searchResults; }
-            };
+            return new StubOrderItemSearcher(searchResults);
         }
 
         private bool IsAsExpected(SimplifiedOrderItem soi, string type, string reference, string status)
         {
-            var test1 = soi.Type == type;
-            var test2 = soi.Reference == reference;
-            var test3 = soi.Status == status;
             return soi.Type == type && soi.Reference == reference && soi.Status == status;
         }
 
@@ -45,11 +37,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
-                Assert.IsTrue(IsAsExpected(res[0], "Artikel", "Mio min Mio.", "Ej tillgänglig än"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
+            Assert.IsTrue(IsAsExpected(res[0], "Artikel", "Mio min Mio.", "Ej tillgänglig än"));
         }
 
         [TestMethod]
@@ -69,11 +58,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
-                Assert.IsTrue(IsAsExpected(res[0], "Artikel", "Mio min Mio.", "Levererad"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
+            Assert.IsTrue(IsAsExpected(res[0], "Artikel", "Mio min Mio.", "Levererad"));
         }
 
         [TestMethod]
@@ -93,11 +79,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
-                Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "Ej tillgänglig än"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
+            Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "Ej tillgänglig än"));
         }
 
         [TestMethod]
@@ -117,11 +100,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
-                Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "ÅTER " + DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
+            Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "ÅTER " + DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")));
         }
 
         [TestMethod]
@@ -141,11 +121,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
-                Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "Krävd *"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
+            Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "Krävd *"));
         }
 
         [TestMethod]
@@ -165,11 +142,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
-                Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "Försenad **"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
+            Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "Försenad **"));
         }
 
         [TestMethod]
@@ -189,11 +163,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
-                Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "ÅTER " + DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
+            Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "ÅTER " + DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")));
         }
 
         [TestMethod]
@@ -213,11 +184,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
-                Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "Försenad **"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "sv");
+            Assert.IsTrue(IsAsExpected(res[0], "Bok", "Mio min Mio.", "Försenad **"));
         }
 
         [TestMethod]
@@ -237,11 +205,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
-                Assert.IsTrue(IsAsExpected(res[0], "Article", "Mio min Mio.", "Not available yet"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
+            Assert.IsTrue(IsAsExpected(res[0], "Article", "Mio min Mio.", "Not available yet"));
         }
 
         [TestMethod]
@@ -261,11 +226,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
-                Assert.IsTrue(IsAsExpected(res[0], "Article", "Mio min Mio.", "Delivered"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
+            Assert.IsTrue(IsAsExpected(res[0], "Article", "Mio min Mio.", "Delivered"));
         }
 
         [TestMethod]
@@ -285,11 +247,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
-                Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "Not available yet"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
+            Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "Not available yet"));
         }
 
         [TestMethod]
@@ -309,11 +268,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
-                Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "DUE " + DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
+            Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "DUE " + DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")));
         }
 
         [TestMethod]
@@ -333,11 +289,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
-                Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "Recalled *"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
+            Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "Recalled *"));
         }
 
         [TestMethod]
@@ -357,11 +310,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
-                Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "Late **"));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
+            Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "Late **"));
         }
 
         [TestMethod]
@@ -381,11 +331,8 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
-            {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
-                Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "DUE " + DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")));
-            }
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
+            Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "DUE " + DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")));
         }
 
         [TestMethod]
@@ -405,11 +352,26 @@ namespace Chalmers.ILL.Tests.OrderItems
                     }
                 ));
 
-            using (ShimsContext.Create())
+            var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
+            Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "Late **"));
+        }
+
+        class StubOrderItemSearcher : IOrderItemSearcher
+        {
+            private readonly IEnumerable<OrderItemModel> _results;
+
+            public StubOrderItemSearcher(IEnumerable<OrderItemModel> results)
             {
-                var res = bulkDataManager.GetChillinDataForSierraPatron(42, "en");
-                Assert.IsTrue(IsAsExpected(res[0], "Book", "Mio min Mio.", "Late **"));
+                _results = results;
             }
+
+            public IEnumerable<OrderItemModel> Search(string query) => _results;
+            public SearchResult Search(string query, int start, int size) => throw new NotImplementedException();
+            public IEnumerable<OrderItemModel> Search(string query, int size, string[] fields) => throw new NotImplementedException();
+            public IEnumerable<string> AggregatedProviders() => throw new NotImplementedException();
+            public void Added(OrderItemModel item) { }
+            public void Modified(OrderItemModel item) { }
+            public void Deleted(OrderItemModel item) { }
         }
     }
 }

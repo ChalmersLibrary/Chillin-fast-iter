@@ -1,20 +1,12 @@
 ﻿using System;
 using Microsoft.AspNet.SignalR;
 using System.Configuration;
-using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.Models;
 
 namespace Chalmers.ILL.SignalR
 {
     public class Notifier : INotifier
     {
-        IOrderItemManager _orderItemManager;
-
-        public void SetOrderItemManager(IOrderItemManager orderItemManager)
-        {
-            _orderItemManager = orderItemManager;
-        }
-
         public void ReportNewOrderItemUpdate(OrderItemModel orderItem)
         {
             // get the NotificationHub

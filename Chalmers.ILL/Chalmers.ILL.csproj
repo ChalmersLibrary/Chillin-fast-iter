@@ -285,14 +285,12 @@
     <Content Include="Views\ChalmersILL.cshtml" />
     <Content Include="Views\ChalmersILLOrderListPage.cshtml" />
     <Content Include="Views\ChalmersILLStartPage.cshtml" />
-    <Content Include="Views\MacroPartials\Chalmers.ILL.Login.cshtml" />
     <Content Include="Views\Partials\Chalmers.ILL.Login.cshtml" />
     <Content Include="Views\ChalmersILLLogoutPage.cshtml">
       <SubType>Code</SubType>
     </Content>
     <Content Include="Views\ChalmersILLLoginPage.cshtml" />
     <Content Include="Views\Partials\Chalmers.ILL.LogItem.cshtml" />
-    <Content Include="Views\MacroPartials\Chalmers.ILL.LogItem.cshtml" />
     <Content Include="Views\Partials\Chalmers.ILL.OrderItem.cshtml">
       <SubType>Code</SubType>
     </Content>
@@ -310,7 +308,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Css\chalmers.ill.main.css" />
-    <Content Include="default.aspx" />
     <Content Include="Global.asax" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
@@ -382,7 +379,6 @@
     <Compile Include="Mail\LogMessage.cs" />
     <Compile Include="Mail\MailService.cs" />
     <Compile Include="Mail\MicrosoftGraphMailWebApi.cs" />
-    <Compile Include="MediaItems\AzureStorageEmulatorManager.cs" />
     <Compile Include="MediaItems\BlobStorageMediaItemManager.cs" />
     <Compile Include="MediaItems\IMediaItemManager.cs" />
     <Compile Include="MediaItems\MediaItemNotFoundException.cs" />
@@ -575,6 +571,7 @@
     <Compile Include="Repositories\IChillinTextRepository.cs" />
     <Compile Include="Repositories\IFolioRepository.cs" />
     <Compile Include="Services\BarCodeException.cs" />
+    <Compile Include="Services\FakeFolio.cs" />
     <Compile Include="Services\FolioCirculationService.cs" />
     <Compile Include="Services\FolioHoldingService.cs" />
     <Compile Include="Services\FolioInstanceService.cs" />
@@ -604,7 +601,6 @@
     <Compile Include="UmbracoApi\IChillinOrderConfiguration.cs" />
     <Compile Include="UmbracoApi\ChillinOrderConfiguration.cs" />
     <Compile Include="Utilities\Helpers.cs" />
-    <Compile Include="Patron\Sierra.cs" />
     <Compile Include="Members\MemberInfoManager.cs" />
   </ItemGroup>
   <ItemGroup>

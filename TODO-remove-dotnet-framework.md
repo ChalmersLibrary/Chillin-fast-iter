@@ -166,7 +166,7 @@ Allt här är oberoende av hostingbytet och minskar migreringens yta — mest ge
 annars måste migreras i onödan. Gör detta först. Liksom fas 0a hör det hemma på grenen
 `remove-dotnet-framework`, inte på `master`.
 
-- [ ] **Ta bort Microsoft Fakes ur testprojektet — betydligt enklare än det ser ut**
+- [x] **Ta bort Microsoft Fakes ur testprojektet — betydligt enklare än det ser ut**
   Inventeringen visar att **inga shims faktiskt används**. `ShimsContext.Create()` förekommer 31 gånger
   (16 i `Mail/AutomaticMailSendingEngineTest.cs`, 16 i `OrderItems/BulkDataManagerTest.cs`, 3 i
   `Statistics/StatisticsTest.cs`) men **inget `Shim*`-objekt tilldelas någonsin inuti blocken** — de är
@@ -180,7 +180,7 @@ annars måste migreras i onödan. Gör detta först. Liksom fas 0a hör det hemm
   Städa samtidigt bort död testkod: `StatisticsTest.cs:16-22` (`GetFakeSearcher()` anropas aldrig) och
   `BulkDataManagerTest.cs:23-29` (`test1/test2/test3` beräknas men används inte).
 
-- [ ] **Ta bort bekräftat död kod**
+- [x] **Ta bort bekräftat död kod**
   Var och en verifierad med sökning över hela kodbasen inklusive tester:
   - `Patron/Sierra.cs` (321 rader) — `ISierra` finns inte, `new Sierra(...)` finns inte, klassen
     registreras inte i `Bootstrapper.cs`. **Bekräftat död.** `SierraModel`/`SierraCache`/
