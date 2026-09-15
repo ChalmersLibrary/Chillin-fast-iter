@@ -2,7 +2,7 @@ using Chalmers.ILL.Members;
 using Chalmers.ILL.Models.Page;
 using Chalmers.ILL.OrderItems;
 using System;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
 {
@@ -22,10 +22,10 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
             var customModel = new ChalmersILLDiskPageModel();
             _memberInfoManager.PopulateModelWithMemberData(Request, Response, customModel);
 
-            if (!String.IsNullOrEmpty(Request.QueryString["query"]))
+            if (!String.IsNullOrEmpty(Request.Query["query"]))
             {
                 customModel.OrderItems = _searcher.Search("((type:Bok AND status:(Infodisk OR Utlånad OR Transport OR Krävd OR Förlorad OR Förlorad\\?)) OR (type:Artikel AND status:Transport)) AND " +
-                    "\"" + Request.Params["query"].Trim() + "\"");
+                    "\"" + Request.Query["query"].ToString().Trim() + "\"");
             }
 
             return View("~/Views/ChalmersILLDiskPage.cshtml", customModel);

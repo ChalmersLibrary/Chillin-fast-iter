@@ -1,6 +1,6 @@
-﻿@inherits System.Web.Mvc.WebViewPage<Chalmers.ILL.Models.Page.ChalmersILLSettingsPageModel>
+﻿@model Chalmers.ILL.Models.Page.ChalmersILLSettingsPageModel
 @{
-    Layout = "ChalmersILL.cshtml";
+    Layout = "~/Views/ChalmersILL.cshtml";
 }
 
 <h2>Inställningar</h2>
@@ -12,7 +12,7 @@
             <li role="presentation"><a id="template-settings-link" href="#" onclick="showTemplateSettings(this); event.preventDefault();">Mallar</a></li>
             <li role="presentation"><a id="provider-settings-link" href="#" onclick="showProviderSettings(this); event.preventDefault();">Leverantörsdata</a></li>
             <li role="presentation"><a href="#" onclick="showChillinTextSettings(this); event.preventDefault();">Text</a></li>
-            @if (System.Web.Security.Roles.IsUserInRole(Model.CurrentMemberLoginName, "SuperAdmin"))
+            @if (User.IsInRole("SuperAdmin"))
             {
                 <li role="presentation"><a id="member-settings-link" href="#" onclick="showMemberSettings(this); event.preventDefault();">Konton</a></li>
             }

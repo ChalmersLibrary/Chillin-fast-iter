@@ -1,9 +1,9 @@
-﻿using Microsoft.Practices.Unity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Extensions;
 using System.Globalization;
 using Chalmers.ILL.OrderItems;
@@ -12,7 +12,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
     // Documented public API (see ILL-status-api.md) called cross-origin by the library system
     // with no user login, so it must be exempt from the global AuthorizeAttribute.
-    [System.Web.Mvc.AllowAnonymous]
+    [AllowAnonymous]
     public class PublicDataSurfaceController : Controller
     {
         IBulkDataManager _bulkDataManager;
@@ -27,7 +27,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         {
             var res = new PublicChillinDataConnectedToPatron();
 
-            Response.AddHeader("Access-Control-Allow-Origin", "*");
+            Response.Headers["Access-Control-Allow-Origin"] = "*";
 
             if (lang == null)
             {
@@ -46,7 +46,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 res.Message = "Failed to get data.";
             }
 
-            return Json(res, JsonRequestBehavior.AllowGet);
+            return Json(res);
         }
 
         #region Private methods

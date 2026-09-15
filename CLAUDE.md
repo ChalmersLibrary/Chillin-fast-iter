@@ -63,17 +63,17 @@ rapportera felet istället.
 ## Testrutiner
 
 Kör alltid testerna **innan** och **efter** kodändringar för att säkerställa att befintligt beteende
-inte brutits. Båda projekten är sedan fas 1a SDK-style (`net48`), så bygge och tester körs med
-`dotnet`, förhandsgodkänt i `.claude/settings.local.json`:
+inte brutits. Båda projekten är SDK-style sedan fas 1a och targetar `net10.0` sedan fas 1b, så bygge
+och tester körs med `dotnet`, förhandsgodkänt i `.claude/settings.local.json`:
 
 **1. Bygg:**
-```powershell
-dotnet build Chalmers.ILL.Tests\Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal
+```bash
+dotnet build Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal
 ```
 
 **2. Kör tester (bara om bygget lyckades):**
-```powershell
-dotnet test Chalmers.ILL.Tests\Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal
+```bash
+dotnet test Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal
 ```
 
 Alla tester ska vara gröna innan arbetet rapporteras klart.

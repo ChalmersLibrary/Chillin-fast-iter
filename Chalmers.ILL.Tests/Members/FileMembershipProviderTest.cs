@@ -1,5 +1,6 @@
 using System.Collections.Generic;
-using System.Web.Helpers;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Chalmers.ILL.Members;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -8,6 +9,12 @@ namespace Chalmers.ILL.Tests.Members
     [TestClass]
     public class FileMembershipProviderTest
     {
+        private static readonly PasswordHasher<MemberAccount> _hasher =
+            new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+
         [TestMethod]
         public void ValidateUser_CorrectPassword_ReturnsTrue()
         {
@@ -40,16 +47,23 @@ namespace Chalmers.ILL.Tests.Members
             Assert.IsTrue(provider.ValidateUser("ALICE", "correct-horse"));
         }
 
-        // GetUser for a known user isn't unit-testable in isolation: MembershipUser's constructor
-        // validates its providerName against the globally registered Membership.Providers
-        // collection, which is only populated by ASP.NET at app startup from Web.config.
+        [TestMethod]
+        public void GetUser_KnownUser_ReturnsAccount()
+        {
+            var provider = MakeProvider(new SaveCapture(), Account("alice", "correct-horse"));
+
+            var user = provider.GetUser("alice");
+
+            Assert.IsNotNull(user);
+            Assert.AreEqual("alice", user.Login);
+        }
 
         [TestMethod]
         public void GetUser_UnknownUser_ReturnsNull()
         {
             var provider = MakeProvider(new SaveCapture(), Account("alice", "correct-horse"));
 
-            Assert.IsNull(provider.GetUser("bob", false));
+            Assert.IsNull(provider.GetUser("bob"));
         }
 
         [TestMethod]
@@ -62,7 +76,7 @@ namespace Chalmers.ILL.Tests.Members
 
             Assert.IsTrue(result);
             Assert.IsNotNull(capture.Saved);
-            Assert.IsTrue(Crypto.VerifyHashedPassword(capture.Saved[0].PasswordHash, "new-password"));
+            Assert.AreNotEqual(PasswordVerificationResult.Failed, _hasher.VerifyHashedPassword(capture.Saved[0], capture.Saved[0].PasswordHash, "new-password"));
         }
 
         [TestMethod]
@@ -77,8 +91,12 @@ namespace Chalmers.ILL.Tests.Members
             Assert.IsNull(capture.Saved);
         }
 
-        private static MemberAccount Account(string login, string password) =>
-            new MemberAccount { Login = login, PasswordHash = Crypto.HashPassword(password), Roles = new List<string>() };
+        private static MemberAccount Account(string login, string password)
+        {
+            var account = new MemberAccount { Login = login, Roles = new List<string>() };
+            account.PasswordHash = _hasher.HashPassword(account, password);
+            return account;
+        }
 
         private static FileMembershipProvider MakeProvider(SaveCapture capture, params MemberAccount[] accounts)
         {

@@ -1,18 +1,28 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Linq;
-using System.Web.Helpers;
-using System.Web.Security;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace Chalmers.ILL.Members
 {
-    // Minimal MembershipProvider backed by MemberFileStore instead of a database. Only the
-    // members actually used elsewhere in the app (ValidateUser, GetUser, ChangePassword) are
-    // implemented; everything else (self-registration, password reset by email, etc.) isn't
-    // needed for a handful of manually managed accounts and throws NotSupportedException.
-    public class FileMembershipProvider : MembershipProvider
+    // Minimal membership service backed by MemberFileStore instead of a database. Used to
+    // inherit System.Web.Security.MembershipProvider (no equivalent on modern .NET, see fas 3);
+    // only the members actually used elsewhere in the app (ValidateUser, GetUser, ChangePassword)
+    // are implemented, so the NotSupportedException stubs the base class required are gone too.
+    public class FileMembershipProvider
     {
+        private static readonly PasswordHasher<MemberAccount> _hasher =
+            new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                // System.Web.Helpers.Crypto.HashPassword/VerifyHashedPassword (PBKDF2-HMAC-SHA1,
+                // 1000 iterations, 128-bit salt, 256-bit subkey, 0x00 format marker) is
+                // byte-for-byte the same format PasswordHasher<T> produces in IdentityV2
+                // compatibility mode, so existing hashes in members.json keep working - no forced
+                // password reset for this migration (unlike the Umbraco removal).
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+
         private readonly Func<List<MemberAccount>> _loadAccounts;
         private readonly Action<List<MemberAccount>> _saveAccounts;
 
@@ -24,85 +34,32 @@ namespace Chalmers.ILL.Members
             _saveAccounts = saveAccounts;
         }
 
-        public override void Initialize(string name, NameValueCollection config)
-        {
-            base.Initialize(string.IsNullOrEmpty(name) ? "FileMembershipProvider" : name, config ?? new NameValueCollection());
-        }
-
-        public override string ApplicationName { get; set; } = "Chillin";
-
-        public override bool ValidateUser(string username, string password)
+        public bool ValidateUser(string username, string password)
         {
             var account = FindAccount(username);
-            return account != null && !string.IsNullOrEmpty(account.PasswordHash) && Crypto.VerifyHashedPassword(account.PasswordHash, password);
+            return account != null && !string.IsNullOrEmpty(account.PasswordHash) && Verify(account, password);
         }
 
-        public override MembershipUser GetUser(string username, bool userIsOnline)
-        {
-            var account = FindAccount(username);
-            if (account == null) return null;
+        public MemberAccount GetUser(string username) => FindAccount(username);
 
-            return new MembershipUser(Name, account.Login, null, "", "", "", true, false,
-                DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue);
-        }
-
-        public override bool ChangePassword(string username, string oldPassword, string newPassword)
+        public bool ChangePassword(string username, string oldPassword, string newPassword)
         {
             var accounts = _loadAccounts();
             var account = accounts.FirstOrDefault(a => IsMatch(a, username));
-            if (account == null || string.IsNullOrEmpty(account.PasswordHash) || !Crypto.VerifyHashedPassword(account.PasswordHash, oldPassword))
+            if (account == null || string.IsNullOrEmpty(account.PasswordHash) || !Verify(account, oldPassword))
                 return false;
 
-            account.PasswordHash = Crypto.HashPassword(newPassword);
+            account.PasswordHash = _hasher.HashPassword(account, newPassword);
             _saveAccounts(accounts);
             return true;
         }
+
+        private static bool Verify(MemberAccount account, string password) =>
+            _hasher.VerifyHashedPassword(account, account.PasswordHash, password) != PasswordVerificationResult.Failed;
 
         private MemberAccount FindAccount(string username) => _loadAccounts().FirstOrDefault(a => IsMatch(a, username));
 
         private static bool IsMatch(MemberAccount account, string username) =>
             string.Equals(account.Login, username, StringComparison.OrdinalIgnoreCase);
-
-        public override bool EnablePasswordRetrieval => false;
-        public override bool EnablePasswordReset => false;
-        public override bool RequiresQuestionAndAnswer => false;
-        public override bool RequiresUniqueEmail => false;
-        public override MembershipPasswordFormat PasswordFormat => MembershipPasswordFormat.Hashed;
-        public override int MaxInvalidPasswordAttempts => int.MaxValue;
-        public override int MinRequiredNonAlphanumericCharacters => 0;
-        public override int MinRequiredPasswordLength => 6;
-        public override int PasswordAttemptWindow => 0;
-        public override string PasswordStrengthRegularExpression => "";
-
-        public override bool ChangePasswordQuestionAndAnswer(string username, string password, string newPasswordQuestion, string newPasswordAnswer) =>
-            throw new NotSupportedException();
-
-        public override MembershipUser CreateUser(string username, string password, string email, string passwordQuestion, string passwordAnswer, bool isApproved, object providerUserKey, out MembershipCreateStatus status) =>
-            throw new NotSupportedException();
-
-        public override bool DeleteUser(string username, bool deleteAllRelatedData) => throw new NotSupportedException();
-
-        public override MembershipUserCollection FindUsersByEmail(string emailToMatch, int pageIndex, int pageSize, out int totalRecords) =>
-            throw new NotSupportedException();
-
-        public override MembershipUserCollection FindUsersByName(string usernameToMatch, int pageIndex, int pageSize, out int totalRecords) =>
-            throw new NotSupportedException();
-
-        public override MembershipUserCollection GetAllUsers(int pageIndex, int pageSize, out int totalRecords) =>
-            throw new NotSupportedException();
-
-        public override int GetNumberOfUsersOnline() => throw new NotSupportedException();
-
-        public override string GetPassword(string username, string answer) => throw new NotSupportedException();
-
-        public override MembershipUser GetUser(object providerUserKey, bool userIsOnline) => throw new NotSupportedException();
-
-        public override string GetUserNameByEmail(string email) => throw new NotSupportedException();
-
-        public override string ResetPassword(string username, string answer) => throw new NotSupportedException();
-
-        public override void UpdateUser(MembershipUser user) => throw new NotSupportedException();
-
-        public override bool UnlockUser(string userName) => throw new NotSupportedException();
     }
 }

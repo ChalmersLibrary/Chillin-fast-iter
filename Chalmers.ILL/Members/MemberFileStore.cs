@@ -2,7 +2,6 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Web;
 
 namespace Chalmers.ILL.Members
 {
@@ -69,12 +68,12 @@ namespace Chalmers.ILL.Members
             }
         }
 
-        private static string ResolvePath()
-        {
-            var appRoot = HttpRuntime.AppDomainAppPath;
-            if (string.IsNullOrEmpty(appRoot))
-                appRoot = AppDomain.CurrentDomain.BaseDirectory;
-            return Path.Combine(appRoot, "Config", "members.json");
-        }
+        // Was HttpRuntime.AppDomainAppPath with AppDomain.CurrentDomain.BaseDirectory as
+        // fallback (fas 2) - System.Web is gone, and this static class has no DI access to
+        // IWebHostEnvironment.ContentRootPath, so the fallback (already equivalent for a
+        // single-deployment ASP.NET Core app, unlike classic System.Web's separate bin/content
+        // root split) is now the only path.
+        private static string ResolvePath() =>
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "members.json");
     }
 }

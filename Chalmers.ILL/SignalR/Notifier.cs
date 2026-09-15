@@ -1,17 +1,20 @@
-﻿using System;
-using Microsoft.AspNet.SignalR;
-using System.Configuration;
+using System;
+using Microsoft.AspNetCore.SignalR;
 using Chalmers.ILL.Models;
 
 namespace Chalmers.ILL.SignalR
 {
     public class Notifier : INotifier
     {
+        private readonly IHubContext<NotificationHub> _hubContext;
+
+        public Notifier(IHubContext<NotificationHub> hubContext)
+        {
+            _hubContext = hubContext;
+        }
+
         public void ReportNewOrderItemUpdate(OrderItemModel orderItem)
         {
-            // get the NotificationHub
-            var context = GlobalHost.ConnectionManager.GetHubContext<NotificationHub>();
-
             // Extract the chillin order status code from the Status string "NN:Description"
             int chillinOrderStatusId = 0;
             if (!string.IsNullOrEmpty(orderItem.Status))
@@ -31,15 +34,11 @@ namespace Chalmers.ILL.SignalR
                 UpdateFromMail = false
             };
 
-            // this calls the javascript method updateStream(message) in all connected browsers
-            context.Clients.All.updateStream(n);
+            Broadcast(n);
         }
 
         public void UpdateOrderItemUpdate(int nodeId, string editedBy, string editedByMemberName, bool significant = false, bool isPending = false, bool updateFromMail = false)
         {
-            // get the NotificationHub
-            var context = GlobalHost.ConnectionManager.GetHubContext<NotificationHub>();
-
             var n = new OrderItemNotification
             {
                 NodeId = nodeId,
@@ -50,9 +49,16 @@ namespace Chalmers.ILL.SignalR
                 UpdateFromMail = updateFromMail
             };
 
-            // this calls the javascript method updateStream(message) in all connected browsers
-            context.Clients.All.updateStream(n);
+            Broadcast(n);
         }
+
+        // ReportNewOrderItemUpdate/UpdateOrderItemUpdate are called synchronously (void) from many
+        // places throughout the app; making INotifier async would ripple through all of them, so
+        // this blocks on the hub send instead. SendAsync to a single "All" group completes fast
+        // (in-memory broadcast, single instance - no backplane, see Fastställda designbeslut), so
+        // the blocking window is small.
+        private void Broadcast(OrderItemNotification n) =>
+            _hubContext.Clients.All.SendAsync("updateStream", n).GetAwaiter().GetResult();
     }
 
     // Significant update indicates that this is something else than a lock/unlock event.

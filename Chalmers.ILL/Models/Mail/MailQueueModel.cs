@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
-using Microsoft.Exchange.WebServices.Data;
 
 namespace Chalmers.ILL.Models.Mail
 {
@@ -17,7 +15,7 @@ namespace Chalmers.ILL.Models.Mail
 
     public class MailQueueModel
     {
-        public ItemId Id { get; set; }
+        public string Id { get; set; }
         public string ArchiveFolderId { get; set; }
         public MailQueueType Type { get; set; }
 

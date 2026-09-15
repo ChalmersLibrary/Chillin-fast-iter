@@ -1,23 +1,20 @@
-using System.Web.Mvc;
-using System.Web.Routing;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 
 namespace Chalmers.ILL
 {
     public class RouteConfig
     {
-        public static void RegisterRoutes(RouteCollection routes)
+        public static void RegisterRoutes(IEndpointRouteBuilder endpoints)
         {
-            routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
-
             // Backwards-compatibility alias for the old Umbraco surface-controller URL scheme
             // (/umbraco/surface/{Controller}/{Action}). Controller/action names are unchanged
             // by the Umbraco removal, so this maps straight onto the same routes as "Default".
             // Kept indefinitely: physical delivery slips already printed with QR codes pointing
             // at this URL (see OrderItemReceivedAtBranchSurfaceController) can't be reprinted.
-            routes.MapRoute(
+            endpoints.MapControllerRoute(
                 name: "LegacyUmbracoSurfaceAlias",
-                url: "umbraco/surface/{controller}/{action}/{id}",
-                defaults: new { id = UrlParameter.Optional }
+                pattern: "umbraco/surface/{controller}/{action}/{id?}"
             );
 
             // Backwards-compatibility aliases for the old Umbraco content-tree slugs that pointed
@@ -26,31 +23,30 @@ namespace Chalmers.ILL
             // them resolve; the wildcard segment absorbs a trailing slash or stray path/query noise.
             // Settings alias must be registered before the order-list alias, since the order-list
             // alias's wildcard would otherwise swallow "/bestaellningar/instaellningar" too.
-            routes.MapRoute(
+            endpoints.MapControllerRoute(
                 name: "LegacyBestaellningarInstaellningarSlugAlias",
-                url: "bestaellningar/instaellningar/{*pathInfo}",
-                defaults: new { controller = "ChalmersILLSettingsPage", action = "Index", pathInfo = UrlParameter.Optional }
+                pattern: "bestaellningar/instaellningar/{*pathInfo}",
+                defaults: new { controller = "ChalmersILLSettingsPage", action = "Index" }
             );
 
-            routes.MapRoute(
+            endpoints.MapControllerRoute(
                 name: "LegacyBestaellningarSlugAlias",
-                url: "bestaellningar/{*pathInfo}",
-                defaults: new { controller = "ChalmersILLOrderListPage", action = "Index", pathInfo = UrlParameter.Optional }
+                pattern: "bestaellningar/{*pathInfo}",
+                defaults: new { controller = "ChalmersILLOrderListPage", action = "Index" }
             );
 
             // Backwards-compatibility alias for the old Umbraco content-tree slug for the Desk
             // landing page. LoginSurfaceController redirects members with the "Desk" role here
             // after login; this route is what makes that URL resolve.
-            routes.MapRoute(
+            endpoints.MapControllerRoute(
                 name: "LegacyDiskSlugAlias",
-                url: "disk/{*pathInfo}",
-                defaults: new { controller = "ChalmersILLDiskPage", action = "Index", pathInfo = UrlParameter.Optional }
+                pattern: "disk/{*pathInfo}",
+                defaults: new { controller = "ChalmersILLDiskPage", action = "Index" }
             );
 
-            routes.MapRoute(
+            endpoints.MapControllerRoute(
                 name: "Default",
-                url: "{controller}/{action}/{id}",
-                defaults: new { controller = "ChalmersILL", action = "Index", id = UrlParameter.Optional }
+                pattern: "{controller=ChalmersILL}/{action=Index}/{id?}"
             );
         }
     }

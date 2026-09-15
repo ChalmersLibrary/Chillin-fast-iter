@@ -1,5 +1,7 @@
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Chalmers.ILL.Tests.Controllers
@@ -16,38 +18,30 @@ namespace Chalmers.ILL.Tests.Controllers
     public class ViewEngineConfigTest
     {
         [TestMethod]
-        public void RegisterViewEngines_AddsViewsPartialsToPartialViewLocationFormats()
-        {
-            var engines = new ViewEngineCollection { new RazorViewEngine() };
-
-            ViewEngineConfig.RegisterViewEngines(engines);
-
-            var razorEngine = (RazorViewEngine)engines.Single();
-            Assert.IsTrue(razorEngine.PartialViewLocationFormats.Contains("~/Views/Partials/{0}.cshtml"));
-        }
-
-        [TestMethod]
         public void RegisterViewEngines_AddsViewsPartialsToViewLocationFormats()
         {
-            var engines = new ViewEngineCollection { new RazorViewEngine() };
+            var options = new RazorViewEngineOptions();
 
-            ViewEngineConfig.RegisterViewEngines(engines);
+            ViewEngineConfig.RegisterViewEngines(options);
 
-            var razorEngine = (RazorViewEngine)engines.Single();
-            Assert.IsTrue(razorEngine.ViewLocationFormats.Contains("~/Views/Partials/{0}.cshtml"));
+            Assert.IsTrue(options.ViewLocationFormats.Contains("/Views/Partials/{0}.cshtml"));
         }
 
         [TestMethod]
         public void RegisterViewEngines_PreservesExistingLocationFormats()
         {
-            var engines = new ViewEngineCollection { new RazorViewEngine() };
-            var originalCount = ((RazorViewEngine)engines.Single()).PartialViewLocationFormats.Length;
+            // A bare `new RazorViewEngineOptions()` has an empty ViewLocationFormats - the
+            // built-in defaults (e.g. "/Views/Shared/{0}.cshtml") are applied by MVC's own
+            // IConfigureOptions<RazorViewEngineOptions>, wired up by AddControllersWithViews().
+            var services = new ServiceCollection();
+            services.AddControllersWithViews();
+            var options = services.BuildServiceProvider().GetRequiredService<IOptions<RazorViewEngineOptions>>().Value;
+            var originalCount = options.ViewLocationFormats.Count;
 
-            ViewEngineConfig.RegisterViewEngines(engines);
+            ViewEngineConfig.RegisterViewEngines(options);
 
-            var razorEngine = (RazorViewEngine)engines.Single();
-            Assert.AreEqual(originalCount + 1, razorEngine.PartialViewLocationFormats.Length);
-            Assert.IsTrue(razorEngine.PartialViewLocationFormats.Contains("~/Views/Shared/{0}.cshtml"));
+            Assert.AreEqual(originalCount + 1, options.ViewLocationFormats.Count);
+            Assert.IsTrue(options.ViewLocationFormats.Contains("/Views/Shared/{0}.cshtml"));
         }
     }
 }

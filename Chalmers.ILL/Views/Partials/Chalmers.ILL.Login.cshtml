@@ -1,12 +1,12 @@
 ﻿@model Chalmers.ILL.Models.LoginModel
 
 
-@if (Request.QueryString["error"] == "invalid-member")
+@if (Request.Query["error"] == "invalid-member")
 {
     <div class="alert alert-danger"><strong>Felaktig inloggning.</strong> Ditt login eller lösenord stämmer inte.</div>
 }
 
-@if (Request.QueryString["error"] == "invalid-model")
+@if (Request.Query["error"] == "invalid-model")
 {
     <div class="alert alert-danger"><strong>Värden saknas.</strong> Du måste fylla i fälten.</div>
 }

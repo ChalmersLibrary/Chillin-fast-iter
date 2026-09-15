@@ -1,5 +1,6 @@
 ﻿using System;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Models;
 using System.IO;
 using System.Net;
@@ -79,7 +80,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Failed to import document: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -124,7 +125,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Failed to import document from data: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
     }
 }

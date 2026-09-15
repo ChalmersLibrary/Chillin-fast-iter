@@ -4,7 +4,8 @@ using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.Templates;
 using Chalmers.ILL.UmbracoApi;
 using System;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {

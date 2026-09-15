@@ -1,5 +1,7 @@
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Controllers.SurfaceControllers.Page;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -16,13 +18,13 @@ namespace Chalmers.ILL.Tests.Controllers
     public class AuthorizationTest
     {
         [TestMethod]
-        public void RegisterGlobalFilters_AddsAuthorizeAttribute()
+        public void RegisterGlobalFilters_AddsAuthorizeFilter()
         {
-            var filters = new GlobalFilterCollection();
+            var options = new MvcOptions();
 
-            FilterConfig.RegisterGlobalFilters(filters);
+            FilterConfig.RegisterGlobalFilters(options);
 
-            Assert.IsTrue(filters.Select(f => f.Instance).OfType<AuthorizeAttribute>().Any());
+            Assert.IsTrue(options.Filters.OfType<AuthorizeFilter>().Any());
         }
 
         [TestMethod]
@@ -92,6 +94,20 @@ namespace Chalmers.ILL.Tests.Controllers
             // A user whose auth cookie already expired must still be able to reach this page
             // to clear the separate, unsigned ChalmersILL cookie (see MemberInfoManager).
             Assert.IsTrue(IsAllowAnonymous(typeof(ChalmersILLLogoutPageController)));
+        }
+
+        [TestMethod]
+        public void MemberAdminSurfaceController_RequiresSuperAdminRole()
+        {
+            // The only role-based server-side authorization in the whole app - creating and
+            // deleting member accounts must stay restricted to SuperAdmin, not just any logged-in user.
+            var attribute = typeof(MemberAdminSurfaceController)
+                .GetCustomAttributes(typeof(AuthorizeAttribute), true)
+                .OfType<AuthorizeAttribute>()
+                .SingleOrDefault();
+
+            Assert.IsNotNull(attribute);
+            Assert.AreEqual("SuperAdmin", attribute.Roles);
         }
 
         private static bool IsAllowAnonymous(System.Type controllerType)

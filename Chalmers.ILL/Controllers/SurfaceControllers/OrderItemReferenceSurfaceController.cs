@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
 using Chalmers.ILL.Extensions;
@@ -33,7 +34,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             return PartialView("Chalmers.ILL.Action.Reference", orderItem);
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SetReference(int nodeId, string reference)
         {
             var json = new ResultResponse();
@@ -55,7 +56,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
     }

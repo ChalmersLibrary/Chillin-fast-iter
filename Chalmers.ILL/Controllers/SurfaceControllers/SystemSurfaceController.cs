@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.SignalR;
 using Chalmers.ILL.Mail;
 using Chalmers.ILL.UmbracoApi;
-using Microsoft.Practices.Unity;
 using Chalmers.ILL.Models;
 using System.Configuration;
 using Nest;
@@ -17,7 +17,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
     // Called by an external cron server with no user login (see IsRequestAuthorized's IP check
     // below), so it must be exempt from the global AuthorizeAttribute or the cron server just
     // gets redirected to the login page and every automated job silently stops running.
-    [System.Web.Mvc.AllowAnonymous]
+    [AllowAnonymous]
     public class SystemSurfaceController : Controller
     {
         public static int TIME_BASED_UPDATE_OF_ORDER_EVENT_TYPE { get { return 19; } }
@@ -27,13 +27,13 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
 
         IOrderItemManager _orderItemManager;
         INotifier _notifier;
-        IExchangeMailWebApi _exchangeMailWebApi;
+        IMailWebApi _exchangeMailWebApi;
         IChillinOrderConfiguration _orderConfig;
         ISourceFactory _sourceFactory;
         IOrderItemSearcher _orderItemsSearcher;
         IAutomaticMailSendingEngine _automaticMailSendingEngine;
 
-        public SystemSurfaceController(IOrderItemManager orderItemManager, INotifier notifier, IExchangeMailWebApi exchangeMailWebApi,
+        public SystemSurfaceController(IOrderItemManager orderItemManager, INotifier notifier, IMailWebApi exchangeMailWebApi,
             IChillinOrderConfiguration orderConfig, ISourceFactory sourceFactory, IOrderItemSearcher orderItemsSearcher,
             IAutomaticMailSendingEngine automaticMailSendingEngine)
         {
@@ -85,7 +85,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 _log.Error("Error while running regular update.", e);
             }
 
-            return Json(res, JsonRequestBehavior.DenyGet);
+            return Json(res);
         }
 
         /// <summary>
@@ -149,25 +149,20 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 _log.Error("Encountered error when cleaning old sent mails.", e);
             }
 
-            return Json(res, JsonRequestBehavior.AllowGet);
+            return Json(res);
         }
 
         #region Private methods.
 
         private bool IsRequestAuthorized()
         {
-            var isLocalhost = Request.ServerVariables["SERVER_NAME"] == "localhost";
-            var isTestServer = Request.ServerVariables["SERVER_NAME"] == ConfigurationManager.AppSettings["testServer"];
+            var serverName = Request.Host.Host;
+            var isLocalhost = serverName == "localhost";
+            var isTestServer = serverName == ConfigurationManager.AppSettings["testServer"];
 
-            string clientIpAddr = string.Empty;
-            if (Request.ServerVariables["HTTP_X_FORWARDED_FOR"] != null)
-            {
-                clientIpAddr = Request.ServerVariables["HTTP_X_FORWARDED_FOR"].ToString().Split(':').First();
-            }
-            else if (Request.UserHostAddress.Length != 0)
-            {
-                clientIpAddr = Request.UserHostAddress.Split(':').First();
-            }
+            // ForwardedHeadersMiddleware (Program.cs) already folds X-Forwarded-For into
+            // Connection.RemoteIpAddress, so no manual header parsing is needed here (fas 2).
+            var clientIpAddr = Request.HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
 
             var allowedIp = ConfigurationManager.AppSettings["cronServerIpAddress"];
             var res = isLocalhost || isTestServer || (!String.IsNullOrWhiteSpace(allowedIp) && clientIpAddr == allowedIp);

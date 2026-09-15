@@ -1,9 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Security.Principal;
-using System.Web;
-using System.Web.Mvc;
-using System.Web.Routing;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers.Page;
 using Chalmers.ILL.Members;
 using Chalmers.ILL.Models;
@@ -92,13 +91,13 @@ namespace Chalmers.ILL.Tests.Controllers
         }
 
         [TestMethod]
-        public void ChalmersILLLogoutPageController_Index_WhenNotAuthenticated_ReturnsViewWithoutSigningOut()
+        public async System.Threading.Tasks.Task ChalmersILLLogoutPageController_Index_WhenNotAuthenticated_ReturnsViewWithoutSigningOut()
         {
             var memberManager = new StubMemberInfoManager();
             var controller = new ChalmersILLLogoutPageController(memberManager);
             SetHttpContext(controller);
 
-            var result = controller.Index() as ViewResult;
+            var result = await controller.Index() as ViewResult;
 
             Assert.IsNotNull(result);
             Assert.IsInstanceOfType(result.Model, typeof(ChalmersILLLogoutPageModel));
@@ -185,26 +184,26 @@ namespace Chalmers.ILL.Tests.Controllers
 
         private static void SetHttpContext(Controller controller, string queryString = "")
         {
-            var request = new HttpRequest("", "http://localhost/", queryString);
-            var response = new HttpResponse(TextWriter.Null);
-            var context = new HttpContext(request, response);
-            context.User = new GenericPrincipal(new GenericIdentity(""), new string[0]);
-            controller.ControllerContext = new ControllerContext(
-                new HttpContextWrapper(context),
-                new RouteData(),
-                controller);
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity())
+            };
+            httpContext.Request.Path = "/";
+            if (!string.IsNullOrEmpty(queryString))
+                httpContext.Request.QueryString = new QueryString("?" + queryString);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         }
 
         class StubMemberInfoManager : IMemberInfoManager
         {
             public bool PopulateWasCalled { get; private set; }
             public bool ClearCacheWasCalled { get; private set; }
-            public int GetCurrentMemberId(HttpRequestBase request, HttpResponseBase response) => 0;
-            public string GetCurrentMemberText(HttpRequestBase request, HttpResponseBase response) => "";
-            public string GetCurrentMemberLoginName(HttpRequestBase request, HttpResponseBase response) => "";
-            public void PopulateModelWithMemberData(HttpRequestBase request, HttpResponseBase response, ChalmersILLModel model) { PopulateWasCalled = true; }
-            public void AddMemberToCache(HttpResponseBase response, int memberId, string memberText, string memberLoginName) { }
-            public void ClearMemberCache(HttpResponseBase response) { ClearCacheWasCalled = true; }
+            public int GetCurrentMemberId(HttpRequest request, HttpResponse response) => 0;
+            public string GetCurrentMemberText(HttpRequest request, HttpResponse response) => "";
+            public string GetCurrentMemberLoginName(HttpRequest request, HttpResponse response) => "";
+            public void PopulateModelWithMemberData(HttpRequest request, HttpResponse response, ChalmersILLModel model) { PopulateWasCalled = true; }
+            public void AddMemberToCache(HttpResponse response, int memberId, string memberText, string memberLoginName) { }
+            public void ClearMemberCache(HttpResponse response) { ClearCacheWasCalled = true; }
         }
 
         class StubOrderItemSearcher : IOrderItemSearcher

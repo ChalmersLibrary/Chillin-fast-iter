@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
 using Chalmers.ILL.Extensions;
@@ -26,12 +27,12 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         private static readonly log4net.ILog _log = log4net.LogManager.GetLogger(typeof(OrderItemMailSurfaceController));
 
         IOrderItemManager _orderItemManager;
-        IExchangeMailWebApi _exchangeMailWebApi;
+        IMailWebApi _exchangeMailWebApi;
         IChillinOrderConfiguration _orderConfig;
         IMailService _mailService;
         ITemplateService _templateService;
 
-        public OrderItemMailSurfaceController(IOrderItemManager orderItemManager, IExchangeMailWebApi exchangeMailWebApi,
+        public OrderItemMailSurfaceController(IOrderItemManager orderItemManager, IMailWebApi exchangeMailWebApi,
             IChillinOrderConfiguration orderConfig, IMailService mailService, ITemplateService templateService)
         {
             _orderItemManager = orderItemManager;
@@ -64,7 +65,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// </summary>
         /// <param name="m">The data for the outgoing mail.</param>
         /// <returns>JSON result</returns>
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SendMail(OutgoingMailPackageModel m)
         {
             var json = new ResultResponse();
@@ -132,7 +133,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -145,7 +146,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="message">Mail message</param>
         /// <param name="newStatus">Change OrderItem status</param>
         /// <returns>JSON result</returns>
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SendMailForNewOrder(string message, string name, string mail, string libraryCardNumber, string deliveryLibrary)
         {
             var json = new ResultResponse();
@@ -173,7 +174,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -181,7 +182,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// </summary>
         /// <param name="m">The data for the outgoing mail.</param>
         /// <returns>JSON result</returns>
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SendSimpleMail(OutgoingMailModel m)
         {
             var res = new ResultResponse();
@@ -199,7 +200,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 res.Message = "Misslyckades med att skicka ut mail: " + e.Message;
             }
 
-            return Json(res, JsonRequestBehavior.AllowGet);
+            return Json(res);
         }
     }
 }

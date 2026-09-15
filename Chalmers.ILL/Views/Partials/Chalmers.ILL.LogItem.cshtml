@@ -1,4 +1,8 @@
-﻿@model Chalmers.ILL.Models.LogItem
+﻿@* Was typed as a single LogItem while the controller always passes a List<LogItem> (see
+   LogItemSurfaceController.RenderLogItemsAction) - invisible before this migration because
+   classic System.Web Razor views aren't type-checked at build time, only compiled on first
+   request. Caught here because Core's Razor SDK compiles views at build time. *@
+@model List<Chalmers.ILL.Models.LogItem>
 
 @foreach (var item in Model)
 {

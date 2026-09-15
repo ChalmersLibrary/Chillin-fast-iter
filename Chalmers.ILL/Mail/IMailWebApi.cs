@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Chalmers.ILL.Mail
 {
-    public interface IExchangeMailWebApi
+    public interface IMailWebApi
     {
         void ConnectToExchangeService(string username, string password);
         List<MailQueueModel> ReadMailQueue();

@@ -3,7 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
 using Chalmers.ILL.Extensions;
@@ -81,7 +82,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             orderItem.EditedByCurrentMember = orderItem.EditedBy != "" && orderItem.EditedBy == memberId.ToString();
 
             // Return JSON object to the client to handle
-            return Json(orderItem, JsonRequestBehavior.AllowGet);
+            return Json(orderItem);
         }
 
         /// <summary>
@@ -117,7 +118,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error taking lock: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -162,7 +163,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error locking OrderItem: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -205,7 +206,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error unlocking OrderItem: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -250,7 +251,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 _log.Error("Error reading locked OrderItems", e);
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
     }
 }

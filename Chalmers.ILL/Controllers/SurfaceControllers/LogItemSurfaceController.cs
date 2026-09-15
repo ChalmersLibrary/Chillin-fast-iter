@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Models.PartialPage;
@@ -69,7 +70,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             var logItems = _orderItemManager.GetLogItems(nodeId);
 
             // Return Json Result
-            return Json(logItems, JsonRequestBehavior.AllowGet);
+            return Json(logItems);
         }
 
         /// <summary>
@@ -79,7 +80,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="Type"></param>
         /// <param name="Message"></param>
         /// <returns></returns>
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult WriteLogItem(int nodeId, string Type, string Message, string newFollowUpDate, int statusId, int cancellationReasonId, int purchasedMaterialId)
         {
             // Json response
@@ -129,7 +130,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
     }
 }

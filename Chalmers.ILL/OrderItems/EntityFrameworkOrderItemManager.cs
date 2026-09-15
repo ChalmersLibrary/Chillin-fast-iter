@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Data.Entity;
-using System.Web;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Models.Mail;
 using Chalmers.ILL.Database;
@@ -11,11 +10,10 @@ using Chalmers.ILL.Utilities;
 using System.Text.RegularExpressions;
 using Chalmers.ILL.UmbracoApi;
 using Chalmers.ILL.SignalR;
-using System.Web;
 using System.Threading;
 using static Chalmers.ILL.Models.OrderItemModel;
 using Nest;
-using System.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http;
 
 namespace Chalmers.ILL.OrderItems
 {
@@ -27,14 +25,20 @@ namespace Chalmers.ILL.OrderItems
         private IChillinOrderConfiguration _orderConfig;
         private Random _rand;
         private IOrderItemSearcher _orderItemSearcher;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         private Dictionary<int, OrderItemsDbContext> _threadIdToDbContextMap = new Dictionary<int, OrderItemsDbContext>();
 
-        public EntityFrameworkOrderItemManager(IChillinOrderConfiguration orderConfig, IOrderItemSearcher orderItemSearcher)
+        // httpContextAccessor is optional (defaults to a fresh accessor) because this class is
+        // still constructed manually in Bootstrapper rather than resolved through DI (fas 6).
+        // HttpContextAccessor's backing store is a static AsyncLocal, so any instance sees the
+        // current request regardless of who constructed it - see fas 2's "Ersätt HttpContext.Current".
+        public EntityFrameworkOrderItemManager(IChillinOrderConfiguration orderConfig, IOrderItemSearcher orderItemSearcher, IHttpContextAccessor httpContextAccessor = null)
         {
             _orderConfig = orderConfig;
             _orderItemSearcher = orderItemSearcher;
             _rand = new Random();
+            _httpContextAccessor = httpContextAccessor ?? new HttpContextAccessor();
         }
 
         public List<LogItem> GetLogItems(int nodeId)
@@ -1755,7 +1759,7 @@ namespace Chalmers.ILL.OrderItems
 
         private string GetCurrentUserOrSystem()
         {
-            var identity = HttpContext.Current?.User?.Identity;
+            var identity = _httpContextAccessor.HttpContext?.User?.Identity;
             if (identity != null && identity.IsAuthenticated)
                 return identity.Name;
             return "System";
@@ -1766,10 +1770,10 @@ namespace Chalmers.ILL.OrderItems
             var res = "";
             var regex = new Regex(@"((?:https?|ftp|file)(?::|%3a)(?:\/|%2f)(?:\/|%2f)[-a-zA-Z0-9+&@#\/%?=~_|!:,.;()]*[-a-zA-Z0-9+&@#()\/%=~_|()])");
             var match = regex.Match(str);
-            res = HttpUtility.UrlDecode(str);
+            res = System.Net.WebUtility.UrlDecode(str);
             for (int i = 1; i < match.Groups.Count; i++)
             {
-                var urlDecodedUrlStr = HttpUtility.UrlDecode(match.Groups[i].ToString());
+                var urlDecodedUrlStr = System.Net.WebUtility.UrlDecode(match.Groups[i].ToString());
                 res = res.Replace(urlDecodedUrlStr, Uri.EscapeUriString(urlDecodedUrlStr));
             }
             return res;

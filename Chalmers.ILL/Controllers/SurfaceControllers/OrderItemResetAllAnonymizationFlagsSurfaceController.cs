@@ -6,7 +6,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -22,7 +23,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             _orderItemManager = orderItemManager;
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult Reset(int nodeId)
         {
             var json = new ResultResponse();
@@ -43,7 +44,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
     }
 }

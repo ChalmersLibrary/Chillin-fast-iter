@@ -1,5 +1,5 @@
 using System;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Models.PartialPage.Settings;
@@ -32,7 +32,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = MakeController(deserializeResult: chillinText);
 
             var result = controller.Save("someId", "{}") as JsonResult;
-            var json = (ResultResponse)result.Data;
+            var json = (ResultResponse)result.Value;
 
             Assert.IsTrue(json.Success);
         }
@@ -45,7 +45,7 @@ namespace Chalmers.ILL.Tests.Controllers
                 throwOnPut: new Exception("db error"));
 
             var result = controller.Save("id", "{}") as JsonResult;
-            var json = (ResultResponse)result.Data;
+            var json = (ResultResponse)result.Value;
 
             Assert.IsFalse(json.Success);
             Assert.IsTrue(json.Message.Contains("db error"));

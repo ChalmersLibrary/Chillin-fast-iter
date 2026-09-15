@@ -3,12 +3,12 @@ using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.Providers;
 using Chalmers.ILL.Templates;
 using Chalmers.ILL.UmbracoApi;
-using Microsoft.Practices.Unity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -56,7 +56,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 // NOP. Just return empty list if we fail, this should be enough indication that something is wrong and needs investigation.
             }
 
-            return Json(ids, JsonRequestBehavior.AllowGet);
+            return Json(ids);
         }
 
         [HttpGet]
@@ -73,7 +73,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 // NOP, fail silently and return zero delivery time.
             }
 
-            return Json(time, JsonRequestBehavior.AllowGet);
+            return Json(time);
         }
 
         [HttpPost]
@@ -94,7 +94,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 res.Message = "Misslyckades med att ändra leverantörsnamn på order: " + e.Message;
             }
 
-            return Json(res, JsonRequestBehavior.AllowGet);
+            return Json(res);
         }
     }
 }

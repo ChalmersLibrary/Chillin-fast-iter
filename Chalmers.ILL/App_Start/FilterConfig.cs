@@ -1,4 +1,5 @@
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Authorization;
 
 namespace Chalmers.ILL
 {
@@ -8,10 +9,11 @@ namespace Chalmers.ILL
         // that protection lived in the CMS content tree, not in code, so it silently vanished
         // when Umbraco was removed. This filter replaces it: everything requires a logged-in
         // session unless the controller/action opts out with [AllowAnonymous] (the login page,
-        // the login POST handler, and the QR-code branch-receipt endpoint that must stay public).
-        public static void RegisterGlobalFilters(GlobalFilterCollection filters)
+        // the login POST handler, the QR-code branch-receipt endpoint, and the two
+        // machine-to-machine endpoints that must stay public - see fas 0a).
+        public static void RegisterGlobalFilters(MvcOptions options)
         {
-            filters.Add(new AuthorizeAttribute());
+            options.Filters.Add(new AuthorizeFilter());
         }
     }
 }

@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Security.Principal;
-using System.Web;
-using System.Web.Mvc;
-using System.Web.Routing;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.MediaItems;
 using Chalmers.ILL.Models;
@@ -29,7 +28,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var result = controller.GetMediaItem("missing") as JsonResult;
 
             Assert.IsNotNull(result);
-            var data = (ResultResponse)result.Data;
+            var data = (ResultResponse)result.Value;
             Assert.IsFalse(data.Success);
         }
 
@@ -61,7 +60,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var result = controller.ImportFromData(1, "", "data:application/pdf;base64,AAAA") as JsonResult;
 
             Assert.IsNotNull(result);
-            var data = (ResultResponse)result.Data;
+            var data = (ResultResponse)result.Value;
             Assert.IsFalse(data.Success);
         }
 
@@ -76,21 +75,19 @@ namespace Chalmers.ILL.Tests.Controllers
             var result = controller.ImportFromData(42, "doc.pdf", "data:application/pdf;base64,AAAA") as JsonResult;
 
             Assert.IsNotNull(result);
-            var data = (ResultResponse)result.Data;
+            var data = (ResultResponse)result.Value;
             Assert.IsTrue(data.Success);
             StringAssert.Contains(data.Message, "media-1");
         }
 
         private static void SetHttpContext(Controller controller)
         {
-            var request = new HttpRequest("", "http://localhost/", "");
-            var response = new HttpResponse(TextWriter.Null);
-            var context = new HttpContext(request, response);
-            context.User = new GenericPrincipal(new GenericIdentity("testuser"), new string[0]);
-            controller.ControllerContext = new ControllerContext(
-                new HttpContextWrapper(context),
-                new RouteData(),
-                controller);
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Name, "testuser") }, "TestAuth"))
+            };
+            httpContext.Request.Path = "/";
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         }
 
         class StubMediaItemManager : IMediaItemManager

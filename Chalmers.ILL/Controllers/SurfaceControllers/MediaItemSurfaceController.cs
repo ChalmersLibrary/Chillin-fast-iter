@@ -7,7 +7,8 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -24,7 +25,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         [HttpGet]
         public ActionResult GetMediaItem(string id)
         {
-            ActionResult res = Json(new ResultResponse(false, "Unknown error."), JsonRequestBehavior.AllowGet);
+            ActionResult res = Json(new ResultResponse(false, "Unknown error."));
 
             try
             {
@@ -36,17 +37,17 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                         FileName = storedMediaItem.Name,
                         Inline = true
                     };
-                    Response.AppendHeader("Content-Disposition", cd.ToString());
+                    Response.Headers["Content-Disposition"] = cd.ToString();
                     res = File(storedMediaItem.Data, storedMediaItem.ContentType);
                 }
                 else
                 {
-                    res = Json(new ResultResponse(false, "Couldn't find stored media item with ID = " + id + "."), JsonRequestBehavior.AllowGet);
+                    res = Json(new ResultResponse(false, "Couldn't find stored media item with ID = " + id + "."));
                 }
             }
             catch (Exception e)
             {
-                res = Json(new ResultResponse(false, "Error: " + e.Message), JsonRequestBehavior.AllowGet);
+                res = Json(new ResultResponse(false, "Error: " + e.Message));
             }
 
             return res;

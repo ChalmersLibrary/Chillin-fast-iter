@@ -1,6 +1,6 @@
 using Chalmers.ILL.Members;
 using Chalmers.ILL.Models.Page;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
 {

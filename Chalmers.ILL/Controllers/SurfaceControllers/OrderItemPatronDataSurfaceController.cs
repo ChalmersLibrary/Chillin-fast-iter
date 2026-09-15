@@ -6,7 +6,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Newtonsoft.Json;
 using Chalmers.ILL.Patron;
 using System.Configuration;
@@ -14,7 +15,6 @@ using System.Net;
 using System.IO;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.UmbracoApi;
-using Microsoft.Practices.Unity;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -68,7 +68,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Success = false;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Failed to load Sierra data from \"personnummer\" or library card number: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -166,7 +166,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Failed to load Sierra data using sierra identifier: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -212,7 +212,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Failed to load Sierra data from library card number: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         /// <summary>
@@ -267,7 +267,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Failed to load Sierra data from \"personnummer\" or library card number: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         #region Private methods

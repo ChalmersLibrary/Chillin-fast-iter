@@ -1,25 +1,20 @@
-﻿using Chalmers.ILL.Models.Page;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web;
+using Chalmers.ILL.Models.Page;
+using Microsoft.AspNetCore.Http;
 
 namespace Chalmers.ILL.Members
 {
     public interface IMemberInfoManager
     {
-        int GetCurrentMemberId(HttpRequestBase request, HttpResponseBase response);
+        int GetCurrentMemberId(HttpRequest request, HttpResponse response);
 
-        string GetCurrentMemberText(HttpRequestBase request, HttpResponseBase response);
+        string GetCurrentMemberText(HttpRequest request, HttpResponse response);
 
-        string GetCurrentMemberLoginName(HttpRequestBase request, HttpResponseBase response);
+        string GetCurrentMemberLoginName(HttpRequest request, HttpResponse response);
 
-        void PopulateModelWithMemberData(HttpRequestBase request, HttpResponseBase response, ChalmersILLModel model);
+        void PopulateModelWithMemberData(HttpRequest request, HttpResponse response, ChalmersILLModel model);
 
-        void AddMemberToCache(HttpResponseBase response, int memberId, string memberText, string memberLoginName);
+        void AddMemberToCache(HttpResponse response, int memberId, string memberText, string memberLoginName);
 
-        void ClearMemberCache(HttpResponseBase response);
+        void ClearMemberCache(HttpResponse response);
     }
 }

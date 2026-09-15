@@ -9,7 +9,7 @@ namespace Chalmers.ILL.OrderItems
 {
     public class ChalmersSourceFactory : ISourceFactory
     {
-        IExchangeMailWebApi _exchangeMailWebApi;
+        IMailWebApi _exchangeMailWebApi;
         IOrderItemManager _orderItemManager;
         INotifier _notifier;
         IMediaItemManager _mediaItemManager;
@@ -17,7 +17,7 @@ namespace Chalmers.ILL.OrderItems
         IPersonDataProvider _personDataProvider;
         IOrderItemSearcher _orderItemSearcher;
 
-        public ChalmersSourceFactory(IExchangeMailWebApi exchangeMailWebApi, IOrderItemManager orderItemManager, INotifier notifier,
+        public ChalmersSourceFactory(IMailWebApi exchangeMailWebApi, IOrderItemManager orderItemManager, INotifier notifier,
             IMediaItemManager mediaItemManager, IPatronDataProvider patronDataProvider, IPersonDataProvider personDataProvider,
             IOrderItemSearcher orderItemSearcher)
         {

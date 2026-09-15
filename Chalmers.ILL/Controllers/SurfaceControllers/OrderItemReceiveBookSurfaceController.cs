@@ -9,7 +9,8 @@ using Chalmers.ILL.Templates;
 using Chalmers.ILL.UmbracoApi;
 using Newtonsoft.Json;
 using System;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -60,7 +61,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="dueDate">Delivery Library Due Date</param>
         /// <param name="providerInformation">Information about the provider</param>
         /// <returns>MVC ActionResult with JSON</returns>
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SetOrderItemDeliveryReceived(string packJson)
         {
             var json = new ResultResponse();
@@ -111,7 +112,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
 
@@ -123,7 +124,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="dueDate">Delivery Library Due Date</param>
         /// <param name="providerInformation">Information about the provider</param>
         /// <returns>MVC ActionResult with JSON</returns>
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SetOrderItemDeliveryReceivedAtBranch(int nodeId)
         {
             var json = new ResultResponse();
@@ -175,7 +176,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
 

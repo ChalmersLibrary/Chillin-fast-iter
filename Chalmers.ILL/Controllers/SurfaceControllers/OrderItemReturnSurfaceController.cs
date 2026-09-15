@@ -6,7 +6,8 @@ using Chalmers.ILL.UmbracoApi;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -67,7 +68,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Misslyckades med att returnera: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
     }
 }

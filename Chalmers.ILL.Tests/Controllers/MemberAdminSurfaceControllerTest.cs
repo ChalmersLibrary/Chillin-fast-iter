@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Members;
 using Chalmers.ILL.Models;
@@ -34,7 +34,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = new MemberAdminSurfaceController(service);
 
             var result = controller.CreateMember("alice", "password", "Desk, SuperAdmin") as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsTrue(json.Success);
             Assert.AreEqual("alice", service.LastCreatedLogin);
@@ -47,7 +47,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = new MemberAdminSurfaceController(new StubMemberAdminService { ThrowOnCreate = true });
 
             var result = controller.CreateMember("alice", "password", "") as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsFalse(json.Success);
         }
@@ -59,7 +59,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = new MemberAdminSurfaceController(service);
 
             var result = controller.SetMemberPassword("alice", "new-password") as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsTrue(json.Success);
             Assert.AreEqual("alice", service.LastPasswordLogin);
@@ -72,7 +72,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = new MemberAdminSurfaceController(service);
 
             var result = controller.DeleteMember("alice") as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsTrue(json.Success);
             Assert.AreEqual("alice", service.LastDeletedLogin);

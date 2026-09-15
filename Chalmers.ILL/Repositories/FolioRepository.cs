@@ -5,7 +5,6 @@ using Chalmers.ILL.Patron;
 using Newtonsoft.Json;
 using System;
 using System.Configuration;
-using System.IdentityModel;
 using System.IO;
 using System.Net;
 using System.Text;

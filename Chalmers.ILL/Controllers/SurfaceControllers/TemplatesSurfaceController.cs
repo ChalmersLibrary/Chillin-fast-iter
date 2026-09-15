@@ -4,7 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.OrderItems;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
@@ -49,7 +50,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Misslyckades med att hitta malldata: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         [HttpGet]
@@ -70,10 +71,10 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Misslyckades med att populera malldata: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SetTemplateData(int nodeId, string data)
         {
             var json = new ResultResponse();
@@ -91,10 +92,10 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult CreateTemplate(string description, bool acquisition)
         {
             var json = new ResultResponse();
@@ -112,7 +113,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         #region Private methods.

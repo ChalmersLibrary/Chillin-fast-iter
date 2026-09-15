@@ -1,6 +1,6 @@
 ﻿using Chalmers.ILL.Models;
 using System;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.MediaItems;
 
@@ -37,7 +37,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "All maintenance jobs ran successfully.";
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         private void removeOldMediaItems(ResultResponse res)

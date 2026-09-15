@@ -1,5 +1,4 @@
-using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc.Razor;
 
 namespace Chalmers.ILL
 {
@@ -14,18 +13,11 @@ namespace Chalmers.ILL
         // of those PartialView(...) calls fails at runtime with "the partial view '...' was not
         // found" — not caught by unit tests, since they call controller actions directly without
         // going through the view engine.
-        public static void RegisterViewEngines(ViewEngineCollection engines)
+        public static void RegisterViewEngines(RazorViewEngineOptions options)
         {
-            var razorEngine = engines.OfType<RazorViewEngine>().FirstOrDefault();
-            if (razorEngine == null) return;
-
-            razorEngine.PartialViewLocationFormats = razorEngine.PartialViewLocationFormats
-                .Concat(new[] { "~/Views/Partials/{0}.cshtml" })
-                .ToArray();
-
-            razorEngine.ViewLocationFormats = razorEngine.ViewLocationFormats
-                .Concat(new[] { "~/Views/Partials/{0}.cshtml" })
-                .ToArray();
+            // Unlike MVC5, Core's RazorViewEngine uses ViewLocationFormats for both View() and
+            // PartialView() lookups - there is no separate PartialViewLocationFormats.
+            options.ViewLocationFormats.Add("/Views/Partials/{0}.cshtml");
         }
     }
 }

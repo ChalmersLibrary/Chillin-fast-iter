@@ -6,7 +6,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -32,7 +33,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             return PartialView("Chalmers.ILL.Action.Anonymize", orderItem);
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult Anonymize(int nodeId, string reference, string logsSerialized)
         {
             var json = new ResultResponse();
@@ -55,7 +56,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         [HttpPost]
@@ -81,7 +82,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
     }
 }

@@ -1,15 +1,14 @@
-﻿@inherits System.Web.Mvc.WebViewPage
 @using System.Configuration;
 @{
     Layout = null;
 }
 @{
-    var isNotLocalhost = Request.ServerVariables["SERVER_NAME"] != "localhost";
-    var isNotTestServer = Request.ServerVariables["SERVER_NAME"] != ConfigurationManager.AppSettings["testServer"];
-    var isNotSecureLiveServer = !(Request.ServerVariables["SERVER_PORT_SECURE"] == "1" && Request.ServerVariables["SERVER_NAME"] == ConfigurationManager.AppSettings["liveServer"]);
+    var isNotLocalhost = Request.Host.Host != "localhost";
+    var isNotTestServer = Request.Host.Host != ConfigurationManager.AppSettings["testServer"];
+    var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == ConfigurationManager.AppSettings["liveServer"]);
     if (isNotLocalhost && isNotTestServer && isNotSecureLiveServer)
     {
-        Response.RedirectPermanent("https://" + ConfigurationManager.AppSettings["liveServer"]);
+        Response.Redirect("https://" + ConfigurationManager.AppSettings["liveServer"], true);
     }
 }
 <!doctype html>

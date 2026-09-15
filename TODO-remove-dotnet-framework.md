@@ -337,7 +337,7 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   *(Tidigare stod här att EF6 måste verifieras mot `net10.0`. Det behövs inte längre — EF6 tas bort
   helt i fas 7.)*
 
-- [ ] **Byt `<TargetFramework>` till `net10.0` i båda projekten**
+- [x] **Byt `<TargetFramework>` till `net10.0` i båda projekten**
   **Härifrån är bygget trasigt tills fas 2 är klar.** `System.Web`, `System.Web.Mvc`,
   `System.Web.Helpers` m.fl. finns inte på modern .NET, så i princip varje controller och
   `Global.asax.cs` slutar kompilera samtidigt. Det är väntat och går inte att undvika — men det är
@@ -360,11 +360,28 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   av fas 5 i samma svep — inte bara 1b+2. (Klient-JS/bower-delen av fas 5 är fristående och kan vänta.)
   Planera om detta steg påbörjas som ett svep över samtliga dessa punkter, inte bara fas 1b+2.
 
+  **Svepet genomfört 2026-09-15.** `dotnet build` och `dotnet test` gröna på `net10.0` (158/158,
+  0 fel) för båda projekten. Utöver fas 1b+2+3+4+SignalR-server drogs fyra fas 8-punkter in i förtid
+  eftersom paketen fysiskt inte kunde restaureras mot `net10.0` oavsett fasindelning: EWS-Api-2.0,
+  WindowsAzure.Storage, System.Drawing (QR-kodrendering) och Npgsql/döda paket/OWIN-MVC5-stacken —
+  se respektive ikryssade punkt i fas 8. Unity (fas 6) ersattes direkt med `IServiceCollection`
+  eftersom `Microsoft.Practices.Unity` predates netstandard och inte gick att brygga.
+  **Inte klart i samma svep** (medvetet avgränsat bort): Web.config-sektionerna (`sessionState`,
+  `DbProviderFactories`, request-limits, HTTPS-redirect, static-content-MIME m.m.),
+  `[ValidateAntiForgeryToken]` på login/lösenordsbyte, fullständiga pipeline-nivå-auktoriseringstester,
+  `ConfigurationManager.AppSettings`/`appsettings.json`-migreringen (fas 6), och hela klient-JS/asset-
+  delen av fas 5 (jquery.signalR, bower). Se även den nya observationen i Fas 0a-stil: `Config/log4net.config`
+  saknades helt i repot trots att den punkten var ikryssad — skapad nu.
+  Två övriga latenta fynd under svepet: `Views/Partials/Chalmers.ILL.LogItem.cshtml` hade fel
+  modelltyp (aldrig fångat eftersom klassiska Razor-vyer inte typkontrolleras vid bygge — Core gör
+  det), och `Statistics/DefaultStatCalc.cs` hade en tidszonsberoende dagberäkning som gav fel resultat
+  på denna maskins tidszon (`America/Los_Angeles`) — båda fixade.
+
 ---
 
 ## Fas 2: Hosting — System.Web → ASP.NET Core
 
-- [ ] **Ersätt `Global.asax`/`Global.asax.cs` **och** `EventHandlers/OwinStartup.cs` med `Program.cs`**
+- [x] **Ersätt `Global.asax`/`Global.asax.cs` **och** `EventHandlers/OwinStartup.cs` med `Program.cs`**
   Det finns **två** startvägar idag, vilket är lätt att missa:
   - `Global.asax.cs` (25 rader, enda event-handlern är `Application_Start`) anropar
     `AreaRegistration.RegisterAllAreas()` (no-op — inga Areas finns, utelämnas helt),
@@ -378,7 +395,7 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   **Att MVC:s DI initieras från OWIN och inte från `Application_Start` är den enskilt lättaste raden att
   missa i hela migreringen.** Båda filerna ersätts av en minimal-hosting-`Program.cs`.
 
-- [ ] **Migrera det globala `[Authorize]`-filtret**
+- [x] **Migrera det globala `[Authorize]`-filtret**
   `App_Start/FilterConfig.cs:14` lägger till exakt ett filter: `new AuthorizeAttribute()`. I ASP.NET
   Core motsvaras det av `AddAuthorization` + en `AuthorizeFilter` i `MvcOptions.Filters`, eller
   `RequireAuthorization()` på endpoints.
@@ -392,7 +409,7 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   `[Authorize(Roles = "SuperAdmin")]` (`MemberAdminSurfaceController.cs:12`) — den enda rollbaserade
   serverside-auktoriseringen i hela appen, och helt otestad idag.
 
-- [ ] **Migrera `App_Start/RouteConfig.cs` till endpoint-routing**
+- [x] **Migrera `App_Start/RouteConfig.cs` till endpoint-routing**
   Sex registreringar, **och ordningen är semantiskt lastbärande**:
   1. `routes.IgnoreRoute("{resource}.axd/{*pathInfo}")` — `.axd` finns inte i Core, kan utgå
   2. `LegacyUmbracoSurfaceAlias`: `umbraco/surface/{controller}/{action}/{id}`, inga controller/action-
@@ -407,7 +424,7 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   `/bestaellningar/instaellningar` också (kommentaren finns i `RouteConfig.cs:27-28`). Inga constraints
   finns någonstans. `RoutingTest.cs` täcker alla dessa idag, men måste själv skrivas om (fas 9).
 
-- [ ] **Ersätt `App_Start/ViewEngineConfig.cs`**
+- [x] **Ersätt `App_Start/ViewEngineConfig.cs`**
   Klassnamnet är missvisande — den registrerar ingen view engine, den *muterar* den befintliga
   `RazorViewEngine` genom att lägga `~/Views/Partials/{0}.cshtml` i både `PartialViewLocationFormats`
   och `ViewLocationFormats`. I Core: `services.Configure<RazorViewEngineOptions>(o => { ... })` på
@@ -458,7 +475,7 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   Web.config rad 79-86 registrerar `MySql.Data.MySqlClient` (6.6.5.0) och `System.Data.SqlServerCe.4.0`.
   Båda är Umbraco-arv, ingen av dem används i kod, och ingendera finns i modern .NET.
 
-- [ ] **Ersätt `Request.ServerVariables`, `Request.Params` och besläktade `System.Web`-API:er**
+- [x] **Ersätt `Request.ServerVariables`, `Request.Params` och besläktade `System.Web`-API:er**
   Finns inte i ASP.NET Core. Fullständig lista:
   - `Request.ServerVariables` — 6 ställen: `SystemSurfaceController.cs:155, 156, 159, 161`
     (`SERVER_NAME`, `HTTP_X_FORWARDED_FOR`), `Views/ChalmersILL.cshtml:8-10` och
@@ -488,7 +505,7 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
     **Redirect från en vy** (de tre sista) har ingen bra motsvarighet — logiken måste flyttas till
     controllern.
 
-- [ ] **Ersätt `HttpContext.Current` med injicerad `IHttpContextAccessor`**
+- [x] **Ersätt `HttpContext.Current` med injicerad `IHttpContextAccessor`**
   Exakt 4 anropsställen i 2 filer, alla mönstret `HttpContext.Current?.User?.Identity?.Name`:
   `Members/MemberInfoManager.cs:31, 41, 66` och `OrderItems/EntityFrameworkOrderItemManager.cs:1759`.
   Alla är redan null-säkra. **Men:** `MemberInfoManager` tar samtidigt `HttpRequestBase`/
@@ -496,14 +513,14 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   abstraktionsnivå. Interfacet `IMemberInfoManager` måste ändras, vilket slår igenom i fyra teststubbar
   (fas 9).
 
-- [ ] **Ersätt `HttpRuntime.AppDomainAppPath` med `IWebHostEnvironment.ContentRootPath`**
+- [x] **Ersätt `HttpRuntime.AppDomainAppPath` med `IWebHostEnvironment.ContentRootPath`**
   Två identiska ställen: `Members/MemberFileStore.cs:40-46` (→ `Config/members.json`) och
   `UmbracoApi/ChillinOrderConfiguration.cs:78-84` (→ `Config/chillinPrevalues.json`). Båda har
   `AppDomain.CurrentDomain.BaseDirectory` som fallback.
   **Notera:** `Server.MapPath`/`HostingEnvironment.MapPath` finns inte någonstans i kodbasen — det är
   bara dessa två ställen som gör sökvägsupplösning.
 
-- [ ] **Ta bort vestigiell ASP.NET Web API-infrastruktur**
+- [x] **Ta bort vestigiell ASP.NET Web API-infrastruktur**
   Inga `ApiController`-klasser finns (0 träffar i hela lösningen). `System.Web.Http` används bara i
   `Bootstrapper.cs:118` — `GlobalConfiguration.Configuration.DependencyResolver = new
   UnityWebApiDependencyResolver(container)` — och den `HttpConfiguration` som skapas där används aldrig
@@ -648,7 +665,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
 
   Skriv beteendetester (helst mot en riktig request-pipeline) för dessa innan något rörs.
 
-- [ ] **Skriv om `FileMembershipProvider`/`FileRoleProvider` till cookie-autentisering**
+- [x] **Skriv om `FileMembershipProvider`/`FileRoleProvider` till cookie-autentisering**
   `Members/FileMembershipProvider.cs` (109 rader) och `FileRoleProvider.cs` (61 rader) ärver
   `System.Web.Security.MembershipProvider`/`RoleProvider`, som inte finns i modern .NET.
   Ytan är liten: `FileMembershipProvider` implementerar bara `ValidateUser`, `GetUser` och
@@ -673,7 +690,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   `MemberAdminService.CreateMember` kontrollerar bara `IsNullOrWhiteSpace`, så enteckenslösenord
   accepteras idag.
 
-- [ ] **Migrera de statiska `Membership`/`Roles`-fasadanropen**
+- [x] **Migrera de statiska `Membership`/`Roles`-fasadanropen**
   Samtliga anropsställen:
   - `Membership.ValidateUser` — `LoginSurfaceController.cs:27`, `PasswordSurfaceController.cs:38`
   - `Membership.GetUser` — `PasswordSurfaceController.cs:42`
@@ -687,7 +704,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   reell auktoriseringseffekt). `members.example.json` nämner `Administrator` men inte `SuperAdmin` —
   uppdatera exemplet.
 
-- [ ] **Migrera `FormsAuthentication` till cookie-autentisering**
+- [x] **Migrera `FormsAuthentication` till cookie-autentisering**
   Två anropsställen: `LoginSurfaceController.cs:29` (`SetAuthCookie(model.Login, false)`) och
   `Page/ChalmersILLLogoutPageController.cs:25` (`SignOut()`). Web.config `<authentication mode="Forms">`
   med `loginUrl="~/ChalmersILLLoginPage"` → `CookieAuthenticationOptions.LoginPath`. Görs i samma steg
@@ -707,7 +724,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
 
 ## Fas 4: Controllers & Razor-vyer
 
-- [ ] **Byt `System.Web.Mvc.Controller` → `Microsoft.AspNetCore.Mvc.Controller` i 42 controllers**
+- [x] **Byt `System.Web.Mvc.Controller` → `Microsoft.AspNetCore.Mvc.Controller` i 42 controllers**
   Exakt **42** controller-filer under `Controllers/SurfaceControllers/` (varav 8 i `Page/`), alla med
   `using System.Web.Mvc;` och alla ärvande `Controller`. Ingen `ApiController`, ingen
   `AsyncController`, **noll `async`-actions** i hela projektet. 99 publika action-metoder: 98 returnerar
@@ -729,7 +746,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   `ModelState` används på bara 2 ställen, `return File(...)` på 1
   (`MediaItemSurfaceController.cs:40`).
 
-- [ ] **Migrera de 10 vyerna med `@inherits System.Web.Mvc.WebViewPage`**
+- [x] **Migrera de 10 vyerna med `@inherits System.Web.Mvc.WebViewPage`**
   Ursprungligen 12, men 2 (`MacroPartials/*`) är döda och raderas i fas 0b. Kvar:
   `ChalmersILL.cshtml`, `ChalmersILLDiskPage.cshtml`, `ChalmersILLLoginPage.cshtml`,
   `ChalmersILLLogoutPage.cshtml`, `ChalmersILLOrderListPage.cshtml`, `ChalmersILLSettingsPage.cshtml`,
@@ -739,7 +756,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   utan `<T>`. `WebViewPage` ersätts av `@model` utan explicit `@inherits`.
   Totalt finns 38 `.cshtml` under `Views/`; övriga 26 använder redan `@model`.
 
-- [ ] **Fixa `Layout = "ChalmersILL.cshtml"` — går sönder tyst**
+- [x] **Fixa `Layout = "ChalmersILL.cshtml"` — går sönder tyst**
   Fem vyer (`ChalmersILLLogoutPage`, `ChalmersILLOrderListPage`, `ChalmersILLSettingsPage`,
   `ChalmersILLStartPage`, `ChalmersILLStatisticsPage`) sätter `Layout` till ett **bart filnamn**.
   Layouten `ChalmersILL.cshtml` ligger i `Views/`-roten, inte i `Views/Shared/`. I ASP.NET Core löses
@@ -747,7 +764,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   `Views/Shared/`. Antingen flytta layouten till `Shared/` eller använd `~/Views/ChalmersILL.cshtml`.
   Det finns idag varken `_ViewStart.cshtml` eller `_ViewImports.cshtml` — båda bör läggas till.
 
-- [ ] **Skriv om de två `@helper`-blocken — men inte till `@functions`**
+- [x] **Skriv om de två `@helper`-blocken — men inte till `@functions`**
   Båda i `Views/ChalmersILLOrderListPage.cshtml`: `ParseStatusPrevalue` (rad 201-204) och
   `RenderOrderList` (rad 206-254, ~50 rader som skriver ut HTML, anropas på rad 157 och 186).
   **`@functions`-metoder i Core Razor kan inte returnera markup** — `@helper` gick att anropa som
@@ -760,11 +777,11 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   `AppendArgumentsToQueryString` använder `HttpUtility.ParseQueryString` och verkar dessutom oanvänd —
   kontrollera och ta bort i så fall.
 
-- [ ] **Ersätt `.AsInt()` i `RenderOrderList`**
+- [x] **Ersätt `.AsInt()` i `RenderOrderList`**
   Tre anrop på rad 214, 224 och 229 i `ChalmersILLOrderListPage.cshtml`. `.AsInt()` är en
   `System.Web.WebPages`-extension som inte finns i Core → `int.TryParse` eller `Convert.ToInt32`.
 
-- [ ] **Ta bort `Views/Web.config` och `Views/Web.config.transform`**
+- [x] **Ta bort `Views/Web.config` och `Views/Web.config.transform`**
   `Views/Web.config` (51 rader) innehåller `<system.web.webPages.razor>` (`MvcWebRazorHostFactory`,
   `pageBaseType`, fyra namnrymder), `<appSettings webpages:Enabled=false>`,
   `<pages validateRequest="false">`, och `<httpHandlers>`/`<handlers>` med `HttpNotFoundHandler` som
@@ -781,7 +798,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
 
 ## Fas 5: SignalR och klientassets
 
-- [ ] **Migrera SignalR-servern — enklare än den ser ut, men med en tyst fälla**
+- [x] **Migrera SignalR-servern — enklare än den ser ut, men med en tyst fälla**
   Ytan är minimal: `SignalR/NotificationHub.cs` är en **helt tom** `Hub` (inga serverside-metoder alls,
   klienten kan inte anropa något). `Notifier.cs` hämtar hub-kontexten statiskt via
   `GlobalHost.ConnectionManager.GetHubContext<NotificationHub>()` (rad 21 och 49) och anropar exakt en
@@ -834,7 +851,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
 
 ## Fas 6: Dependency injection & konfiguration
 
-- [ ] **Ersätt Unity med `Microsoft.Extensions.DependencyInjection`**
+- [x] **Ersätt Unity med `Microsoft.Extensions.DependencyInjection`**
   Paketet heter `Unity` 3.0.1304.1 i `packages.config` (assemblynamnet är `Microsoft.Practices.Unity`
   — sök på rätt sak vid PackageReference-migreringen).
   `Bootstrapper.cs` har **31 aktiva registreringar** (39 textuella förekomster, varav 8 utkommenterade
@@ -961,7 +978,7 @@ EF6-på-`net10.0` behöver inte längre verifieras.
   `TakeOverLockedOrderItem`, `EditedBy`) — samtidig redigering är alltså ett designat scenario, inte
   ett kantfall.
 
-- [ ] **Bryt den cirkulära kopplingen `Notifier` ↔ `OrderItemManager`**
+- [x] **Bryt den cirkulära kopplingen `Notifier` ↔ `OrderItemManager`**
   `Bootstrapper.cs:191-199` konstruerar båda manuellt och kopplar ihop dem med
   `notifier.SetOrderItemManager(...)` + `orderItemManager.SetNotifier(...)`.
   Halva cirkeln är redan död: `Notifier._orderItemManager` sätts men **läses aldrig** (fas 0b). Ta
@@ -1000,7 +1017,7 @@ Fullständig paketinventering: `Chalmers.ILL/packages.config` har **37 paket**,
 `Chalmers.ILL.Tests/packages.config` har **ett** (`EWS-Api-2.0`) — testramverket kommer helt från
 GAC/VS, inte NuGet.
 
-- [ ] **Ta bort EWS helt (Graph är bekräftat i drift)**
+- [x] **Ta bort EWS helt (Graph är bekräftat i drift)**
   Ta bort: `Mail/ExchangeMailWebApi.cs`, `Mail/IExchangeMailWebApi.cs` (döp om interfacet till något
   leverantörsneutralt, t.ex. `IMailWebApi`), `EWS-Api-2.0`-paketet, if/else-grenen i
   `Bootstrapper.cs:145-152` och appSetting-nyckeln `UseMicrosoftGraphMailService` med dess property i
@@ -1020,7 +1037,7 @@ GAC/VS, inte NuGet.
   Bra nyhet: `MailService.cs` är redan helt EWS-agnostisk — ingen `using`, ingen EWS-typ i någon
   signatur eller body. Den behöver inte förenklas, bara följa med interfacets namnbyte.
 
-- [ ] **Byt `WindowsAzure.Storage` (7.1.2) mot `Azure.Storage.Blobs`**
+- [x] **Byt `WindowsAzure.Storage` (7.1.2) mot `Azure.Storage.Blobs`**
   Avgränsat till `MediaItems/BlobStorageMediaItemManager.cs` (129 rader): `CloudStorageAccount` (3),
   `CloudBlobClient` (3), `CloudBlobContainer` (3), `CloudBlockBlob` (5), plus 16 medlemsanrop
   (`UploadFromStream`, `FetchAttributes`, `Metadata[...]`, `SetMetadata`, `Properties.ContentType`,
@@ -1034,7 +1051,7 @@ GAC/VS, inte NuGet.
   `System.Spatial` och `Microsoft.Azure.KeyVault.Core` i fallet (transitiva OData-beroenden, ingen
   egen kodanvändning).
 
-- [ ] **Byt QR-renderingen från `System.Drawing` till `PngByteQRCode`**
+- [x] **Byt QR-renderingen från `System.Drawing` till `PngByteQRCode`**
   `OrderItemDeliverySurfaceController.cs:115-126`. `System.Drawing.Common` är Windows-only från .NET 6
   och kastar `PlatformNotSupportedException` på Linux.
   **Krävs trots att driften är Windows** — utan bytet går följesedels-/leveranssidan inte att köra
@@ -1046,18 +1063,18 @@ GAC/VS, inte NuGet.
   `Views/Partials/DeliveryType/ArticleInTransit.cshtml:58`. Fixa MIME-typen i samma veva (fas 0b).
   Detta är den **enda** `System.Drawing`-användningen i C#-kod i hela projektet.
 
-- [ ] **Ta bort `Npgsql` (inte uppgradera)**
+- [x] **Ta bort `Npgsql` (inte uppgradera)**
   Den tidigare listan sa att Npgsql var "aktivt använt i `Patron/Sierra.cs`". Det stämmer bara i den
   meningen att `Sierra.cs` är dess enda konsument — och `Sierra.cs` är bekräftat död kod (fas 0b).
   Rätt åtgärd är alltså borttagning. Kontrollera att de två döda `using Npgsql;`-raderna är städade
   först.
 
-- [ ] **Ta bort döda paket utan kodanvändning**
+- [x] **Ta bort döda paket utan kodanvändning**
   `MySql.Data` (ingen `MySqlConnection`/`MySql.Data.*` i någon `.cs`, bara `<DbProviderFactories>` i
   Web.config), `Microsoft.AspNet.Mvc.FixedDisplayModes`, `Microsoft.Web.Infrastructure`, `jQuery` 1.6.4
   (se fas 5).
 
-- [ ] **Ta bort hela OWIN- och MVC5-paketstacken**
+- [x] **Ta bort hela OWIN- och MVC5-paketstacken**
   Faller bort med hostingbytet men saknades i den tidigare listan och måste bort ur `packages.config`:
   `Microsoft.Owin` 4.2.2, `Microsoft.Owin.Host.SystemWeb` 4.2.2, `Microsoft.Owin.Security` 4.2.2,
   `Owin` 1.0, `Microsoft.AspNet.Mvc` 4.0.20710.0, `Microsoft.AspNet.Razor` 2.0.20710.0,

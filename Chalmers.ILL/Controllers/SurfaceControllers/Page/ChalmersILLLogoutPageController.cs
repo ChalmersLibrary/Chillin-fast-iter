@@ -1,7 +1,10 @@
 using Chalmers.ILL.Members;
 using Chalmers.ILL.Models.Page;
-using System.Web.Mvc;
-using System.Web.Security;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Threading.Tasks;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
 {
@@ -18,7 +21,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
             _memberInfoManager = memberInfoManager;
         }
 
-        public ActionResult Index()
+        public async Task<IActionResult> Index()
         {
             var customModel = new ChalmersILLLogoutPageModel();
             _memberInfoManager.PopulateModelWithMemberData(Request, Response, customModel);
@@ -26,7 +29,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
             if (User.Identity.IsAuthenticated)
             {
                 _memberInfoManager.GetCurrentMemberId(Request, Response);
-                FormsAuthentication.SignOut();
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 _memberInfoManager.ClearMemberCache(Response);
             }
 

@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
 using System.Configuration;
@@ -52,7 +53,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 res.Message = "Failed to import document from data: " + e.Message;
             }
 
-            return Json(res, JsonRequestBehavior.AllowGet);
+            return Json(res);
         }
 
         /// <summary>
@@ -92,7 +93,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 res.Message = "Failed to fetch available values for keys: " + e.Message;
             }
 
-            return Json(res, JsonRequestBehavior.AllowGet);
+            return Json(res);
         }
 
         #region Private

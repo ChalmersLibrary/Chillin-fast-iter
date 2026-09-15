@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.MediaItems;
 using Chalmers.ILL.Models;
@@ -26,7 +26,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = new MaintenanceSurfaceController(orderItemManager, new StubMediaItemManager(deleted));
 
             var result = controller.RunMaintenanceJobs() as JsonResult;
-            var response = result?.Data as ResultResponse;
+            var response = result?.Value as ResultResponse;
 
             Assert.IsNotNull(response);
             Assert.IsTrue(response.Success);
@@ -42,7 +42,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = new MaintenanceSurfaceController(new StubOrderItemManager(), new ThrowingMediaItemManager());
 
             var result = controller.RunMaintenanceJobs() as JsonResult;
-            var response = result?.Data as ResultResponse;
+            var response = result?.Value as ResultResponse;
 
             Assert.IsNotNull(response);
             Assert.IsFalse(response.Success);

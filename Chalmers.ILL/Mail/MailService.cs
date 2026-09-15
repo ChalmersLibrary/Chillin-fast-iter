@@ -13,9 +13,9 @@ namespace Chalmers.ILL.Mail
     public class MailService : IMailService
     {
         IMediaItemManager _mediaItemManager;
-        IExchangeMailWebApi _exchangeMailWebApi;
+        IMailWebApi _exchangeMailWebApi;
 
-        public MailService(IMediaItemManager mediaItemManager, IExchangeMailWebApi exchangeMailWebApi)
+        public MailService(IMediaItemManager mediaItemManager, IMailWebApi exchangeMailWebApi)
         {
             _mediaItemManager = mediaItemManager;
             _exchangeMailWebApi = exchangeMailWebApi;

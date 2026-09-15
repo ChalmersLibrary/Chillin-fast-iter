@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web.Helpers;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace Chalmers.ILL.Members
 {
@@ -10,6 +11,13 @@ namespace Chalmers.ILL.Members
     // effect immediately without an app restart.
     public class MemberAdminService : IMemberAdminService
     {
+        // Same IdentityV2-compatibility hasher as FileMembershipProvider - see the comment there.
+        private static readonly PasswordHasher<MemberAccount> _hasher =
+            new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+
         private readonly Func<List<MemberAccount>> _load;
         private readonly Action<List<MemberAccount>> _save;
 
@@ -37,7 +45,7 @@ namespace Chalmers.ILL.Members
             accounts.Add(new MemberAccount
             {
                 Login = login,
-                PasswordHash = Crypto.HashPassword(password),
+                PasswordHash = _hasher.HashPassword(null, password),
                 Roles = roles ?? new List<string>()
             });
             _save(accounts);
@@ -50,7 +58,7 @@ namespace Chalmers.ILL.Members
 
             var accounts = _load();
             var account = FindOrThrow(accounts, login);
-            account.PasswordHash = Crypto.HashPassword(newPassword);
+            account.PasswordHash = _hasher.HashPassword(account, newPassword);
             _save(accounts);
         }
 

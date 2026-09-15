@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.OrderItems;
@@ -25,7 +25,7 @@ namespace Chalmers.ILL.Tests.Controllers
             {
                 Keys = new List<string> { "Type", "ProviderName", "pType", "HomeLibrary" }
             }) as JsonResult;
-            var response = result?.Data as KeyValueResult;
+            var response = result?.Value as KeyValueResult;
 
             Assert.IsNotNull(response);
             Assert.IsTrue(response.Success);
@@ -53,7 +53,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = new StatisticsSurfaceController(new ThrowingOrderItemSearcher());
 
             var result = controller.GetAvailableValues(new KeyValueRequest { Keys = new List<string> { "Type" } }) as JsonResult;
-            var response = result?.Data as KeyValueResult;
+            var response = result?.Value as KeyValueResult;
 
             Assert.IsNotNull(response);
             Assert.IsFalse(response.Success);

@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -21,7 +21,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             _orderItemManager = orderItemManager;
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult ReindexOrderItem(string orderId)
         {
             var json = new ResultResponse();
@@ -50,7 +50,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
     }
 }

@@ -1,16 +1,16 @@
-﻿@inherits System.Web.Mvc.WebViewPage<Chalmers.ILL.Models.Page.ChalmersILLModel>
+﻿@model Chalmers.ILL.Models.Page.ChalmersILLModel
 @using System.Configuration;
 @{
     Layout = null;
 }
 
 @{
-    var isNotLocalhost = Request.ServerVariables["SERVER_NAME"] != "localhost";
-    var isNotTestServer = Request.ServerVariables["SERVER_NAME"] != ConfigurationManager.AppSettings["testServer"];
-    var isNotSecureLiveServer = !(Request.ServerVariables["SERVER_PORT_SECURE"] == "1" && Request.ServerVariables["SERVER_NAME"] == ConfigurationManager.AppSettings["liveServer"]);
+    var isNotLocalhost = Request.Host.Host != "localhost";
+    var isNotTestServer = Request.Host.Host != ConfigurationManager.AppSettings["testServer"];
+    var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == ConfigurationManager.AppSettings["liveServer"]);
     if (isNotLocalhost && isNotTestServer && isNotSecureLiveServer)
     {
-        Response.RedirectPermanent("https://" + ConfigurationManager.AppSettings["liveServer"]);
+        Response.Redirect("https://" + ConfigurationManager.AppSettings["liveServer"], true);
     }
 }
 
@@ -29,7 +29,7 @@
         <script src="/bower_components/moment/min/moment-with-locales.min.js"></script>
         <script src="/bower_components/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js"></script>
         <script src="/bower_components/Snap.svg/dist/snap.svg-min.js"></script>
-        @if (!System.Web.Security.Roles.IsUserInRole(Model.CurrentMemberLoginName, "Administrator"))
+        @if (!User.IsInRole("Administrator"))
         {
             <style>
                 .editmode .btn {
@@ -72,14 +72,14 @@
                 <!-- Collect the nav links, forms, and other content for toggling -->
                 <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                     <ul class="nav navbar-nav">
-                        <li id="orders-button" class="@(Request.Path.StartsWith("/bestaellningar", StringComparison.OrdinalIgnoreCase) ? "active" : null)"><a href="/bestaellningar/">Beställningar <span id="pending-order-counter" class="badge" data-pending-order-items="[]">0</span></a></li>
+                        <li id="orders-button" class="@(Request.Path.StartsWithSegments("/bestaellningar", StringComparison.OrdinalIgnoreCase) ? "active" : null)"><a href="/bestaellningar/">Beställningar <span id="pending-order-counter" class="badge" data-pending-order-items="[]">0</span></a></li>
                         <li style="margin-left: 10px; margin-top: 8px;"><button id='send-feedback-button' class="btn btn-default" type="button" data-toggle="popover" data-content="<form name='feedback-form' onsubmit='sendFeedback(); event.preventDefault();'><h3>Lämna feedback</h3><textarea id='feedback-text' style='resize: none;' rows='5'></textarea><button style='width: 100%;' type='submit' class='btn btn-default'>Skicka</button></form>"><span class="glyphicon glyphicon-bullhorn"></span></button></li>
                     </ul>
 
                     <!-- Search form -->
                     <form class="navbar-form navbar-left" role="search" action="/bestaellningar/">
                         <div class="form-group">
-                            <input type="text" class="form-control" name="query" id="query" value="@Request.Params["query"]" placeholder="Namn, referens mm" oninput="correctSearchString()">
+                            <input type="text" class="form-control" name="query" id="query" value="@Request.Query["query"]" placeholder="Namn, referens mm" oninput="correctSearchString()">
                         </div>
                         <div class="btn-group">
                             <button type="submit" class="btn btn-default">Sök</button>
@@ -94,7 +94,7 @@
                     </form>
 
                     <!-- Logged in Member info and links -->
-                    @if (Request.IsAuthenticated)
+                    @if (User.Identity.IsAuthenticated)
                     {
                         <div id="memberIdContainer" data-memberid="@Model.CurrentMemberId"></div>
                         <ul class="nav navbar-nav navbar-right">
@@ -121,7 +121,7 @@
             @RenderBody()
 
             @{
-                if (Request.Params["debug"] == "1")
+                if (Request.Query["debug"] == "1")
                 {
             <!-- Debug Bucket -->
                     <div id="debug-bucket" class="panel panel-default">

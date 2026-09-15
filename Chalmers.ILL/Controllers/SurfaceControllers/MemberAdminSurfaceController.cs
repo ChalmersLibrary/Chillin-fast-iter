@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Members;
 using Chalmers.ILL.Models;
 
@@ -33,7 +34,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             return PartialView("Settings/MemberAdmin", pageModel);
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult CreateMember(string login, string password, string roles)
         {
             var json = new ResultResponse();
@@ -50,10 +51,10 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Fel: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SetMemberPassword(string login, string newPassword)
         {
             var json = new ResultResponse();
@@ -70,10 +71,10 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Fel: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult SetMemberRoles(string login, string roles)
         {
             var json = new ResultResponse();
@@ -90,7 +91,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Fel: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         [HttpPost]
@@ -110,7 +111,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Fel: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         private static System.Collections.Generic.List<string> ParseRoles(string roles) =>

@@ -1,16 +1,16 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Web;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Chalmers.ILL.Models;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Chalmers.ILL.Configuration;
-using System.Text;
 
 namespace Chalmers.ILL.MediaItems
 {
+    // Was Microsoft.WindowsAzure.Storage (legacy SDK) - .NET Framework-only, its dependency
+    // chain (Microsoft.Data.OData etc.) can't target net10.0. Rewritten against Azure.Storage.Blobs
+    // (fas 8, pulled forward - the old package physically couldn't restore for the TFM switch).
     public class BlobStorageMediaItemManager : IMediaItemManager
     {
         private const string containerName = "chillinmedia";
@@ -22,64 +22,54 @@ namespace Chalmers.ILL.MediaItems
             _configuration = configuration;
         }
 
+        private BlobContainerClient GetContainer()
+        {
+            var container = new BlobContainerClient(_configuration.StorageConnectionString, containerName);
+            container.CreateIfNotExists();
+            return container;
+        }
+
         public MediaItemModel CreateMediaItem(string name, int orderItemNodeId, string orderId, Stream data, string contentType)
         {
             // Generate a UUID which we will use as identifier for the stored object.
             var id = Guid.NewGuid();
 
-            // Parse the connection string and return a reference to the storage account.
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(
-                _configuration.StorageConnectionString);
-
-            // Get a reference to the container that we use for storage.
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-            container.CreateIfNotExists();
-            CloudBlockBlob blockBlob = container.GetBlockBlobReference(id.ToString());
+            var container = GetContainer();
+            var blob = container.GetBlobClient(id.ToString());
 
             // Store the object.
             data.Position = 0;
-            blockBlob.UploadFromStream(data);
+            blob.Upload(data, overwrite: true);
 
             // Store the metadata.
             var createDate = DateTime.Now;
-            blockBlob.FetchAttributes();
-            blockBlob.Metadata["name"] = Uri.EscapeUriString(name);
-            blockBlob.Metadata["orderItemNodeId"] = orderItemNodeId.ToString();
-            blockBlob.Metadata["createDate"] = createDate.ToString("o");
-            blockBlob.SetMetadata();
-
-            blockBlob.Properties.ContentType = contentType;
-            blockBlob.SetProperties();
+            var metadata = new Dictionary<string, string>
+            {
+                ["name"] = Uri.EscapeDataString(name),
+                ["orderItemNodeId"] = orderItemNodeId.ToString(),
+                ["createDate"] = createDate.ToString("o")
+            };
+            blob.SetMetadata(metadata);
+            blob.SetHttpHeaders(new BlobHttpHeaders { ContentType = contentType });
 
             // Create the stored object which we will return.
             var storedMediaItem = new MediaItemModel();
-            PopulateStoredMediaItemFromCloudBlockBlob(storedMediaItem, blockBlob);
+            PopulateStoredMediaItemFromBlob(storedMediaItem, blob);
 
             return storedMediaItem;
         }
 
         public IList<MediaItemIdAndOrderItemId> DeleteOlderThan(DateTime date)
         {
-            // Parse the connection string and return a reference to the storage account.
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(
-                _configuration.StorageConnectionString);
-
-            // Get a reference to the container that we use for storage.
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-            container.CreateIfNotExists();
+            var container = GetContainer();
 
             var ret = new List<MediaItemIdAndOrderItemId>();
-            foreach (var oldMediaItem in container.ListBlobs())
+            foreach (var oldMediaItem in container.GetBlobs(BlobTraits.Metadata))
             {
-                var oldBlob = (CloudBlockBlob)oldMediaItem;
-                oldBlob.FetchAttributes();
-                
-                if (Convert.ToDateTime(oldBlob.Metadata["createDate"]) < date)
+                if (Convert.ToDateTime(oldMediaItem.Metadata["createDate"]) < date)
                 {
-                    ret.Add(new MediaItemIdAndOrderItemId(oldBlob.Name, Convert.ToInt32(oldBlob.Metadata["orderItemNodeId"])));
-                    oldBlob.Delete();
+                    ret.Add(new MediaItemIdAndOrderItemId(oldMediaItem.Name, Convert.ToInt32(oldMediaItem.Metadata["orderItemNodeId"])));
+                    container.GetBlobClient(oldMediaItem.Name).DeleteIfExists();
                 }
             }
 
@@ -88,40 +78,32 @@ namespace Chalmers.ILL.MediaItems
 
         public MediaItemModel GetOne(string id)
         {
-            // Parse the connection string and return a reference to the storage account.
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(
-                _configuration.StorageConnectionString);
+            var container = GetContainer();
+            var blob = container.GetBlobClient(id.ToString());
 
-            // Get a reference to the container that we use for storage.
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-            container.CreateIfNotExists();
-            CloudBlockBlob blockBlob = container.GetBlockBlobReference(id.ToString());
-
-            blockBlob.FetchAttributes();
-
-            MemoryStream blobContents = new MemoryStream();
-            blockBlob.DownloadToStream(blobContents);
+            var blobContents = new MemoryStream();
+            blob.DownloadTo(blobContents);
 
             // Create the stored object which we will return.
             var storedMediaItem = new MediaItemModel();
             storedMediaItem.Data = blobContents;
             storedMediaItem.Data.Seek(0, SeekOrigin.Begin);
-            PopulateStoredMediaItemFromCloudBlockBlob(storedMediaItem, blockBlob);
+            PopulateStoredMediaItemFromBlob(storedMediaItem, blob);
 
             return storedMediaItem;
         }
 
         #region Private methods
 
-        private void PopulateStoredMediaItemFromCloudBlockBlob(MediaItemModel mediaItem, CloudBlockBlob blockBlob)
+        private void PopulateStoredMediaItemFromBlob(MediaItemModel mediaItem, BlobClient blob)
         {
-            mediaItem.Id = blockBlob.Name;
-            mediaItem.Name = blockBlob.Metadata["name"];
-            mediaItem.OrderItemNodeId = Convert.ToInt32(blockBlob.Metadata["orderItemNodeId"]);
+            var properties = blob.GetProperties().Value;
+            mediaItem.Id = blob.Name;
+            mediaItem.Name = properties.Metadata["name"];
+            mediaItem.OrderItemNodeId = Convert.ToInt32(properties.Metadata["orderItemNodeId"]);
             mediaItem.Url = _configuration.BaseUrl + "umbraco/surface/MediaItemSurface/GetMediaItem/" + mediaItem.Id;
-            mediaItem.CreateDate = Convert.ToDateTime(blockBlob.Metadata["createDate"]);
-            mediaItem.ContentType = blockBlob.Properties.ContentType;
+            mediaItem.CreateDate = Convert.ToDateTime(properties.Metadata["createDate"]);
+            mediaItem.ContentType = properties.ContentType;
         }
 
         #endregion

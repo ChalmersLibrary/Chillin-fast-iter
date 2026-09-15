@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Web;
 
 namespace Chalmers.ILL.UmbracoApi
 {
@@ -75,13 +74,9 @@ namespace Chalmers.ILL.UmbracoApi
             }
         }
 
-        private static string ResolvePath()
-        {
-            var appRoot = HttpRuntime.AppDomainAppPath;
-            if (string.IsNullOrEmpty(appRoot))
-                appRoot = AppDomain.CurrentDomain.BaseDirectory;
-            return Path.Combine(appRoot, "Config", "chillinPrevalues.json");
-        }
+        // See MemberFileStore.ResolvePath for why this no longer tries HttpRuntime.AppDomainAppPath.
+        private static string ResolvePath() =>
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "chillinPrevalues.json");
 
         private static Dictionary<string, List<DropdownOption>> EmptyConfig() =>
             new Dictionary<string, List<DropdownOption>>

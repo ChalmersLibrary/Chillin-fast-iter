@@ -29,7 +29,7 @@ namespace Chalmers.ILL.Mail
         public static int UPDATE_ORDER_FROM_MAIL_DATA_PATRON_EVENT_TYPE { get { return 21; } }
         public static int UPDATE_ORDER_FROM_MAIL_DATA_NOT_PATRON_EVENT_TYPE { get { return 22; } }
 
-        IExchangeMailWebApi _exchangeMailWebApi;
+        IMailWebApi _exchangeMailWebApi;
         IOrderItemManager _orderItemManager;
         INotifier _notifier;
         IMediaItemManager _mediaItemManager;
@@ -46,7 +46,7 @@ namespace Chalmers.ILL.Mail
             }
         }
 
-        public ChalmersOrderItemsMailSource(IExchangeMailWebApi exchangeMailWebApi, IOrderItemManager orderItemManager,
+        public ChalmersOrderItemsMailSource(IMailWebApi exchangeMailWebApi, IOrderItemManager orderItemManager,
             INotifier notifier, IMediaItemManager mediaItemManager, IPatronDataProvider patronDataProvider, IPersonDataProvider personDataProvider, 
             IOrderItemSearcher orderItemSearcher)
         {

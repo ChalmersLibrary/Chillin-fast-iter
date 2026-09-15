@@ -2,7 +2,7 @@
 using Chalmers.ILL.Repositories;
 using Chalmers.ILL.Services;
 using System;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -46,7 +46,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Error: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
     }
 }

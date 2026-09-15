@@ -1,8 +1,7 @@
 using System;
-using System.Security.Principal;
-using System.Web;
-using System.Web.Mvc;
-using System.Web.Routing;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Members;
 using Chalmers.ILL.Models.Page;
@@ -16,7 +15,7 @@ namespace Chalmers.ILL.Tests.Controllers
         [TestMethod]
         public void RenderChangePasswordAction_ReturnsChangePasswordPartialView()
         {
-            var controller = new PasswordSurfaceController(new StubMemberInfoManager());
+            var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => true, (u, o, n) => true);
 
             var result = controller.RenderChangePasswordAction() as PartialViewResult;
 
@@ -27,35 +26,35 @@ namespace Chalmers.ILL.Tests.Controllers
         [TestMethod]
         public void ChangePassword_InvalidModel_RedirectsWithInvalidModelError()
         {
-            var controller = new PasswordSurfaceController(new StubMemberInfoManager());
-            var fakeResponse = SetHttpContext(controller);
+            var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => true, (u, o, n) => true);
+            SetHttpContext(controller);
             controller.ModelState.AddModelError("NewPassword", "Required");
 
-            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "" });
+            var result = controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "" }) as RedirectResult;
 
-            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-model", fakeResponse.RedirectLocation);
+            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-model", result.Url);
         }
 
         [TestMethod]
         public void ChangePassword_WrongCurrentPassword_RedirectsWithInvalidMemberError()
         {
             var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => false, (u, o, n) => true);
-            var fakeResponse = SetHttpContext(controller);
+            SetHttpContext(controller);
 
-            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "wrong", NewPassword = "newpass" });
+            var result = controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "wrong", NewPassword = "newpass" }) as RedirectResult;
 
-            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", fakeResponse.RedirectLocation);
+            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", result.Url);
         }
 
         [TestMethod]
         public void ChangePassword_ChangeSucceeds_RedirectsWithSuccess()
         {
             var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => true, (u, o, n) => true);
-            var fakeResponse = SetHttpContext(controller);
+            SetHttpContext(controller);
 
-            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" });
+            var result = controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" }) as RedirectResult;
 
-            Assert.AreEqual("/bestaellningar/instaellningar/?success=true", fakeResponse.RedirectLocation);
+            Assert.AreEqual("/bestaellningar/instaellningar/?success=true", result.Url);
         }
 
         [TestMethod]
@@ -65,73 +64,42 @@ namespace Chalmers.ILL.Tests.Controllers
             // fails a policy check) without throwing. That return value used to be discarded and the
             // user was redirected to the success page regardless.
             var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => true, (u, o, n) => false);
-            var fakeResponse = SetHttpContext(controller);
+            SetHttpContext(controller);
 
-            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" });
+            var result = controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" }) as RedirectResult;
 
-            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", fakeResponse.RedirectLocation);
+            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", result.Url);
         }
 
         [TestMethod]
         public void ChangePassword_ChangeThrows_RedirectsWithInvalidMemberError()
         {
             var controller = new PasswordSurfaceController(new StubMemberInfoManager(), (u, p) => true, (u, o, n) => throw new InvalidOperationException("boom"));
-            var fakeResponse = SetHttpContext(controller);
+            SetHttpContext(controller);
 
-            controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" });
+            var result = controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" }) as RedirectResult;
 
-            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", fakeResponse.RedirectLocation);
+            Assert.AreEqual("/bestaellningar/instaellningar/?error=invalid-member", result.Url);
         }
 
-        private static FakeHttpResponse SetHttpContext(Controller controller)
+        private static void SetHttpContext(Controller controller)
         {
-            var response = new FakeHttpResponse();
-            var context = new FakeHttpContext(response)
+            var httpContext = new DefaultHttpContext
             {
-                User = new GenericPrincipal(new GenericIdentity("testuser"), new string[0])
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Name, "testuser") }, "TestAuth"))
             };
-            controller.ControllerContext = new ControllerContext(context, new RouteData(), controller);
-            return response;
-        }
-
-        class FakeHttpContext : HttpContextBase
-        {
-            private readonly HttpResponseBase _response;
-            private readonly HttpRequestBase _request = new FakeHttpRequest();
-
-            public FakeHttpContext(HttpResponseBase response)
-            {
-                _response = response;
-            }
-
-            public override HttpRequestBase Request => _request;
-            public override HttpResponseBase Response => _response;
-            public override IPrincipal User { get; set; }
-        }
-
-        class FakeHttpRequest : HttpRequestBase
-        {
-            public override Uri Url => new Uri("http://localhost/settings");
-        }
-
-        class FakeHttpResponse : HttpResponseBase
-        {
-            public override string RedirectLocation { get; set; }
-
-            public override void Redirect(string url)
-            {
-                RedirectLocation = url;
-            }
+            httpContext.Request.Path = "/settings";
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         }
 
         class StubMemberInfoManager : IMemberInfoManager
         {
-            public int GetCurrentMemberId(HttpRequestBase request, HttpResponseBase response) => 1;
-            public string GetCurrentMemberText(HttpRequestBase request, HttpResponseBase response) => "Test User";
-            public string GetCurrentMemberLoginName(HttpRequestBase request, HttpResponseBase response) => "testuser";
-            public void PopulateModelWithMemberData(HttpRequestBase request, HttpResponseBase response, ChalmersILLModel model) { }
-            public void AddMemberToCache(HttpResponseBase response, int memberId, string memberText, string memberLoginName) { }
-            public void ClearMemberCache(HttpResponseBase response) { }
+            public int GetCurrentMemberId(HttpRequest request, HttpResponse response) => 1;
+            public string GetCurrentMemberText(HttpRequest request, HttpResponse response) => "Test User";
+            public string GetCurrentMemberLoginName(HttpRequest request, HttpResponse response) => "testuser";
+            public void PopulateModelWithMemberData(HttpRequest request, HttpResponse response, ChalmersILLModel model) { }
+            public void AddMemberToCache(HttpResponse response, int memberId, string memberText, string memberLoginName) { }
+            public void ClearMemberCache(HttpResponse response) { }
         }
     }
 }

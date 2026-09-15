@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Models.Mail;
@@ -54,7 +54,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var controller = new LogItemSurfaceController(orderItemManager, new StubOrderConfig(new List<DropdownOption>()));
 
             var result = controller.WriteLogItem(42, "LOG", "Ett meddelande", "", -1, -1, -1) as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsTrue(json.Success);
             Assert.AreEqual(42, orderItemManager.LastLogItemNodeId);

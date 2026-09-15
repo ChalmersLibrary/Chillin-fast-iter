@@ -8,7 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -38,7 +39,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             return PartialView("Chalmers.ILL.Action.ProviderReturnDate", pageModel);
         }
 
-        [HttpPost, ValidateInput(false)]
+        [HttpPost]
         public ActionResult ChangeReturnDate(string packJson)
         {
             var json = new ResultResponse();
@@ -72,7 +73,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 json.Message = "Misslyckades med att ändra återlämningsdatum från utlånande bibliotek: " + e.Message;
             }
 
-            return Json(json, JsonRequestBehavior.AllowGet);
+            return Json(json);
         }
 
         public class ChangeReturnDatePackage

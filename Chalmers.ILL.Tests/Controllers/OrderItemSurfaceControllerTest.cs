@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Security.Principal;
-using System.Web;
-using System.Web.Mvc;
-using System.Web.Routing;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Members;
 using Chalmers.ILL.Models;
@@ -48,7 +47,7 @@ namespace Chalmers.ILL.Tests.Controllers
             SetHttpContext(controller);
 
             var result = controller.TakeOverLockedOrderItem(42) as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsTrue(json.Success);
             Assert.AreEqual("1", orderItemManager.LastEditedByMemberId);
@@ -64,7 +63,7 @@ namespace Chalmers.ILL.Tests.Controllers
             SetHttpContext(controller);
 
             var result = controller.LockOrderItem(42) as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsTrue(json.Success);
             Assert.AreEqual("1", orderItemManager.LastEditedByMemberId);
@@ -79,7 +78,7 @@ namespace Chalmers.ILL.Tests.Controllers
             SetHttpContext(controller);
 
             var result = controller.LockOrderItem(42) as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsFalse(json.Success);
             Assert.IsNull(orderItemManager.LastEditedByMemberId);
@@ -93,7 +92,7 @@ namespace Chalmers.ILL.Tests.Controllers
             SetHttpContext(controller);
 
             var result = controller.UnlockOrderItem(42) as JsonResult;
-            var json = result?.Data as ResultResponse;
+            var json = result?.Value as ResultResponse;
 
             Assert.IsTrue(json.Success);
             Assert.AreEqual("", orderItemManager.LastEditedByMemberId);
@@ -124,24 +123,22 @@ namespace Chalmers.ILL.Tests.Controllers
 
         private static void SetHttpContext(Controller controller)
         {
-            var request = new HttpRequest("", "http://localhost/", "");
-            var response = new HttpResponse(TextWriter.Null);
-            var context = new HttpContext(request, response);
-            context.User = new GenericPrincipal(new GenericIdentity("testuser"), new string[0]);
-            controller.ControllerContext = new ControllerContext(
-                new HttpContextWrapper(context),
-                new RouteData(),
-                controller);
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Name, "testuser") }, "TestAuth"))
+            };
+            httpContext.Request.Path = "/";
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         }
 
         class StubMemberInfoManager : IMemberInfoManager
         {
-            public int GetCurrentMemberId(HttpRequestBase request, HttpResponseBase response) => 1;
-            public string GetCurrentMemberText(HttpRequestBase request, HttpResponseBase response) => "Test User";
-            public string GetCurrentMemberLoginName(HttpRequestBase request, HttpResponseBase response) => "testuser";
-            public void PopulateModelWithMemberData(HttpRequestBase request, HttpResponseBase response, ChalmersILLModel model) { }
-            public void AddMemberToCache(HttpResponseBase response, int memberId, string memberText, string memberLoginName) { }
-            public void ClearMemberCache(HttpResponseBase response) { }
+            public int GetCurrentMemberId(HttpRequest request, HttpResponse response) => 1;
+            public string GetCurrentMemberText(HttpRequest request, HttpResponse response) => "Test User";
+            public string GetCurrentMemberLoginName(HttpRequest request, HttpResponse response) => "testuser";
+            public void PopulateModelWithMemberData(HttpRequest request, HttpResponse response, ChalmersILLModel model) { }
+            public void AddMemberToCache(HttpResponse response, int memberId, string memberText, string memberLoginName) { }
+            public void ClearMemberCache(HttpResponse response) { }
         }
 
         class StubOrderItemManager : IOrderItemManager

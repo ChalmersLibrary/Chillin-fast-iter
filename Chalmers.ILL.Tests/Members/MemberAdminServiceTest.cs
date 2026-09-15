@@ -1,5 +1,6 @@
 using System.Collections.Generic;
-using System.Web.Helpers;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Chalmers.ILL.Members;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -8,6 +9,15 @@ namespace Chalmers.ILL.Tests.Members
     [TestClass]
     public class MemberAdminServiceTest
     {
+        private static readonly PasswordHasher<MemberAccount> _hasher =
+            new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+
+        private static bool Verify(MemberAccount account, string password) =>
+            _hasher.VerifyHashedPassword(account, account.PasswordHash, password) != PasswordVerificationResult.Failed;
+
         [TestMethod]
         public void CreateMember_NewLogin_AddsHashedAccount()
         {
@@ -17,7 +27,7 @@ namespace Chalmers.ILL.Tests.Members
 
             Assert.AreEqual(1, saved.Value.Count);
             Assert.AreEqual("alice", saved.Value[0].Login);
-            Assert.IsTrue(Crypto.VerifyHashedPassword(saved.Value[0].PasswordHash, "s3cret"));
+            Assert.IsTrue(Verify(saved.Value[0], "s3cret"));
             CollectionAssert.AreEqual(new[] { "Desk" }, saved.Value[0].Roles);
         }
 
@@ -46,7 +56,7 @@ namespace Chalmers.ILL.Tests.Members
 
             service.SetPassword("alice", "new-password");
 
-            Assert.IsTrue(Crypto.VerifyHashedPassword(saved.Value[0].PasswordHash, "new-password"));
+            Assert.IsTrue(Verify(saved.Value[0], "new-password"));
         }
 
         [TestMethod]
@@ -88,8 +98,12 @@ namespace Chalmers.ILL.Tests.Members
             service.DeleteMember("bob");
         }
 
-        private static MemberAccount Account(string login, string password) =>
-            new MemberAccount { Login = login, PasswordHash = Crypto.HashPassword(password), Roles = new List<string>() };
+        private static MemberAccount Account(string login, string password)
+        {
+            var account = new MemberAccount { Login = login, Roles = new List<string>() };
+            account.PasswordHash = _hasher.HashPassword(account, password);
+            return account;
+        }
 
         private static Holder<List<MemberAccount>> MakeService(out MemberAdminService service, params MemberAccount[] accounts)
         {

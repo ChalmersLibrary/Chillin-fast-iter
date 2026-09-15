@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
-    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Chalmers.ILL</RootNamespace>
     <AssemblyName>Chalmers.ILL</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,62 +18,38 @@
     <Content Update="Config\members.json" Condition="Exists('Config\members.json')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Update="Config\log4net.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.ComponentModel.DataAnnotations" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="System.IdentityModel" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Security" />
-    <Reference Include="System.Web" />
-    <Reference Include="System.Web.ApplicationServices" />
-    <Reference Include="System.Web.DynamicData" />
-    <Reference Include="System.Web.Entity" />
-    <Reference Include="System.Web.Extensions" />
-    <Reference Include="System.Web.Routing" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Xml.Linq" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Elasticsearch.Net" Version="6.3.1" />
+    <!-- Database removal (fas 7) is a separate, later phase - EF6 stays for now. EF6 supports
+         net5.0+ since 6.3, so it isn't blocked by the TFM switch itself. -->
     <PackageReference Include="EntityFramework" Version="6.5.1" />
-    <PackageReference Include="EWS-Api-2.0" Version="1.0.1" />
+    <PackageReference Include="Elasticsearch.Net" Version="6.3.1" />
+    <PackageReference Include="NEST" Version="6.3.1" />
     <PackageReference Include="HtmlAgilityPack" Version="1.4.6" />
     <PackageReference Include="log4net" Version="2.0.12" />
-    <PackageReference Include="Microsoft.AspNet.Mvc" Version="4.0.20710.0" />
-    <PackageReference Include="Microsoft.AspNet.Mvc.FixedDisplayModes" Version="1.0.0" />
-    <PackageReference Include="Microsoft.AspNet.Razor" Version="2.0.20710.0" />
-    <PackageReference Include="Microsoft.AspNet.SignalR.Core" Version="2.0.3" />
-    <PackageReference Include="Microsoft.AspNet.SignalR.SystemWeb" Version="2.0.3" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.0" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.0" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.WebHost" Version="5.2.0" />
-    <PackageReference Include="Microsoft.AspNet.WebPages" Version="2.0.20710.0" />
-    <PackageReference Include="Microsoft.Azure.KeyVault.Core" Version="1.0.0" />
-    <PackageReference Include="Microsoft.Data.Edm" Version="5.8.4" />
-    <PackageReference Include="Microsoft.Data.OData" Version="5.8.4" />
-    <PackageReference Include="Microsoft.Data.Services.Client" Version="5.8.4" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.48.1" />
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="6.22.0" />
-    <PackageReference Include="Microsoft.Owin" Version="4.2.2" />
-    <PackageReference Include="Microsoft.Owin.Host.SystemWeb" Version="4.2.2" />
-    <PackageReference Include="Microsoft.Owin.Security" Version="4.2.2" />
-    <PackageReference Include="Microsoft.Web.Infrastructure" Version="1.0.0.0" />
-    <PackageReference Include="MySql.Data" Version="6.6.5" />
-    <PackageReference Include="NEST" Version="6.3.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="8.0.1" />
-    <PackageReference Include="Npgsql" Version="2.0.14.3" />
-    <PackageReference Include="Owin" Version="1.0" />
+    <!-- ConfigurationManager.AppSettings is used in ~60 places; migrating all of them to
+         IConfiguration is fas 6, not part of this sweep. This package keeps the API working
+         on modern .NET in the meantime. -->
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.0" />
+    <!-- Newtonsoft.Json 8.0.1 predates netstandard support and cannot be restored for
+         net10.0 - bumped to a version with a net-modern target. No API used here changed. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="QRCoder" Version="1.4.3" />
-    <PackageReference Include="System.Spatial" Version="5.8.4" />
-    <PackageReference Include="Unity" Version="3.0.1304.1" />
-    <PackageReference Include="WindowsAzure.Storage" Version="7.1.2" />
+    <!-- WindowsAzure.Storage (legacy SDK, .NET Framework-only) replaced by Azure.Storage.Blobs
+         in BlobStorageMediaItemManager - this was fas 8, pulled forward because the old
+         package's dependency chain (Microsoft.Data.OData etc.) cannot target net10.0. -->
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.24.0" />
+    <!-- EWS-Api-2.0 (Exchange Web Services managed API) is .NET Framework-only and has no
+         net10.0-compatible build. Graph is the confirmed production mail path (see CLAUDE.md
+         designbeslut), so EWS is removed entirely here instead of migrated - this is fas 8's
+         "Ta bort EWS helt", pulled forward because the package physically cannot restore for
+         net10.0, not because fas 8 was otherwise ready. -->
   </ItemGroup>
 
 </Project>

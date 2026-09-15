@@ -1,5 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<Chalmers.ILL.Models.Page.ChalmersILLOrderListPageModel>
-@using System.Web.Security;
+﻿@model Chalmers.ILL.Models.Page.ChalmersILLOrderListPageModel
 @using Chalmers.ILL.Controllers.SurfaceControllers;
 @using Chalmers.ILL.Extensions;
 @using System.Globalization;
@@ -7,29 +6,11 @@
 
 
 @{
-    Layout = "ChalmersILL.cshtml";
+    Layout = "~/Views/ChalmersILL.cshtml";
 }
 
 @functions
 {
-    /// <summary>
-    /// Appends the given arguments to the query string in the given URL.
-    /// </summary>
-    /// <param name="url">The URL string which should be modified.</param>
-    /// <param name="arguments">The arguments which should be added.</param>
-    /// <returns>The new URL string containing the modified query string.</returns>
-    string AppendArgumentsToQueryString(string url, List<Tuple<string, string>> arguments)
-    {
-        var uriBuilder = new UriBuilder(url);
-        var query = HttpUtility.ParseQueryString(uriBuilder.Query);
-        foreach (var arg in arguments)
-        {
-            query[arg.Item1] = arg.Item2;
-        }
-        uriBuilder.Query = query.ToString();
-        return uriBuilder.ToString();
-    }
-
     /// <summary>
     /// Looks at an order item and returns the correct sorting order index based on status.
     /// </summary>
@@ -73,23 +54,88 @@
 
         return ret;
     }
+
+    // Was System.Web.WebPages' string.AsInt() extension - not available in Core (fas 4).
+    int AsInt(string s) => int.TryParse(s, out var v) ? v : 0;
+
+    // Was a @helper (HelperResult-returning) - a plain string-returning function behaves the
+    // same way at every @ParseStatusPrevalue(...) call site below, markup or code context alike.
+    string ParseStatusPrevalue(string prevalue) => prevalue.Split(':').Last();
+}
+
+@{
+    // Was a @helper (HelperResult-returning, callable as @RenderOrderList(...) from both markup
+    // and code context). @helper doesn't exist in Core Razor (RZ1002); this is the documented
+    // replacement - a local function containing markup, which can only write directly to the
+    // page's output and so must be called as a statement (RenderOrderList(...);) rather than an
+    // expression (fas 4). Declared here, before first use, since local function hoisting across
+    // separate @{ } blocks in the same generated method isn't something to rely on.
+    void RenderOrderList(int memberId, object Id, DateTime date, object patronName, object library, object status, object type,
+        object reference, object editorID, object purchaseLibrary)
+    {
+        string css_class = "";
+        string data_attribute = "";
+        int loggedInMember = memberId;
+
+        // Check if item is marked as being edited; if so, check so it is not edited by the member currently logged in
+        if ((AsInt(editorID.ToString()) != 0) && (AsInt(editorID.ToString()) != loggedInMember))
+        {
+            css_class = "illedit row striped locked";
+        }
+        else
+        {
+            css_class = "illedit row striped";
+        }
+
+        // Mark this item with data-attribute so we can unlock it when doing document.ready unlocking
+        if ((AsInt(editorID.ToString()) != 0) && (AsInt(editorID.ToString()) == loggedInMember))
+        {
+            data_attribute = "data-locked-by-memberid=\"" + editorID.ToString() + "\"";
+        }
+
+        <div id="@Id" class="@css_class" data-editorid="@AsInt(editorID.ToString())" @data_attribute>
+            <div class="col-sm-7" data-column="reference">@Html.Raw(reference.ToString().Replace("\n", "<br />"))</div>
+            <div class="col-sm-2" data-column="patronName">@patronName</div>
+            <div class="col-sm-1 deliveryLibrary @library" data-column="deliveryLibrary">@GetSigelFromLibraryName(Convert.ToString(library))</div>
+            <div class="col-sm-1" data-column="type">@(Convert.ToString(type).ToLower().Contains("inköpsförslag") ? (Convert.ToString(purchaseLibrary) + " " + type) : type)</div>
+            <div class="col-sm-1" data-column="status" data-fud="@date.Ticks">
+                @if (status.ToString().StartsWith("01:"))
+                {
+                    <span class="order-item-status label label-success status-@status.ToString().Split(':').First() chillin-status-@status.ToString().Split(':').First()">@ParseStatusPrevalue(status.ToString())</span>
+                }
+                else if (status.ToString().StartsWith("05:") ||
+                         status.ToString().StartsWith("06:") ||
+                         status.ToString().StartsWith("07:") ||
+                         status.ToString().StartsWith("08:") ||
+                         status.ToString().StartsWith("10:") ||
+                         status.ToString().StartsWith("16:"))
+                {
+                    <span class="order-item-status label label-info status-@status.ToString().Split(':').First() chillin-status-@status.ToString().Split(':').First()">@ParseStatusPrevalue(status.ToString())</span>
+                }
+                else
+                {
+                    <span class="order-item-status label label-danger status-@status.ToString().Split(':').First() chillin-status-@status.ToString().Split(':').First()">@ParseStatusPrevalue(status.ToString())</span>
+                }
+            </div>
+        </div>
+    }
 }
 
 @{
     var orderCriterium = "Status";
     string theQuery = "";
     string debugMessage = "";
-    if (!String.IsNullOrEmpty(Request.QueryString["orderCriterium"]))
+    if (!String.IsNullOrEmpty(Request.Query["orderCriterium"]))
     {
-        orderCriterium = Request.QueryString["orderCriterium"];
+        orderCriterium = Request.Query["orderCriterium"];
     }
 }
 
 @if (Model.PendingOrderItems.Items.Count() > 0)
 {
-    var start = Request.QueryString["start"] != null ? Int32.Parse(Request.QueryString["start"]) : 0;
+    var start = Request.Query["start"].ToString() != "" ? Int32.Parse(Request.Query["start"]) : 0;
     var areMoreItems = start + 50 < Model.PendingOrderItems.Count;
-    var queryString = Request.QueryString["query"] != null ? "&query=" + Request.QueryString["query"] : "";
+    var queryString = Request.Query["query"].ToString() != "" ? "&query=" + Request.Query["query"] : "";
 
     <div class="text-center">
         <div id="library-filter-buttons" class="btn-group" data-pending-filter-change="0">
@@ -123,11 +169,11 @@
         </div>
     </div>
 
-    if (!String.IsNullOrEmpty(Request.QueryString["query"]))
+    if (!String.IsNullOrEmpty(Request.Query["query"]))
     {
         theQuery += "query=";
-        theQuery += Request.QueryString["query"];
-        <h3>Beställningar som matchar <strong>@Request.QueryString["query"]</strong></h3>
+        theQuery += Request.Query["query"];
+        <h3>Beställningar som matchar <strong>@Request.Query["query"]</strong></h3>
     }
 
     if (Model.PendingOrderItems.Count > 50)
@@ -154,12 +200,12 @@
         int loggedInMember = Model.CurrentMemberId;
         foreach (var item in Model.PendingOrderItems.Items.OrderBy(GetSortOrderFromOrderItemSearchResult).ThenBy(y => y.FollowUpDate))
         {
-            @RenderOrderList(loggedInMember, item.NodeId, item.FollowUpDate, item.PatronName, item.DeliveryLibrary, item.Status,
+            RenderOrderList(loggedInMember, item.NodeId, item.FollowUpDate, item.PatronName, item.DeliveryLibrary, item.Status,
                 item.Type, item.Reference, item.EditedBy, item.PurchaseLibrary);
         }
 
         // Add debug message
-        debugMessage += "query.ToString()=" + Request.QueryString["query"];
+        debugMessage += "query.ToString()=" + Request.Query["query"];
     }
 
     @if (areMoreItems)
@@ -183,14 +229,14 @@ else
     <section class="anonymization-list">
         @foreach (var item in Model.ManualAnonymizationItems.Items)
         {
-        @RenderOrderList(Model.CurrentMemberId, item.NodeId, item.FollowUpDate, item.PatronName, item.DeliveryLibrary, item.Status,
-            item.Type, item.Reference, item.EditedBy, item.PurchaseLibrary);
+            RenderOrderList(Model.CurrentMemberId, item.NodeId, item.FollowUpDate, item.PatronName, item.DeliveryLibrary, item.Status,
+                item.Type, item.Reference, item.EditedBy, item.PurchaseLibrary);
         }
     </section>
 }
 
 @* Debug for Search or List *@
-@if (Request.Params["debug"] == "1" && debugMessage != "")
+@if (Request.Query["debug"] == "1" && debugMessage != "")
 {
     <div class="debug-message">
         <strong>debugMessage:</strong> @debugMessage
@@ -198,57 +244,3 @@ else
 }
 
 
-@helper ParseStatusPrevalue(string prevalue)
-{
-    @prevalue.Split(':').Last()
-}
-
-@helper RenderOrderList(int memberId, object Id, DateTime date, object patronName, object library, object status, object type,
-    object reference, object editorID, object purchaseLibrary)
-{
-    string css_class = "";
-    string data_attribute = "";
-    int loggedInMember = memberId;
-
-    // Check if item is marked as being edited; if so, check so it is not edited by the member currently logged in
-    if ((editorID.ToString().AsInt() != 0) && (editorID.ToString().AsInt() != loggedInMember))
-    {
-        css_class = "illedit row striped locked";
-    }
-    else
-    {
-        css_class = "illedit row striped";
-    }
-
-    // Mark this item with data-attribute so we can unlock it when doing document.ready unlocking
-    if ((editorID.ToString().AsInt() != 0) && (editorID.ToString().AsInt() == loggedInMember))
-    {
-        data_attribute = "data-locked-by-memberid=\"" + editorID.ToString() + "\"";
-    }
-
-    <div id="@Id" class="@css_class" data-editorid="@editorID.ToString().AsInt()" @data_attribute>
-        <div class="col-sm-7" data-column="reference">@Html.Raw(reference.ToString().Replace("\n", "<br />"))</div>
-        <div class="col-sm-2" data-column="patronName">@patronName</div>
-        <div class="col-sm-1 deliveryLibrary @library" data-column="deliveryLibrary">@GetSigelFromLibraryName(Convert.ToString(library))</div>
-        <div class="col-sm-1" data-column="type">@(Convert.ToString(type).ToLower().Contains("inköpsförslag") ? (Convert.ToString(purchaseLibrary) + " " + type) : type)</div>
-        <div class="col-sm-1" data-column="status" data-fud="@date.Ticks">
-            @if (status.ToString().StartsWith("01:"))
-            {
-                <span class="order-item-status label label-success status-@status.ToString().Split(':').First() chillin-status-@status.ToString().Split(':').First()">@ParseStatusPrevalue(status.ToString())</span>
-            }
-            else if (status.ToString().StartsWith("05:") ||
-                     status.ToString().StartsWith("06:") ||
-                     status.ToString().StartsWith("07:") ||
-                     status.ToString().StartsWith("08:") ||
-                     status.ToString().StartsWith("10:") ||
-                     status.ToString().StartsWith("16:"))
-            {
-                <span class="order-item-status label label-info status-@status.ToString().Split(':').First() chillin-status-@status.ToString().Split(':').First()">@ParseStatusPrevalue(status.ToString())</span>
-            }
-            else
-            {
-                <span class="order-item-status label label-danger status-@status.ToString().Split(':').First() chillin-status-@status.ToString().Split(':').First()">@ParseStatusPrevalue(status.ToString())</span>
-            }
-        </div>
-    </div>
-}

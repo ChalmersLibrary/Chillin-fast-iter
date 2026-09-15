@@ -1,0 +1,120 @@
+using Chalmers.ILL;
+using Chalmers.ILL.Members;
+using Chalmers.ILL.OrderItems;
+using Chalmers.ILL.SignalR;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
+
+// Replaces Global.asax.cs (Application_Start) and EventHandlers/OwinStartup.cs (Startup.Configuration)
+// with a single minimal-hosting entry point (fas 2). OwinStartup did three things:
+// - DbMigrator (EF6 migrations) - unchanged, still needed until fas 7 removes the database.
+// - Bootstrapper.Initialise(), which set up MVC's DependencyResolver - now builder.Services
+//   directly (see Bootstrapper.cs).
+// - app.MapSignalR() - now app.MapHub<NotificationHub>(...) below.
+// Application_Start's log4net config, filter/route/view-engine registration are wired in below too.
+
+log4net.Config.XmlConfigurator.Configure();
+
+var builder = WebApplication.CreateBuilder(args);
+
+Bootstrapper.RegisterTypes(builder.Services);
+
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddSingleton<FileMembershipProvider>();
+builder.Services.AddSingleton<FileRoleProvider>();
+
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        // Web.config's <authentication mode="Forms" loginUrl="~/ChalmersILLLoginPage" ...> had
+        // neither requireSSL nor a real cookie name ("yourAuthCookie" - an obvious template
+        // placeholder). Fixed here rather than carried over, per fas 3.
+        options.LoginPath = "/ChalmersILLLoginPage";
+        options.Cookie.Name = "ChalmersILLAuth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+    });
+builder.Services.AddAuthorization();
+
+builder.Services.AddControllersWithViews(FilterConfig.RegisterGlobalFilters);
+builder.Services.Configure<RazorViewEngineOptions>(ViewEngineConfig.RegisterViewEngines);
+
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+{
+    // Classic SignalR 2 serialized OrderItemNotification (NodeId, EditedBy, ...) as PascalCase,
+    // and chalmers.ill.js still reads value.NodeId etc. ASP.NET Core SignalR defaults to
+    // camelCase, which would silently break the client with no error - see fas 5.
+    options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+});
+
+var app = builder.Build();
+
+// Was OwinStartup.Configuration's checkForPendingDatabaseMigrations block. Unchanged by this
+// sweep - EF6/SQL Server removal is fas 7.
+if (bool.Parse(System.Configuration.ConfigurationManager.AppSettings["checkForPendingDatabaseMigrations"] ?? "false"))
+{
+    var configuration = new Chalmers.ILL.Migrations.Configuration();
+    var migrator = new System.Data.Entity.Migrations.DbMigrator(configuration);
+    if (System.Linq.Enumerable.Any(migrator.GetPendingMigrations()))
+    {
+        migrator.Update();
+    }
+}
+
+// Notifier needs IHubContext<NotificationHub>, only available once SignalR is registered and
+// the app is built - see the comment in Bootstrapper.RegisterTypes.
+if (app.Services.GetRequiredService<Chalmers.ILL.OrderItems.IOrderItemManager>() is EntityFrameworkOrderItemManager efOrderItemManager)
+{
+    efOrderItemManager.SetNotifier(app.Services.GetRequiredService<Chalmers.ILL.SignalR.INotifier>());
+}
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseExceptionHandler("/Error");
+}
+
+// SystemSurfaceController's cron-server IP check reads Connection.RemoteIpAddress - behind
+// Azure App Service's front-end that's the proxy's IP unless X-Forwarded-For is folded in here
+// first (fas 2: "HTTP_X_FORWARDED_FOR -> ForwardedHeaders-middleware, inte manuell header-parsning").
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+app.UseStaticFiles();
+// Assets still live under Scripts/, Css/, images/ (project root) rather than wwwroot/ - moving
+// them is fas 5's asset-strategy item. Served explicitly here in the meantime.
+foreach (var (path, requestPath) in new[] { ("Scripts", "/Scripts"), ("Css", "/Css"), ("images", "/images") })
+{
+    var full = System.IO.Path.Combine(builder.Environment.ContentRootPath, path);
+    if (System.IO.Directory.Exists(full))
+    {
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(full),
+            RequestPath = requestPath
+        });
+    }
+}
+
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+RouteConfig.RegisterRoutes(app);
+app.MapHub<NotificationHub>("/notificationHub");
+
+app.Run();

@@ -1,7 +1,8 @@
-using System;
-using System.IO;
-using System.Web;
-using System.Web.Routing;
+using System.Threading.Tasks;
+using Chalmers.ILL;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Chalmers.ILL.Tests.Controllers
@@ -10,184 +11,135 @@ namespace Chalmers.ILL.Tests.Controllers
     public class RoutingTest
     {
         [TestMethod]
-        public void DefaultRoute_ControllerAction_MapsCorrectly()
+        public async Task DefaultRoute_ControllerAction_MapsCorrectly()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/ChalmersILL/Index");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILL", routeData.Values["controller"]);
-            Assert.AreEqual("Index", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/ChalmersILL/Index");
+            Assert.AreEqual("ChalmersILL", controller);
+            Assert.AreEqual("Index", action);
         }
 
         [TestMethod]
-        public void DefaultRoute_RootUrl_MapsToChalmersILLController()
+        public async Task DefaultRoute_RootUrl_MapsToChalmersILLController()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILL", routeData.Values["controller"]);
-            Assert.AreEqual("Index", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/");
+            Assert.AreEqual("ChalmersILL", controller);
+            Assert.AreEqual("Index", action);
         }
 
         [TestMethod]
-        public void DefaultRoute_OrderListPage_MapsToOrderListController()
+        public async Task DefaultRoute_OrderListPage_MapsToOrderListController()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/ChalmersILLOrderListPage/Index");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILLOrderListPage", routeData.Values["controller"]);
+            var (controller, _) = await Resolve("/ChalmersILLOrderListPage/Index");
+            Assert.AreEqual("ChalmersILLOrderListPage", controller);
         }
 
         [TestMethod]
-        public void LegacyUmbracoSurfaceAliasRoute_MapsToSameControllerAndAction()
+        public async Task LegacyUmbracoSurfaceAliasRoute_MapsToSameControllerAndAction()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/umbraco/surface/OrderItemReceivedAtBranchSurface/RenderResponse");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("OrderItemReceivedAtBranchSurface", routeData.Values["controller"]);
-            Assert.AreEqual("RenderResponse", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/umbraco/surface/OrderItemReceivedAtBranchSurface/RenderResponse");
+            Assert.AreEqual("OrderItemReceivedAtBranchSurface", controller);
+            Assert.AreEqual("RenderResponse", action);
         }
 
         [TestMethod]
-        public void LegacyBestaellningarSlugAlias_MapsToOrderListController()
+        public async Task LegacyBestaellningarSlugAlias_MapsToOrderListController()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/bestaellningar");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILLOrderListPage", routeData.Values["controller"]);
-            Assert.AreEqual("Index", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/bestaellningar");
+            Assert.AreEqual("ChalmersILLOrderListPage", controller);
+            Assert.AreEqual("Index", action);
         }
 
         [TestMethod]
-        public void LegacyBestaellningarSlugAlias_WithTrailingSlash_MapsToOrderListController()
+        public async Task LegacyBestaellningarSlugAlias_WithTrailingSlash_MapsToOrderListController()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/bestaellningar/");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILLOrderListPage", routeData.Values["controller"]);
-            Assert.AreEqual("Index", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/bestaellningar/");
+            Assert.AreEqual("ChalmersILLOrderListPage", controller);
+            Assert.AreEqual("Index", action);
         }
 
         [TestMethod]
-        public void LegacyDiskSlugAlias_MapsToDiskPageController()
+        public async Task LegacyDiskSlugAlias_MapsToDiskPageController()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/disk");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILLDiskPage", routeData.Values["controller"]);
-            Assert.AreEqual("Index", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/disk");
+            Assert.AreEqual("ChalmersILLDiskPage", controller);
+            Assert.AreEqual("Index", action);
         }
 
         [TestMethod]
-        public void LegacyDiskSlugAlias_WithTrailingSlash_MapsToDiskPageController()
+        public async Task LegacyDiskSlugAlias_WithTrailingSlash_MapsToDiskPageController()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/disk/");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILLDiskPage", routeData.Values["controller"]);
-            Assert.AreEqual("Index", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/disk/");
+            Assert.AreEqual("ChalmersILLDiskPage", controller);
+            Assert.AreEqual("Index", action);
         }
 
         [TestMethod]
-        public void LegacyBestaellningarInstaellningarSlugAlias_MapsToSettingsController()
+        public async Task LegacyBestaellningarInstaellningarSlugAlias_MapsToSettingsController()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/bestaellningar/instaellningar");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILLSettingsPage", routeData.Values["controller"]);
-            Assert.AreEqual("Index", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/bestaellningar/instaellningar");
+            Assert.AreEqual("ChalmersILLSettingsPage", controller);
+            Assert.AreEqual("Index", action);
         }
 
         [TestMethod]
-        public void LegacyBestaellningarInstaellningarSlugAlias_WithTrailingSlash_MapsToSettingsController()
+        public async Task LegacyBestaellningarInstaellningarSlugAlias_WithTrailingSlash_MapsToSettingsController()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/bestaellningar/instaellningar/");
-
-            Assert.IsNotNull(routeData);
-            Assert.AreEqual("ChalmersILLSettingsPage", routeData.Values["controller"]);
-            Assert.AreEqual("Index", routeData.Values["action"]);
+            var (controller, action) = await Resolve("/bestaellningar/instaellningar/");
+            Assert.AreEqual("ChalmersILLSettingsPage", controller);
+            Assert.AreEqual("Index", action);
         }
 
         [TestMethod]
-        public void DefaultRoute_AxdResource_UsesStopRoutingHandler()
+        public async Task BestaellningarInstaellningar_IsNotSwallowedByOrderListWildcard()
         {
-            var routes = new RouteCollection();
-            RouteConfig.RegisterRoutes(routes);
-
-            var routeData = GetRouteData(routes, "http://localhost/WebResource.axd/foo");
-
-            Assert.IsNotNull(routeData);
-            Assert.IsInstanceOfType(routeData.RouteHandler, typeof(System.Web.Routing.StopRoutingHandler));
+            // Regression test for the ordering dependency documented in RouteConfig: the
+            // settings alias must be registered before the order-list alias, or the order
+            // list's wildcard swallows "/bestaellningar/instaellningar" too.
+            var (controller, _) = await Resolve("/bestaellningar/instaellningar");
+            Assert.AreEqual("ChalmersILLSettingsPage", controller);
         }
 
-        private static RouteData GetRouteData(RouteCollection routes, string url)
+        // Resolves a URL through the real RouteConfig.RegisterRoutes registration (endpoint
+        // routing) and returns the matched controller/action - verifies routing behavior end to
+        // end (an HTTP request in, route values out) rather than internal RouteData shape, per
+        // CLAUDE.md's Testtäckningen. No controller is ever constructed or executed: a terminal
+        // middleware reads the match right after the routing middleware selects it and
+        // short-circuits, so this doesn't need any of the controllers' real dependencies wired up.
+        private static async Task<(string controller, string action)> Resolve(string path)
         {
-            var uri = new Uri(url);
-            var appRelativePath = "~" + (uri.AbsolutePath == "/" ? "/" : uri.AbsolutePath);
-            return routes.GetRouteData(new StubHttpContext(appRelativePath));
-        }
+            var builder = WebApplication.CreateBuilder();
+            // The test host's entry assembly isn't Chalmers.ILL.dll, so the default
+            // ApplicationPartManager assembly discovery doesn't find its controllers - add it
+            // explicitly, or every route matches zero endpoints ("No action descriptors found").
+            builder.Services.AddControllersWithViews()
+                .AddApplicationPart(typeof(Chalmers.ILL.Controllers.SurfaceControllers.LoginSurfaceController).Assembly);
+            var app = builder.Build();
 
-        private class StubHttpContext : HttpContextBase
-        {
-            private readonly StubHttpRequest _request;
-            private readonly HttpServerUtilityBase _server = new StubServerUtility();
-
-            public StubHttpContext(string appRelativePath)
+            app.UseRouting();
+            RouteConfig.RegisterRoutes(app);
+            app.Run(async context =>
             {
-                _request = new StubHttpRequest(appRelativePath);
-            }
+                var routeValues = context.Request.RouteValues;
+                context.Items["controller"] = routeValues["controller"]?.ToString();
+                context.Items["action"] = routeValues["action"]?.ToString();
+                await Task.CompletedTask;
+            });
 
-            public override HttpRequestBase Request => _request;
-            public override HttpServerUtilityBase Server => _server;
-            public override bool IsDebuggingEnabled => false;
-        }
+            var requestDelegate = ((IApplicationBuilder)app).Build();
 
-        private class StubHttpRequest : HttpRequestBase
-        {
-            private readonly string _appRelativePath;
-
-            public StubHttpRequest(string appRelativePath)
+            var httpContext = new DefaultHttpContext
             {
-                _appRelativePath = appRelativePath;
-            }
+                RequestServices = app.Services
+            };
+            // DefaultHttpContext leaves Method unset, which the HttpMethodMatcherPolicy treats as
+            // not matching any [HttpGet]-constrained action (e.g. OrderItemReceivedAtBranchSurfaceController)
+            // even though every route in this app is a plain GET in practice.
+            httpContext.Request.Method = "GET";
+            httpContext.Request.Path = path;
 
-            public override string AppRelativeCurrentExecutionFilePath => _appRelativePath;
-            public override string PathInfo => string.Empty;
-        }
+            await requestDelegate(httpContext);
 
-        private class StubServerUtility : HttpServerUtilityBase
-        {
-            public override string MapPath(string path) => @"C:\nonexistent";
+            return ((string)httpContext.Items["controller"], (string)httpContext.Items["action"]);
         }
     }
 }

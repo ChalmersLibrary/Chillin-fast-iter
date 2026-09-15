@@ -18,7 +18,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace Chalmers.ILL.Mail
 {
-    public class MicrosoftGraphMailWebApi : IExchangeMailWebApi
+    public class MicrosoftGraphMailWebApi : IMailWebApi
     {
         private static readonly log4net.ILog _log = log4net.LogManager.GetLogger(typeof(MicrosoftGraphMailWebApi));
 
