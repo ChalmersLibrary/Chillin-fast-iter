@@ -208,6 +208,7 @@ Chalmers.ILL/Config/*
 !Chalmers.ILL/Config/umbracoSettings.config
 !Chalmers.ILL/Config/members.example.json
 !Chalmers.ILL/Config/chillinPrevalues.example.json
+!Chalmers.ILL/Config/log4net.config
 Chalmers.ILL/Install
 Chalmers.ILL/MasterPages
 Chalmers.ILL/Media
@@ -234,6 +235,9 @@ Migration/*.txt
 /Chalmers.ILL/.vscode
 /.vscode
 desktop.ini
+
+# Screenshots from browser-driven verification (brytpunkten efter fas 2)
+Chalmers.ILL.Tests/Screenshots/
 
 # Claude Code local settings (machine-specific permissions)
 .claude/settings.local.json

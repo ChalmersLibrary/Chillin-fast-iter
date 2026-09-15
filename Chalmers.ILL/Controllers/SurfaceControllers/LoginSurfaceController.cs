@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Chalmers.ILL.Members;
 using System.Configuration;
 
@@ -21,6 +22,12 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         readonly Func<string, IEnumerable<string>> _getRolesForUser;
         readonly Func<HttpContext, string, IEnumerable<string>, Task> _signIn;
 
+        // Without this attribute, ASP.NET Core's ActivatorUtilities can't tell this constructor
+        // apart from the test-only one below (both have parameter types it could, in principle,
+        // resolve or default to null) and throws "Multiple constructors accepting all given
+        // argument types" at the first real request - invisible to unit tests, which construct
+        // the controller directly and never go through DI at all.
+        [ActivatorUtilitiesConstructor]
         public LoginSurfaceController(IMemberInfoManager memberInfoManager, FileMembershipProvider membershipProvider, FileRoleProvider roleProvider)
             : this(memberInfoManager, membershipProvider.ValidateUser, roleProvider.GetRolesForUser, SignInWithCookie)
         {

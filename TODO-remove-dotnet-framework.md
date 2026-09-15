@@ -434,7 +434,7 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   controllers är beroende av patchen. Att missa den bröt i praktiken hela orderhanteringen förra gången
   (se [TODO-remove-umbraco.md](TODO-remove-umbraco.md)).
 
-- [ ] **Ersätt `Web.config`s `<system.webServer>`- och `<system.web>`-sektioner**
+- [x] **Ersätt `Web.config`s `<system.webServer>`- och `<system.web>`-sektioner**
   Sektion för sektion, det som faktiskt måste porteras:
   - `<requestFiltering><requestLimits maxAllowedContentLength="1073741824">` (bytes) och
     `<httpRuntime maxRequestLength="1048576">` (KB) — **båda är 1 GB**, dvs. konsekventa idag. Ersätts
@@ -466,12 +466,12 @@ vilket bevisar att projektkonverteringen i sig inte bröt något, innan TFM-byte
   - `<globalization fileEncoding="UTF-8">` behövs inte i Core — men **BOM-fixen i `.cshtml`-filerna
     måste bevaras** (se Umbraco-TODO:ns mojibake-punkt). Kör inte något verktyg som strippar BOM.
 
-- [ ] **Ta bort `<sessionState>` — Session används inte alls**
+- [x] **Ta bort `<sessionState>` — Session används inte alls**
   Verifierat: **noll** träffar på `Session[...]`, `HttpContext.Current.Session` eller `SessionState` i
   hela `Chalmers.ILL/`. `<sessionState mode="InProc" ...>` i Web.config är död konfiguration.
   Ingen session-middleware ska läggas till i Core — hela frågan om in-memory/Redis/SQL-backend bortfaller.
 
-- [ ] **Ta bort `<DbProviderFactories>`**
+- [x] **Ta bort `<DbProviderFactories>`**
   Web.config rad 79-86 registrerar `MySql.Data.MySqlClient` (6.6.5.0) och `System.Data.SqlServerCe.4.0`.
   Båda är Umbraco-arv, ingen av dem används i kod, och ingendera finns i modern .NET.
 
@@ -558,13 +558,43 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
   fullt tillräckligt för det som efterfrågas här (öppna sida, klicka, skärmdumpa), så välj det som är
   minst friktion i containern.
 
-- [ ] **Se till att appen går att starta med så få beroenden som möjligt**
+  **Valt 2026-09-15: `Microsoft.Playwright`**, inte Puppeteer — hela kodbasen är redan .NET, och
+  Playwright kan peka på systemets Chromium (`ExecutablePath`) utan eget nedladdningssteg, så inget
+  separat Node-verktyg eller brandväggsundantag behövs. `chromium` tillagt i `.devcontainer/Dockerfile`
+  (apt, byggtid), `Microsoft.Playwright` tillagt i `Chalmers.ILL.Tests.csproj`, och en liten
+  `BrowserSmokeTest.cs` som bekräftar att Chromium går att starta (skippar, inte failar, om
+  `CHROMIUM_EXECUTABLE_PATH` saknas — så den bryter inte `dotnet test` innan rebuilden är gjord).
+  **Kräver en devcontainer-rebuild för att slutföras** (samma read-only-begränsning som traff SDK-
+  installationen tidigare — Claude kan inte skriva till `.devcontainer/` inifrån containern). Ej
+  ikryssad än; kryssas i efter rebuild + bekräftat grön `BrowserSmokeTest`.
+
+- [x] **Se till att appen går att starta med så få beroenden som möjligt**
   För att brytpunkten ska vara användbar direkt måste inloggningssidan och startsidan gå att rendera
   utan att hela integrationsfloran är uppe. Kartlägg vad varje sida faktiskt kräver — inloggningssidan
   behöver i praktiken bara `members.json`, medan orderlistan kräver Elasticsearch och orderdetaljerna
   dessutom orderfilerna och `chillinPrevalues.json`. Ett `docker-compose` med Elasticsearch och
   Azurite behövs ändå för utvecklingsmiljön, så det arbetet betalar sig flera gånger om. Någon
   databasmotor behövs inte efter fas 7.
+
+  **Verifierat 2026-09-15** med `dotnet run` + `curl`: `/` redirectar korrekt till
+  `/ChalmersILLLoginPage` (302, oautentiserad), login-sidan renderar fullständigt (formulär,
+  CSS/JS-referenser, antiforgery-token), `POST HandleLogin` med ett konto i `Config/members.json`
+  loggar in korrekt (302 till `/disk/?login=ok` för Desk-roll, auth-cookie + medlemscookies satta),
+  och en skyddad sida (`/disk/`) renderar för den inloggade sessionen — allt utan Elasticsearch,
+  FOLIO, mail eller databas uppe. Krävde två saker utöver TFM-svepet, båda hårda förutsättningar för
+  att nå hit, inte valfria:
+  - **`Web.config`s `<appSettings>` läses aldrig av Kestrel** (var alltid IIS/System.Web-specifikt) —
+    utan motsvarighet kraschar appen direkt (`ElasticSearchUrl` blir `null`). Löst med `App.config`
+    (kopieras till `Chalmers.ILL.dll.config`, samma mekanism `System.Configuration.ConfigurationManager`
+    redan använder för testprojektet) — en brygga, inte fas 6:s riktiga `IConfiguration`-migrering.
+  - **Skarp DI-bugg**: `LoginSurfaceController` och `PasswordSurfaceController` har två publika
+    konstruktorer (en för DI, en för tester). ASP.NET Core kunde inte avgöra vilken den skulle
+    använda ("Multiple constructors accepting all given argument types") — kraschade på *varje*
+    request, helt osynligt för enhetstester som konstruerar controllern direkt. Fixat med
+    `[ActivatorUtilitiesConstructor]`. Exakt den sortens fel brytpunkten finns till för att fånga.
+  - Skapade även lokala dev-filer (gitignorade, som avsett): `Config/members.json` (två testkonton,
+    lösenord "chillin123") och `Config/chillinPrevalues.json` (status/typ/bibliotek i rätt
+    "NN:Etikett"-format).
 
 - [ ] **Gör appen körbar utan riktiga integrationer — containrar för det som går, fejk för resten**
   Målet är att `dotnet run` i devcontainern ska ge en fungerande app utan ett enda hemligt

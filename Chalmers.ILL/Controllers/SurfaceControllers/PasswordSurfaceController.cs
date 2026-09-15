@@ -1,5 +1,6 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Chalmers.ILL.Members;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
@@ -16,6 +17,10 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         readonly Func<string, string, bool> _validateUser;
         readonly Func<string, string, string, bool> _changePassword;
 
+        // See the same attribute on LoginSurfaceController for why this is required: without it,
+        // ASP.NET Core's DI-based controller activation is ambiguous between this constructor and
+        // the test-only one below, and throws on the very first request - invisible to unit tests.
+        [ActivatorUtilitiesConstructor]
         public PasswordSurfaceController(IMemberInfoManager memberInfoManager, FileMembershipProvider membershipProvider)
             : this(memberInfoManager, membershipProvider.ValidateUser, membershipProvider.ChangePassword)
         {

@@ -4,12 +4,15 @@ using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.SignalR;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using System;
+using System.IO;
 
 // Replaces Global.asax.cs (Application_Start) and EventHandlers/OwinStartup.cs (Startup.Configuration)
 // with a single minimal-hosting entry point (fas 2). OwinStartup did three things:
@@ -19,9 +22,21 @@ using Microsoft.Extensions.Hosting;
 // - app.MapSignalR() - now app.MapHub<NotificationHub>(...) below.
 // Application_Start's log4net config, filter/route/view-engine registration are wired in below too.
 
-log4net.Config.XmlConfigurator.Configure();
+// The parameterless XmlConfigurator.Configure() discovers its config via Web.config's
+// <log4net configSource="..."> section - which Kestrel never reads (that was already
+// questionable under System.Web, since it relied on ConfigurationManager resolving against the
+// *entry* assembly's config file). Pointed at the file explicitly instead.
+log4net.Config.XmlConfigurator.Configure(new FileInfo(Path.Combine(AppContext.BaseDirectory, "Config", "log4net.config")));
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // Web.config's <requestLimits maxAllowedContentLength> and <httpRuntime maxRequestLength>
+    // were both 1 GB (consistent, if accidentally so). Kestrel's default is only 30 MB, which
+    // would silently break uploads of larger attachments (fas 2).
+    options.Limits.MaxRequestBodySize = 1024L * 1024 * 1024;
+});
 
 Bootstrapper.RegisterTypes(builder.Services);
 
