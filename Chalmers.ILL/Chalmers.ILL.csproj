@@ -33,10 +33,6 @@
     <PackageReference Include="log4net" Version="2.0.12" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.48.1" />
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="6.22.0" />
-    <!-- ConfigurationManager.AppSettings is used in ~60 places; migrating all of them to
-         IConfiguration is fas 6, not part of this sweep. This package keeps the API working
-         on modern .NET in the meantime. -->
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.0" />
     <!-- Newtonsoft.Json 8.0.1 predates netstandard support and cannot be restored for
          net10.0 - bumped to a version with a net-modern target. No API used here changed. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

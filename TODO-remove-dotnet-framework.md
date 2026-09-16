@@ -1069,7 +1069,7 @@ miljöstyrd inställning i Azure.
   cirkulär koppling som löses med setter-injection (`Bootstrapper.cs:198-199`). Den konstruktionen kan
   inte flyttas rakt av.
 
-- [ ] **Migrera `ConfigurationManager.AppSettings` → `IConfiguration`/`IOptions<T>`**
+- [x] **Migrera `ConfigurationManager.AppSettings` → `IConfiguration`/`IOptions<T>`**
   ~60 anropsställen i 19 filer. **Sök inte bara på `ConfigurationManager.`** — fem filer använder
   `using static System.Configuration.ConfigurationManager` och skriver bara `AppSettings[...]`:
   `Services/FolioService.cs:5`, `Services/FolioItemService.cs:4`, `Models/HoldingBasic.cs:2`,
@@ -1120,9 +1120,37 @@ miljöstyrd inställning i Azure.
   - [x] Appens egen `IConfiguration` omdöpt till `IChillinConfiguration` (commit `ae416fb`).
     Krockade namnmässigt med `Microsoft.Extensions.Configuration.IConfiguration`, och en fil som
     bara har `using Microsoft.Extensions.Configuration` hade tyst bundit mot fel interface.
-  - [ ] `appsettings.json` + `builder.Configuration` inkopplat
-  - [ ] De ~60 anropsställena migrerade
-  - [ ] `System.Configuration.ConfigurationManager`-paketet och `App.config` borttagna
+  - [x] `appsettings.json` + `builder.Configuration` inkopplat
+  - [x] De ~60 anropsställena migrerade
+  - [x] `System.Configuration.ConfigurationManager`-paketet och `App.config` borttagna
+
+  **Genomfört 2026-09-16.** `IChillinConfiguration` utökad till 54 properties (grupperade: hosts,
+  Graph-mail, legacy Exchange-fält, storage/sök, Libris, FOLIO, patron-Solr, LibPSearch, diverse).
+  `DefaultChillinConfiguration` backas nu av injicerad `Microsoft.Extensions.Configuration
+  .IConfiguration` mot en ny `Chalmers.ILL/appsettings.json` under `"Chillin"`-sektionen (samma
+  dev-placeholder-värden — `xxx`/`******` — som `App.config` hade, plus de 19 tidigare saknade
+  nycklarna som platshållare). Alla ~60 anropsställen migrerade: FOLIO-ytan (`FolioConnection`,
+  `FolioService`, `FolioItemService`, samt `HoldingBasic`/`InstanceBasic`/`ItemBasic` som POCO:er
+  fick värdena via konstruktorn istället för fältinitierare), mail-ytan (`MailService`,
+  `MicrosoftGraphMailWebApi`, `ChalmersOrderItemsMailSource`, `OrderItemMailSurfaceController`,
+  `LibrisOrderItemsSource`), controllers (`SystemSurfaceController`,
+  `ChalmersILLOrderListPageController`, `LoginSurfaceController`), `Program.cs`
+  (`checkForPendingDatabaseMigrations`) och samtliga fyra vyer som läste `AppSettings` direkt
+  (`ChalmersILL.cshtml`, `ChalmersILLLoginPage.cshtml`, `ChalmersILLStartPage.cshtml`,
+  `Chalmers.ILL.Action.Mail.cshtml`) via ett nytt `@inject IChillinConfiguration Config` i
+  `_ViewImports.cshtml`.
+  **Sidoupptäckt:** `SierraCache`/`SolrLibcdksAffiliationDataProvider` (patron-Solr-implementationerna)
+  är inte kopplade i `Bootstrapper.cs` — `IPatronDataProvider`/`IAffiliationDataProvider` resolvar
+  till `FolioPatronDataProvider`/`PdbAffiliationDataProvider`, och inget `new SierraCache(...)` eller
+  `new SolrLibcdksAffiliationDataProvider(...)` finns någonstans. Död kod, migrerad ändå (för att
+  fortsätta kompilera) men inte borttagen — beslut om att ta bort dem hör inte hemma i den här punkten.
+  Verifierat manuellt med `dotnet run`: inloggning, disk-vy och inställningssidan renderar felfritt
+  utan `App.config`, enbart mot `appsettings.json`.
+  **Kvarstår medvetet:** ingen `appsettings.Development.json`/`appsettings.Production.json`-uppdelning
+  och ingen user-secrets-koppling för hemligheter — det är nästa punkt nedan
+  ("Sätt upp `appsettings.json` + miljöspecifika filer"), som är fristående. De 46 ursprungliga
+  Web.config-nycklarna som redan var överflödiga (`ValidationSettings:UnobtrusiveValidationMode` m.fl.)
+  togs aldrig med i `appsettings.json` eftersom de aldrig lästes av någon kod.
 
 - [ ] **Sätt upp `appsettings.json` + miljöspecifika filer**
   Det finns ingen `Web.Debug.config`/`Web.Release.config`-transform idag, så det saknas miljöuppdelning
