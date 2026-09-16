@@ -696,7 +696,7 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
 Detta är den mest säkerhetskänsliga delen av migreringen. Umbraco-borttagningen tog vid ett tillfälle
 tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk finns här.
 
-- [ ] **Skriv characterization-tester för inloggnings- och auktoriseringsflödet FÖRE omskrivningen**
+- [x] **Skriv characterization-tester för inloggnings- och auktoriseringsflödet FÖRE omskrivningen**
   `AuthorizationTest.cs` finns men är rent reflektionsbaserad: den verifierar att filtret registreras
   och att rätt fyra sidcontrollers *saknar* `[AllowAnonymous]`. Den kör aldrig
   `AuthorizeAttribute.OnAuthorization` och verifierar aldrig att en oinloggad request faktiskt får
@@ -708,6 +708,28 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   - Att `RegisterGlobalFilters` faktiskt *anropas* från startup är otestat.
 
   Skriv beteendetester (helst mot en riktig request-pipeline) för dessa innan något rörs.
+
+  **Åtgärdat i efterhand 2026-09-16** (rewriten hade redan skett; detta täcker upp). Statusgenomgång av
+  de fyra punkterna:
+  - `HandleLogin` — täcks nu av fyra tester i `LoginSurfaceControllerTest.cs` (giltiga uppgifter för
+    Desk/annan roll, ogiltiga uppgifter, ogiltig modell). Redan på plats sedan tidigare i sveppet.
+  - `ChangePassword`s success-väg — redan täckt av `ChangePassword_ChangeSucceeds_RedirectsWithSuccess`
+    (fanns redan).
+  - `RegisterGlobalFilters` anropas faktiskt från startup — synligt direkt i `Program.cs:62`
+    (`AddControllersWithViews(FilterConfig.RegisterGlobalFilters)`), kombinerat med det befintliga
+    enhetstestet som verifierar att metoden lägger till `AuthorizeFilter`.
+  - `[Authorize(Roles = "SuperAdmin")]` — den gamla testen kollade bara attributet reflektivt. Nytt
+    test tillagt: `MemberAdminSurfaceController_SuperAdminAttribute_ActuallyDeniesNonSuperAdminUsers`
+    i `AuthorizationTest.cs`, som bygger en riktig `IAuthorizationService`/`AuthorizationPolicy` och kör
+    den faktiska `RolesAuthorizationRequirement`-handlern mot en Desk- respektive SuperAdmin-`ClaimsPrincipal`.
+
+  **Kvarstår medvetet:** ett fullt pipeline-test (`WebApplicationFactory<Program>` som gör en riktig
+  HTTP-request och verifierar 401/redirect) är inte byggt. `Bootstrapper.RegisterTypes` bygger just nu
+  en riktig `ElasticClient`/`EntityFrameworkOrderItemManager`/`FolioConnection` vid DI-uppstart, så ett
+  sådant test skulle antingen kräva riktiga integrationer eller de fejkregistreringar som beskrivs i
+  brytpunktens "Gör appen körbar utan riktiga integrationer"-punkt. Görs lämpligen tillsammans med den
+  punkten. Fram tills dess är den löpande Puppeteer-baserade webbläsarkontrollen (se brytpunkten efter
+  fas 2) den faktiska pipeline-nivå-verifieringen av inloggning/auktorisering.
 
 - [x] **Skriv om `FileMembershipProvider`/`FileRoleProvider` till cookie-autentisering**
   `Members/FileMembershipProvider.cs` (109 rader) och `FileRoleProvider.cs` (61 rader) ärver

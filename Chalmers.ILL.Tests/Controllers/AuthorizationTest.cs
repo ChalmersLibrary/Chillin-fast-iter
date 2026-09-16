@@ -1,7 +1,10 @@
 using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Controllers.SurfaceControllers.Page;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -108,6 +111,33 @@ namespace Chalmers.ILL.Tests.Controllers
 
             Assert.IsNotNull(attribute);
             Assert.AreEqual("SuperAdmin", attribute.Roles);
+        }
+
+        [TestMethod]
+        public async Task MemberAdminSurfaceController_SuperAdminAttribute_ActuallyDeniesNonSuperAdminUsers()
+        {
+            // The reflection test above only checks that the attribute is present with the right
+            // Roles string; it never runs ASP.NET Core's real authorization pipeline (see
+            // TODO-remove-dotnet-framework.md, fas 3: "[Authorize(Roles = "SuperAdmin")] är otestat").
+            // This drives the actual RolesAuthorizationRequirement handler.
+            var provider = new ServiceCollection().AddAuthorization().AddLogging().BuildServiceProvider();
+            var policyProvider = provider.GetRequiredService<IAuthorizationPolicyProvider>();
+            var authService = provider.GetRequiredService<IAuthorizationService>();
+
+            var attribute = typeof(MemberAdminSurfaceController)
+                .GetCustomAttributes(typeof(AuthorizeAttribute), true)
+                .OfType<AuthorizeAttribute>()
+                .Single();
+            var policy = await AuthorizationPolicy.CombineAsync(policyProvider, new[] { attribute });
+
+            var deskUser = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "Desk") }, "TestAuth"));
+            var superAdminUser = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "SuperAdmin") }, "TestAuth"));
+
+            var deskResult = await authService.AuthorizeAsync(deskUser, policy);
+            var superAdminResult = await authService.AuthorizeAsync(superAdminUser, policy);
+
+            Assert.IsFalse(deskResult.Succeeded);
+            Assert.IsTrue(superAdminResult.Succeeded);
         }
 
         private static bool IsAllowAnonymous(System.Type controllerType)
