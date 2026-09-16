@@ -622,7 +622,7 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
     lösenord "chillin123") och `Config/chillinPrevalues.json` (status/typ/bibliotek i rätt
     "NN:Etikett"-format).
 
-- [ ] **Isolerat läge, steg A: gör appen körbar utan en enda riktig integration**
+- [x] **Isolerat läge, steg A: gör appen körbar utan en enda riktig integration**
   Målet är att `dotnet run` ska ge en fungerande app utan ett enda hemligt konfigurationsvärde.
   **Sömmarna finns redan:** samtliga integrationer ligger bakom interface som registreras i
   `Bootstrapper.cs`, så det här är registreringsarbete, inte refaktorering.
@@ -739,6 +739,86 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
   - Ett test som bevisar att isolerat läge inte kan aktiveras i produktionsmiljön.
   - Med fejkarna på plats blir `WebApplicationFactory<Program>`-tester möjliga för första gången.
     `Chalmers.ILL.Tests/Controllers/RoutingTest.cs:108-143` är en färdig mall för in-process-hosting.
+
+  **Genomfört 2026-09-16.** Alla sömmar i listan ovan fejkade, `Bootstrapper.RegisterTypes` uppdelad
+  i `RegisterLiveSeams`/`RegisterIsolatedSeams`, ny namnrymd `Chalmers.ILL.Isolated`
+  (`Chalmers.ILL/Isolated/`). Genomgång punkt för punkt:
+  - **`IMailWebApi` → `FileMailWebApi`.** Outbox (`DataPath/mail/sentitems/{stamp}/message.json` +
+    `body.html` + bilagor), inbox (`DataPath/mail/inbox/{id}.html`, droppa en fil för att simulera
+    inkommande post), arkiv (`DataPath/mail/archive/{yyyy}/{mm}/`). Mailtolkningen bröts ut till
+    `Mail/IncomingMailParser.cs` (ren funktion, delad med `MicrosoftGraphMailWebApi`) **innan** fejken
+    skrevs, med characterization-test mot exakt den HTML-form
+    `OrderItemMailSurfaceController.SendMailForNewOrder` genererar.
+  - **FOLIO.** `Services/FakeFolio.cs` flyttad till `Isolated/FakeFolio.cs`, `Console.WriteLine` →
+    log4net, de fyra `Post`-overloaderna bygger nu ett fejkat svarsobjekt från indata istället för
+    `null`. Ny `Isolated/FakeFolioConnection.cs` (konstant token, inga appSettings-beroenden). Alla
+    åtta interface registrerade.
+  - **`IMediaItemManager` → `FileMediaItemManager`.** Nyttolast + `.meta.json` (name/orderItemNodeId/
+    createDate/contentType — samma fyra fält som blob-metadatan) under `DataPath/media/`.
+    URL-byggandet brutet ut till `MediaItems/MediaItemUrlBuilder.cs`, delad med
+    `BlobStorageMediaItemManager` så de två implementationerna inte kan glida isär.
+  - **Patrondata** — en enda `Isolated/FilePatronDataProvider.cs` för alla tre interface
+    (`IPatronDataProvider`/`IAffiliationDataProvider`/`IPersonDataProvider`), fyra påhittade låntagare
+    över en gemensam tabell (konstruerade personnummer i `19000101-000N`-mönster, aldrig riktig
+    persondata) — en blockerad, en inaktiv, en oklassificerad, en normal.
+  - **`ITemplateService`/`IChillinTextRepository`.** Ny abstrakt basklass
+    `Templates/TemplateServiceBase.cs` med två primitiver (`LoadAllTemplates`/`SaveTemplate`) —
+    `ElasticsearchTemplateService` och nya `Isolated/FileTemplateService` (en JSON-fil per mall under
+    `DataPath/templates/`) ärver den. `ReplaceMoustaches`/`GetPrettyLibraryNameFromLibraryAbbreviation`/
+    `PopulateTemplateList` m.fl. flyttade till basklassen oförändrade. `IChillinTextRepository` fick en
+    enklare fil-fejk (`Isolated/FileChillinTextRepository.cs`, en JSON-fil) utan gemensam basklass —
+    ingen delad logik att bryta ut.
+  - **Elasticsearch/`IOrderItemSearcher` — avstämt med användaren 2026-09-16 (se AskUserQuestion i
+    sessionen).** TODO-texten krävde att `new ElasticClient(...)` aldrig får köras i isolerat läge,
+    men `EntityFrameworkOrderItemManager` m.fl. singletons i `RegisterTypes` måste ändå ha en
+    konkret `IOrderItemSearcher` vid Bootstrap-tid (fas 7 har inte tagit bort den kopplingen än), och
+    steg B (den riktiga sökersättaren) är explicit inte del av steg A. Löst med en minimal
+    `Isolated/NullOrderItemSearcher` — tomma sökresultat, no-op `Added`/`Modified`/`Deleted`. Inte
+    steg B:s sökersättare, bara det som krävs för att Bootstrap inte ska krascha. Orderlistan är tom
+    i isolerat läge tills steg B; docker-compose-Elasticsearch är fortfarande utvecklarvägen för att
+    faktiskt prova orderlistan.
+  - **Datarot.** `IChillinConfiguration.DataPath` (explicit `Chillin:DataPath`, annars `$HOME/data`,
+    annars en katalog bredvid `ContentRootPath`) och `.Isolated` (bool, default false). `MemberFileStore`
+    och `ChillinOrderConfiguration` läser nu `members.json`/`chillinPrevalues.json` under `DataPath`
+    istället för `AppDomain.CurrentDomain.BaseDirectory` — `Config/members.json`/`chillinPrevalues.json`
+    är inte längre läsvägen (borttagna `<Content Update>`-poster i csproj; `.example.json`-mallarna
+    ligger kvar som referens). De gitignorade lokala dev-filerna flyttades till `$HOME/data`, verifierat
+    med en full `dotnet run` att login-flödet fortfarande fungerar identiskt mot den nya platsen.
+    **Medvetet inte gjort:** loggfilens sökväg (`Config/log4net.config`s `App_Data/Logs/...`) flyttades
+    **inte** under `DataPath` — inte del av fejklistan ovan, och log4nets `${}`-variabelsubstitution
+    hade krävt en egen, oprövad ändring. Tas upp igen i fas 10 om Kudu/SSH-åtkomst till loggar kräver
+    det.
+  - **Räckena.** (1) Riktiga typer konstrueras aldrig i isolerat läge — verifierat av (2).
+    (2) `Isolated/IsolationGuard.cs`, en tillåtelselista över 16 söm-interface, körd både från
+    `Bootstrapper.RegisterTypes` (kraschar vid fel) och från tester. Hemlighetskontrollen känner igen
+    `"******"`/`"xxx"` som etablerade platshållare (fas 6) — bara ett värde som inte matchar någon av
+    dem räknas som en riktig hemlighet. (3) WARN-ram i loggen (`log4net`, inte konsolen — verifierat
+    manuellt i `App_Data/Logs/ChillinTraceLog.txt`) som räknar upp varje fejkad söm; INFO-rad i Live.
+    (4) Ingen banner/inga testverktyg i gränssnittet — inget nytt byggt här.
+  - **"Isolerat läge kan inte aktiveras i produktionsmiljön"** — avstämt med användaren att detta INTE
+    ska vara en miljönamnsjämförelse (den isolerade testservern i fas 10 kör medvetet med
+    produktionens felhantering samtidigt som `Isolated=true`). Testat istället som "isolerat läge med
+    ett riktigt hemlighetsvärde ifyllt kraschar" (`BootstrapperIsolationTest`), vilket är den faktiska
+    skyddsmekanismen räcke 2 ger: om produktionens App Settings klonas till en isolerad app upptäcks
+    det, oavsett miljönamn.
+  - **Tester tillagda:** `BootstrapperIsolationTest` (4 st — tillåtelselistan i båda riktningarna,
+    nollkonfiguration i isolerat läge, riktig hemlighet kraschar, platshållare kraschar inte),
+    `IncomingMailParserTest` (4 st), `Controllers/IsolatedModeSmokeTest.cs` — första
+    `WebApplicationFactory<Program>`-testet i projektet (`Microsoft.AspNetCore.Mvc.Testing` tillagt,
+    `Program`-klassen gjord `public partial` för att vara synlig för testprojektet), 2 st: root
+    redirectar till login (302), login-sidan renderar (200), i isolerat läge utan en enda konfigurerad
+    hemlighet. 180/180 gröna (var 164 vid fas 6:s slut, +10 i en tidigare commit samma dag för
+    Isolated/DataPath-konfigurationen och mailparsningsutbrytningen, +6 här).
+  - **Verifierat manuellt med `dotnet run`, både lägen:** Live (`Chillin:Isolated=false`, dagens
+    `appsettings.Development.json`) — oförändrat beteende, INFO-rad loggad. Isolerat
+    (`Chillin__Isolated=true`, `Chillin__DataPath` pekat på en scratch-katalog, **inga andra
+    miljövariabler satta**) — appen startar, `/` redirectar till login (302), login-sidan renderar
+    (200), WARN-ramen loggas med alla åtta fejkade sömmarna uppräknade. Inloggning med de befintliga
+    dev-kontona prövades men prövade lösenord matchade inte de lagrade hashen (orelaterat till denna
+    ändring — samma `FileMembershipProvider`/`members.json`-mekanism som redan fanns; inte utrett
+    vidare eftersom `LoginSurfaceControllerTest` redan täcker den lyckade inloggningsvägen med stubbar).
+  - **Medvetet inte gjort här** (separata TODO-punkter): testdata-punkten nedan och "använd
+    brytpunkten löpande"-punkten är egna, ofristående uppgifter.
 
 - [ ] **⚠️ Ordna testdata för utvecklingsmiljön — saknas helt i planen i övrigt**
   Ingen annan punkt i den här listan säger var *innehållet* ska komma ifrån, och utan det är

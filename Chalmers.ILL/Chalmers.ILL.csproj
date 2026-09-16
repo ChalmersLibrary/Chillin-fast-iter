@@ -9,13 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Update="Config\chillinPrevalues.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <!-- members.json/chillinPrevalues.json themselves are no longer read from here (fas 6,
+         isolerat läge steg A, "Datarot") - IChillinConfiguration.DataPath is now the only source of
+         truth for where they live. The .example.json templates stay for reference. -->
     <Content Update="Config\members.example.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Update="Config\members.json" Condition="Exists('Config\members.json')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="Config\log4net.config">

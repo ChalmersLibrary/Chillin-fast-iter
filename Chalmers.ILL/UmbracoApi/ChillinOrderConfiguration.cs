@@ -12,9 +12,15 @@ namespace Chalmers.ILL.UmbracoApi
         private readonly Dictionary<string, List<DropdownOption>> _lists;
         private readonly Dictionary<int, string> _idToValue;
 
-        public ChillinOrderConfiguration()
+        // Was AppDomain.CurrentDomain.BaseDirectory unconditionally - now takes the directory to
+        // read chillinPrevalues.json from, so Bootstrapper can point it at IChillinConfiguration's
+        // DataPath (fas 6, isolerat läge steg A, "Datarot"). The parameterless overload keeps the
+        // old default for anything constructing this directly outside DI.
+        public ChillinOrderConfiguration() : this(AppDomain.CurrentDomain.BaseDirectory) { }
+
+        public ChillinOrderConfiguration(string configDirectory)
         {
-            _lists = LoadLists();
+            _lists = LoadLists(configDirectory);
             _idToValue = _lists.Values
                 .SelectMany(l => l)
                 .GroupBy(o => o.Id)
@@ -56,9 +62,9 @@ namespace Chalmers.ILL.UmbracoApi
             return list ?? new List<DropdownOption>();
         }
 
-        private static Dictionary<string, List<DropdownOption>> LoadLists()
+        private static Dictionary<string, List<DropdownOption>> LoadLists(string configDirectory)
         {
-            var path = ResolvePath();
+            var path = Path.Combine(configDirectory, "chillinPrevalues.json");
             if (!File.Exists(path))
                 return EmptyConfig();
 
@@ -73,10 +79,6 @@ namespace Chalmers.ILL.UmbracoApi
                 return EmptyConfig();
             }
         }
-
-        // See MemberFileStore.ResolvePath for why this no longer tries HttpRuntime.AppDomainAppPath.
-        private static string ResolvePath() =>
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "chillinPrevalues.json");
 
         private static Dictionary<string, List<DropdownOption>> EmptyConfig() =>
             new Dictionary<string, List<DropdownOption>>

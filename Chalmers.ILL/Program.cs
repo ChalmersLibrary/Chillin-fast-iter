@@ -133,3 +133,8 @@ RouteConfig.RegisterRoutes(app);
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();
+
+// Makes the top-level statements' implicit Program class visible to
+// WebApplicationFactory<Program> in the test project (fas 6, isolerat läge steg A) - it's
+// internal by default.
+public partial class Program { }

@@ -101,7 +101,7 @@ namespace Chalmers.ILL.MediaItems
             mediaItem.Id = blob.Name;
             mediaItem.Name = properties.Metadata["name"];
             mediaItem.OrderItemNodeId = Convert.ToInt32(properties.Metadata["orderItemNodeId"]);
-            mediaItem.Url = _configuration.BaseUrl + "umbraco/surface/MediaItemSurface/GetMediaItem/" + mediaItem.Id;
+            mediaItem.Url = MediaItemUrlBuilder.Build(_configuration.BaseUrl, mediaItem.Id);
             mediaItem.CreateDate = Convert.ToDateTime(properties.Metadata["createDate"]);
             mediaItem.ContentType = properties.ContentType;
         }
