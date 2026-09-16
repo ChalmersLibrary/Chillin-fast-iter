@@ -780,11 +780,40 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   Web.config-raden `<authorization><allow users="?" /></authorization>` (som tillåter alla på
   IIS-nivå) försvinner; hela auktoriseringen vilar redan idag på MVC-filtret.
 
-- [ ] **Lägg till `[ValidateAntiForgeryToken]` på login- och lösenordsbytes-POST**
+- [x] **Lägg till `[ValidateAntiForgeryToken]` på login- och lösenordsbytes-POST**
   Finns idag på **noll** ställen i hela kodbasen. `[ValidateInput(false)]` finns däremot på 25 —
   request validation är helt borttaget i ASP.NET Core, så de attributen ska bara strykas, men det
   betyder också att det residuala XSS-skyddet från `System.Web` försvinner. Verifiera att vyerna
   output-encodar korrekt (15 `@Html.Raw`-anrop är värda en genomgång).
+
+  **Åtgärdat 2026-09-16.** `[ValidateAntiForgeryToken]` tillagt på `LoginSurfaceController.HandleLogin`
+  och `PasswordSurfaceController.ChangePassword`, samt `@Html.AntiForgeryToken()` i respektive
+  `Html.BeginForm`-formulär (`Chalmers.ILL.Login.cshtml`, `Settings/ChangePassword.cshtml`) — utan den
+  senare hade token aldrig postats med och alla inloggnings-/lösenordsbytesförsök blockerats.
+  Reflektionstester tillagda: `HandleLogin_HasValidateAntiForgeryTokenAttribute`,
+  `ChangePassword_HasValidateAntiForgeryTokenAttribute`.
+
+  Genomgången av de 15 `@Html.Raw`-anropen gav tre verkliga XSS-fynd (befintliga sedan innan denna
+  migrering, inte introducerade av den) — resten (`ArticleByMailOrInternalMail.cshtml`) är `Html.Raw`
+  bara på hårdkodade `"<br />"`/`""`-literaler, ingen användardata:
+  - `ChalmersILLOrderListPage.cshtml:97` — orderns `reference`-fält skrevs raw förutom
+    nyradskonvertering. Fixat: HTML-encoda innan nyradsersättningen (`Html.Encode(...).Replace("\n", "<br />")`).
+  - `Chalmers.ILL.Action.Mail.cshtml` (tre ställen) — mailloggens `logItem.Message`/`OriginalOrder`
+    (fritext, kan komma från en patrons mailsvar) skrevs raw rakt in i dolda `<div>`:ar som sedan lästes
+    med jQuery `.html()` och stoppades i ett textarea-värde. Eftersom det är riktig DOM-parsning kunde
+    en `<script>`/`<img onerror=...>` i meddelandet exekvera direkt vid sidladdning, oavsett att
+    div:en var `display:none`. Fixat: bytte `Html.Raw(...)` mot vanlig auto-encodande `@(...)`-output,
+    och bytte motsvarande `.html()`-läsningar i samma fils inline-script till `.text()` så att de
+    HTML-encodade tecknen avkodas tillbaka till ursprunglig text i stället för att synas som entiteter.
+  - `Chalmers.ILL.OrderItem.cshtml:472-473` — `OrderItem`/event-mappningen JSON-serialiseras med
+    Newtonsoft (som till skillnad från `System.Text.Json`s default-encoder inte escapar `<`) och skrivs
+    rakt in i en `<script>`-block som ett JS-objektlitteral. Ett meddelande som innehåller `</script>`
+    hade kunnat bryta ut ur blocket. Fixat: `.Replace("<", "\\u003c")` på den serialiserade strängen.
+
+  Inga nya renderingstester tillagda för dessa vyer — testsviten har ingen infrastruktur för att
+  rendera Razor-vyer än (skulle vara ett eget, större arbete, se fas 9). Verifiera visuellt vid nästa
+  brytpunkts-webbläsarpass (fas 3–8), särskilt mailflödet och en order med specialtecken i referens/
+  patronanteckningar.
 
 ---
 

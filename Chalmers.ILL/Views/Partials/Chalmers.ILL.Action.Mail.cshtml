@@ -52,14 +52,14 @@
                     {
                         foreach (var logItem in Model.OrderItem.LogItemsList.Where(x => x.Type == "MAIL"))
                         {
-                            @Html.Raw("\n---\n" + logItem.Message)
+                            @("\n---\n" + logItem.Message)
                             //We just want the first log entry
                             break;
                         }
                     }
                     else
                     {
-                        @Html.Raw("\n---\n" + Model.OrderItem.OriginalOrder)
+                        @("\n---\n" + Model.OrderItem.OriginalOrder)
                     }
                 }</div>
                 <div id="historyStorage" style="display:none;">@{
@@ -67,7 +67,7 @@
                     {
                         foreach (var logItem in Model.OrderItem.LogItemsList.Where(x => x.Type == "MAIL"))
                         {
-                            @Html.Raw("\n---\n" + logItem.Message)
+                            @("\n---\n" + logItem.Message)
                             //We just want the first log entry
                             break;
                         }
@@ -189,7 +189,11 @@
                 html: true
             });
 
-            $("#message").val($("#signatureStorage").html() + $("#historyStorage").html())
+            // .text() (not .html()): the storage divs' content is HTML-encoded server-side so a
+            // patron-controlled mail message can't inject markup into the page. .html() would
+            // return that markup back verbatim (literal "&lt;" etc.); .text() decodes it to the
+            // original plain text, which is what belongs in the textarea.
+            $("#message").val($("#signatureStorage").text() + $("#historyStorage").text())
                 .focus().scrollTop(0)[0].setSelectionRange(0, 0);
         });
 
@@ -230,7 +234,7 @@
         function selectTemplate(templateId, templateDescription) {
             $("#currently-selected-template").text(templateDescription);
             if (templateId == -1) {
-                $("#message").val($("#signatureStorage").html() + $("#historyOrOriginalOrderStorage").html())
+                $("#message").val($("#signatureStorage").text() + $("#historyOrOriginalOrderStorage").text())
                     .focus().scrollTop(0)[0].setSelectionRange(0, 0);
             } else {
                 var templateData = "";
@@ -238,7 +242,7 @@
                 $.getJSON("/TemplatesSurface/GetPopulatedTemplateData", { templateId:templateId, orderItemNodeId:@Model.OrderItem.NodeId })
                     .done(function (json) {
                         if (json.Success) {
-                            $("#message").val(json.Data + $("#historyStorage").html())
+                            $("#message").val(json.Data + $("#historyStorage").text())
                                 .focus().scrollTop(0)[0].setSelectionRange(0, 0);
                         }
                         else {

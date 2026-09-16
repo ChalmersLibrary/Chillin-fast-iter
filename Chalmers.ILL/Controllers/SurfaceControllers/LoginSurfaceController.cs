@@ -56,6 +56,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> HandleLogin(Models.LoginModel model)
         {
             if (!ModelState.IsValid)

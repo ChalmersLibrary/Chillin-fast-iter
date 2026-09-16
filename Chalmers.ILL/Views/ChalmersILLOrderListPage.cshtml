@@ -94,7 +94,7 @@
         }
 
         <div id="@Id" class="@css_class" data-editorid="@AsInt(editorID.ToString())" @data_attribute>
-            <div class="col-sm-7" data-column="reference">@Html.Raw(reference.ToString().Replace("\n", "<br />"))</div>
+            <div class="col-sm-7" data-column="reference">@Html.Raw(Html.Encode(reference.ToString()).Replace("\n", "<br />"))</div>
             <div class="col-sm-2" data-column="patronName">@patronName</div>
             <div class="col-sm-1 deliveryLibrary @library" data-column="deliveryLibrary">@GetSigelFromLibraryName(Convert.ToString(library))</div>
             <div class="col-sm-1" data-column="type">@(Convert.ToString(type).ToLower().Contains("inköpsförslag") ? (Convert.ToString(purchaseLibrary) + " " + type) : type)</div>

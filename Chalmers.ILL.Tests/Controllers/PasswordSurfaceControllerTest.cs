@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -97,6 +98,15 @@ namespace Chalmers.ILL.Tests.Controllers
             controller.ChangePassword(new Models.PartialPage.Settings.ChangePassword { CurrentPassword = "current", NewPassword = "newpass" });
 
             Assert.AreEqual("testuser", capturedLoginName);
+        }
+
+        [TestMethod]
+        public void ChangePassword_HasValidateAntiForgeryTokenAttribute()
+        {
+            // Password change had no CSRF protection at all (see TODO-remove-dotnet-framework.md, fas 3).
+            var method = typeof(PasswordSurfaceController).GetMethod(nameof(PasswordSurfaceController.ChangePassword));
+
+            Assert.IsTrue(method.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), true).Any());
         }
 
         private static void SetHttpContext(Controller controller)

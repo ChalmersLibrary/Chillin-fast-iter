@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Members;
@@ -67,6 +68,15 @@ namespace Chalmers.ILL.Tests.Controllers
 
             Assert.IsNotNull(result);
             Assert.AreEqual("/login?error=invalid-model", result.Url);
+        }
+
+        [TestMethod]
+        public void HandleLogin_HasValidateAntiForgeryTokenAttribute()
+        {
+            // Login had no CSRF protection at all (see TODO-remove-dotnet-framework.md, fas 3).
+            var method = typeof(LoginSurfaceController).GetMethod(nameof(LoginSurfaceController.HandleLogin));
+
+            Assert.IsTrue(method.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), true).Any());
         }
 
         private static LoginSurfaceController NewController(Func<string, string, bool> validateUser, Func<string, IEnumerable<string>> getRolesForUser, Func<HttpContext, string, IEnumerable<string>, Task> signIn)

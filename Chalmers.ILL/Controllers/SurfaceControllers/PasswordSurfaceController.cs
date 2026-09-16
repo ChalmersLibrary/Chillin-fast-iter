@@ -39,6 +39,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult ChangePassword(Models.PartialPage.Settings.ChangePassword model)
         {
             if (!ModelState.IsValid)
