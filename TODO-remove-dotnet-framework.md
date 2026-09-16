@@ -53,6 +53,18 @@ Dessa är avstämda med användaren 2026-09-09/10 och ska inte omprövas utan ny
 | Konfigurationsfiler | `members.json` och `chillinPrevalues.json` läggs upp **manuellt utanför `wwwroot`**, i en katalog som är åtkomlig via Kudu (t.ex. under hemmappen). Sökvägarna görs konfigurerbara. Se fas 10. |
 | Mail | **Graph-vägen är den som körs i drift.** EWS (`ExchangeMailWebApi.cs`, `EWS-Api-2.0`) tas bort helt, inte migreras. |
 | DbContext-livstid | **Frågan bortfaller** med lagringsbytet ovan. Dagens `Dictionary<threadId, DbContext>` utan låsning försvinner tillsammans med EF6 i stället för att byggas om till scoped DI. |
+| Loggning | **log4net behålls**, `Microsoft.Extensions.Logging` väljs bort. Loggfiler på disk, minimal Azure-integration, ingen Application Insights. M.E.L. har ingen inbyggd filprovider, så ett byte hade krävt Serilog/NLog som nytt beroende. Se fas 6. *(2026-09-16)* |
+| Isolerad testserver | **Egen Azure App Service på Linux-planet**, helt avskuren: alla integrationer fejkade i processen, även Elasticsearch och Blob Storage. Persistent egen data under `/home/data`. Inga testverktyg i gränssnittet. Se fas 10, "Isolerad testserver". *(2026-09-16)* |
+
+**Arbetsordning härifrån** (avstämd 2026-09-16, ersätter den rena fasföljden):
+
+1. **Fas 6** — hård förutsättning för allt annat: utan `IConfiguration` går appen inte att
+   konfigurera i Azure över huvud taget, och lägesomkopplaren nedan går inte att sätta. Se fas 6.
+2. **Isolerat läge, steg A** — fejkarna, omkopplaren och dataroten. Oberoende av fas 7. Se den
+   punkten vid brytpunkten efter fas 2. Ger klickbar app genom resten av migreringen.
+3. **Fas 7** — filbaserad orderlagring.
+4. **Isolerat läge, steg B** — sökersättaren och Azure-instansen. Se fas 10.
+5. Fas 5 (klientassets), 8, 9, 10 i övrigt, och slutligen 11.
 
 ---
 
@@ -610,45 +622,104 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
     lösenord "chillin123") och `Config/chillinPrevalues.json` (status/typ/bibliotek i rätt
     "NN:Etikett"-format).
 
-- [ ] **Gör appen körbar utan riktiga integrationer — containrar för det som går, fejk för resten**
-  Målet är att `dotnet run` i devcontainern ska ge en fungerande app utan ett enda hemligt
-  konfigurationsvärde. **Sömmarna finns redan:** samtliga integrationer ligger bakom interface som
-  registreras i `Bootstrapper.cs`, så det här är registreringsarbete, inte refaktorering.
+- [ ] **Isolerat läge, steg A: gör appen körbar utan en enda riktig integration**
+  Målet är att `dotnet run` ska ge en fungerande app utan ett enda hemligt konfigurationsvärde.
+  **Sömmarna finns redan:** samtliga integrationer ligger bakom interface som registreras i
+  `Bootstrapper.cs`, så det här är registreringsarbete, inte refaktorering.
 
-  **Dela upp de fyra — de är inte samma problem:**
+  **Omtag 2026-09-16, avstämt med användaren.** Punkten hette tidigare "containrar för det som går,
+  fejk för resten" och förutsatte Elasticsearch + Azurite som containrar i devcontainern. Det
+  gäller fortfarande som *utvecklarväg*, men användaren vill dessutom ha en **helt isolerad
+  testserver som egen Azure App Service** (se fas 10, steg B). En App Service-webbapp kan inte köra
+  sidovagnscontainrar, så där måste även ES och Blob Storage ersättas i processen. Beslutet "fejka
+  inte Elasticsearch" gäller alltså inte längre villkorslöst — se steg B för avgränsningen.
 
-  *Behövs inte längre:* **SQL Server** — databasen tas bort i fas 7, så devcontainern behöver ingen
-  databasmotor alls. Orderdatan är filer i en katalog.
+  **Arbetet delas i två:** steg A (nedan) är oberoende av fas 7 och ska göras direkt efter fas 6.
+  Steg B (sökersättaren + Azure-instansen) kräver fas 7 och ligger i fas 10. Skälet att göra steg A
+  tidigt är att webbläsarkontrollen då fungerar genom hela fas 7–8 i stället för först efteråt.
 
-  *Kör som containrar (kräver inga hemligheter, ger full trohet):*
-  - **Elasticsearch** — officiell image, inga credentials. **Fejka inte den här.**
-    `IOrderItemSearcher.Search(string query)` tar rå Lucene-syntax — verkliga anrop ser ut som
-    `status:03\:Beställd AND followUpDate:[... TO ...]` och
-    `updateDate:[* TO ...] AND status:("05:Levererad" OR ...) AND (!_exists_:isAnonymizedAutomatically)`.
-    En trogen fejk vore ett litet sökmotorprojekt i sig.
-  - **Azure Blob Storage** — Azurite är den officiella emulatorn och ersätter den borttagna
-    `AzureStorageEmulatorManager` (fas 0b).
+  **Omkopplaren.** En enda explicit flagga, `Chillin:Isolated` (bool, default `false`) — inte en
+  jämförelse mot miljönamnet. Miljönamnet behövs till annat (`IsDevelopment()` styr felsidan,
+  `Program.cs:94`), och testservern ska köra med produktionens felhantering, inte utvecklingslägets.
+  Okänt/saknat/felstavat värde ⇒ **inte** isolerat. En fejk som är påslagen utan att någon märker
+  det är farligare än ingen fejk alls.
 
-  *Fejka (går genuint inte att nå lokalt):*
-  - **FOLIO** — `FakeFolio` i `Bootstrapper.cs:25-111` implementerar **redan** alla sju interface
+  **Förgreningen måste ligga inuti `Bootstrapper.RegisterTypes`**, inte i `Program.cs`. Två rader
+  konstruerar riktiga klienter *eagerly* och får inte köras alls i isolerat läge:
+  `Bootstrapper.cs:39-43` (`new ElasticClient(...)` mot `config.ElasticSearchUrl`) och
+  `Bootstrapper.cs:58` (`new FolioConnection()`, som läser fyra appSettings i fältinitierare och
+  kastar `NullReferenceException` om de saknas). Dela metoden i en gemensam del och två grenar.
+  Det är samma ändring som fas 3 pekar ut som blockerare för `WebApplicationFactory`-tester.
+
+  **Samla fejkarna i namnrymden `Chalmers.ILL.Isolated`** (`Chalmers.ILL/Isolated/`). Då blir
+  isoleringstestet en *tillåtelselista* — "varje söm ska lösa ut en typ i den namnrymden" — i stället
+  för en uppräkning av dagens typer som ruttnar så fort någon lägger till en ny integration.
+  Namnge efter backningen som befintlig kod gör: `File*` när fejken har tillstånd på disk, `Fake*`
+  när den är tillståndslös.
+
+  Fejkarna som ingår i steg A:
+  - **`IMailWebApi`** (7 metoder) → `Isolated/FileMailWebApi.cs`. Utgående mail skrivs som
+    `message.json` + `body.html` + bilagor i en `outbox`-mapp — kroppen som separat `.html` gör
+    mailen öppningsbara i webbläsaren, vilket är hela poängen. `ReadMailQueue` läser en `inbox`-mapp
+    man kan släppa filer i för att simulera inkommande beställningar. **Viktigast av alla fejkar** —
+    Graph-vägen skickar mail till låntagare, vidarebefordrar och raderar meddelanden, och det finns
+    idag ingen testdubbel alls för `IMailWebApi`, varken i produktionskod eller tester.
+    **Bryt samtidigt ut tolkningen av inkommande beställningsmail** ur
+    `MicrosoftGraphMailWebApi.cs:156-230` till en ren funktion som både Graph-implementationen och
+    fejken anropar. Annars provar man mailflödet utan att prova mailtolkningen, som är den del som
+    faktiskt går sönder. Characterization-test först, mot `Chalmers.ILL.Tests/Mail/Data/`.
+  - **FOLIO** — `Chalmers.ILL/Services/FakeFolio.cs` implementerar **redan** alla sju interface
     (`IFolioItemService`, `IFolioRepository`, `IFolioService`, `IFolioInstanceService`,
-    `IFolioHoldingService`, `IFolioCirculationService`, `IFolioUserService`) med tomma/kanonade svar.
-    Den saknar bara `FakeFolioConnection`, som aldrig skrevs. **Färdigställ den i stället för att
-    börja om** — flytta ut ur `Bootstrapper.cs` till en egen fil (se fas 0b, där den annars föreslås
-    tas bort; behåll den om den här punkten görs).
-  - **Microsoft Graph-mail** — `IExchangeMailWebApi` har sju metoder, alla enkla att fejka mot
-    filsystemet: utgående mail skrivs som filer i en `outbox`-mapp, `ReadMailQueue` läser en
-    `inbox`-mapp man kan släppa filer i för att simulera inkommande beställningar. Det gör dessutom
-    hela mailflödet *inspekterbart* i webbläsartestningen, vilket det inte är mot en riktig brevlåda.
-  - **Patrondata och Libris** — `IPatronDataProvider`, `IAffiliationDataProvider`,
-    `IPersonDataProvider` (PDB/Solr) och `LibrisOrderItemsSource`. Samma mönster.
-  - **`IMediaItemManager`** kan valfritt också fejkas mot en mapp (bara tre metoder) om man vill
-    slippa även Azurite för en snabb start.
+    `IFolioHoldingService`, `IFolioCirculationService`, `IFolioUserService`). Färdigställ i stället
+    för att börja om: flytta till `Isolated/`, byt `Console.WriteLine` mot log4net (Console försvinner
+    i App Service), fyll i de fyra `Post`-överlagringar som returnerar `null` idag, och skriv den
+    `FakeFolioConnection` som aldrig skrevs. Registrera alla åtta.
+  - **`IMediaItemManager`** (3 metoder) → `Isolated/FileMediaItemManager.cs`. Nyttolast + en
+    `.meta.json` med samma fyra fält som blobmetadatan. `DeleteOlderThan` måste behålla sin semantik
+    — den anropas skarpt från `MaintenanceSurfaceController`. **URL-formen måste bevaras exakt:**
+    `BlobStorageMediaItemManager.cs:104` bygger `BaseUrl + "umbraco/surface/MediaItemSurface/GetMediaItem/" + Id`,
+    beroende av legacy-aliaset i `RouteConfig.cs:15-18`. Bryt ut URL-byggandet till en delad hjälpare
+    så att de två implementationerna aldrig kan glida isär.
+  - **Patrondata** — `IPatronDataProvider`, `IAffiliationDataProvider`, `IPersonDataProvider`.
+    Påhittade låntagare över en gemensam liten tabell; okända nycklar ska ge *icke-träff*, så att
+    "låntagaren hittades inte"-vägen går att prova. **Endast konstruerade personnummer** — riktig
+    persondata får aldrig läggas i testdatan.
+  - **Libris** behövs inte — `LibrisOrderItemsSource` är redan utkommenterad i
+    `ChalmersSourceFactory.cs:37` (tjänsten lades ned 2025-09-08).
+  - **`ITemplateService`** och **`IChillinTextRepository`** är ES-beroende men har små, enkla frågor
+    (`automatic:false`, `id:N`, `nodeName:X`, match_all, exists) — filbaserade implementationer, inte
+    via sökersättaren. `ElasticsearchTemplateService` innehåller dock även ren logik
+    (`ReplaceMoustaches`, `GetPrettyLibraryNameFromLibraryAbbreviation`, `PopulateTemplateList` med
+    `sv-se`-sorteringen) som inte får dupliceras. Bryt ut till en **abstrakt basklass** ovanpå två
+    primitiver (`LoadAllTemplates`, `SaveTemplate`) — basklass och inte hjälpklass, därför att
+    `ReplaceMoustaches` anropar rekursivt tillbaka in i `GetTemplateData` för `{{T:…}}`-injektion
+    (`ElasticsearchTemplateService.cs:178`).
 
-  **Inkoppling:** en enda miljöstyrd brytpunkt i `Program.cs` — inte per-tjänst-flaggor som dagens
-  `UseMicrosoftGraphMailService` (som ändå tas bort i fas 8). Fejkregistreringarna ska bara kunna
-  aktiveras i `Development`, aldrig i `Production`, och appen ska **logga tydligt vid uppstart** när
-  de är aktiva. En fejk som är påslagen utan att någon märker det är farligare än ingen fejk alls.
+  **Datarot.** Allt tillstånd under **en** konfigurerbar rot, `Chillin:DataPath` — orderfiler
+  (fas 7), `members.json`, `chillinPrevalues.json`, media, mail-outbox/inbox, mallar, fritexter,
+  loggar. Upplösning: explicit nyckel, annars `$HOME/data` (ger `/home/data` på Linux App Service),
+  annars en katalog relativt `ContentRootPath` lokalt. Samordna med fas 10:s beslut om
+  `Chillin:MembersFilePath`/`Chillin:PrevaluesFilePath` — behåll de nycklarna, men låt deras default
+  härledas ur `Chillin:DataPath`, så att en enda inställning räcker i Azure.
+  **Dataroten får aldrig ligga under `ContentRoot` i drift** — deployment skriver över katalogen, och
+  vid Run-From-Package är den skrivskyddad.
+  `MemberFileStore` är idag statisk och löser sökvägen mot `AppDomain.CurrentDomain.BaseDirectory`
+  (`MemberFileStore.cs:71-79`) — måste göras instansbaserad eller få sökvägen injicerad. Behövs för
+  fas 10 ändå.
+
+  **Räcken** (alla fyra är billiga och ska med):
+  1. De riktiga typerna konstrueras aldrig — förgreningen ovan ger det gratis.
+  2. En uppstartskontroll som **kraschar hellre än kör fel**: i isolerat läge ska varje söm lösa ut
+     en typ i `Chalmers.ILL.Isolated`, och ingen hemlighetsnyckel får vara ifylld (fångar det
+     troligaste verkliga felet — att någon klonar produktionens App Settings till testappen).
+     Spegelvänt i `Live`: ingen typ ur `Chalmers.ILL.Isolated` får vara registrerad.
+  3. En WARN-ram i loggen vid uppstart som räknar upp varje fejkad söm och var läget lästes ifrån.
+     I `Live` loggas en INFO-rad, så att frånvaro av bannern aldrig är tvetydig.
+  4. Avstämt med användaren: **ingen banner och inga testverktyg i gränssnittet.** Utkorg och data
+     inspekteras som filer via Kudu/SSH. Notera dock att `showManulMailFetchingTools=true` redan
+     renderar en chili-ikon som POST:ar `/SystemSurface/Update`
+     (`Views/ChalmersILL.cshtml:48-52`) — befintlig funktionalitet, slå på den i stället för att
+     bygga något nytt.
 
   **Fejkarna är första steget i en trappa, inte sista ordet.** Efter det här steget testas mot
   testversioner av FOLIO och Graph, och först därefter mot skarpa tjänster. Fejkarnas uppgift är
@@ -659,6 +730,15 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
   ordrar i varje status. Det är billigt och provocerar fram samma sorts fel som
   Umbraco-borttagningen orsakade (null `Type`, tom statusdropdown), som alla var renderingsfel snarare
   än integrationsfel och därför syns redan här.
+
+  **Tester som hör till steg A:**
+  - Isoleringsbeviset som tillåtelselista (se räcke 2), körd från både test och uppstartskod.
+  - Ett test som bevisar att `Bootstrapper.RegisterTypes` lyckas i isolerat läge **utan någon
+    konfiguration alls** — precis den regression dagens eagera `ElasticClient`/`FolioConnection`
+    orsakar.
+  - Ett test som bevisar att isolerat läge inte kan aktiveras i produktionsmiljön.
+  - Med fejkarna på plats blir `WebApplicationFactory<Program>`-tester möjliga för första gången.
+    `Chalmers.ILL.Tests/Controllers/RoutingTest.cs:108-143` är en färdig mall för in-process-hosting.
 
 - [ ] **⚠️ Ordna testdata för utvecklingsmiljön — saknas helt i planen i övrigt**
   Ingen annan punkt i den här listan säger var *innehållet* ska komma ifrån, och utan det är
@@ -672,13 +752,21 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
     Efter fas 7 är testdata bara en katalog med JSON-filer, vilket gör den lätt att checka in,
     dela och återställa mellan testkörningar — en påtaglig förenkling jämfört med en databasdump.
   - **Elasticsearch-index.** Orderlistan läser från ES, inte från lagringen — så en återindexering
-    från orderfilerna måste gå att köra i utvecklingsmiljön. Kontrollera om `BulkDataManager` eller
-    `MaintenanceSurfaceController` redan har en väg för detta, annars behövs ett litet verktyg.
-    Det behövs ändå i drift, som återställningsväg om indexet tappas.
+    från orderfilerna måste gå att köra i utvecklingsmiljön. **Kontrollerat 2026-09-16: ingen sådan
+    väg finns.** `MaintenanceSurfaceController` har bara `RunMaintenanceJobs` (raderar gamla
+    mediafiler), och `BulkDataManager` läser bara. Lägg till en `RebuildSearchIndex` som går igenom
+    orderfilerna och anropar `IOrderItemSearcher.Added`. Den behövs ändå i drift, som
+    återställningsväg om indexet tappas — och den är obligatorisk efter varje uppladdning av testdata.
   - **`chillinPrevalues.json`** med riktiga värden i `"NN:Etikett"`-format — utan det är
     statusdropdownen tom och ingen order går att klassificera.
   - **`members.json`** med minst tre konton, ett per roll (`Desk`, `Administrator`, `SuperAdmin`),
     så att alla tre kodvägarna går att prova.
+
+  - **Seedning.** Generera den medvetet besvärliga uppsättningen i kod, men **bara när
+    målkatalogen saknas** — aldrig överskrivning. Användaren har valt persistent data, så ingen
+    automatisk nollställning. Återställning = radera katalogen och starta om.
+  - Checka in den lilla besvärliga uppsättningen i repot; checka **inte** in anonymiserad
+    driftdata (storlek + kvarvarande GDPR-risk) — den laddas upp via Kudu.
 
   Detta bör lösas i samband med brytpunkten, inte senare — det är förutsättningen för att den
   löpande webbläsarkontrollen genom fas 3–8 ska säga något.
@@ -1003,6 +1091,38 @@ miljöstyrd inställning i Azure.
   `aspnet:UseTaskFriendlySynchronizationContext`, `webpages:Enabled`, `enableSimpleMembership`,
   `autoFormsAuthentication`, `owin:AppStartup`, `log4net.Config`.
   Nyckeln `UseMicrosoftGraphMailService` försvinner när EWS tas bort (fas 8).
+
+  **⚠️ 19 nycklar som koden läser saknas helt i `App.config`** (inventerat 2026-09-16) — de returnerar
+  `null` idag, så mail- och FOLIO-flödena går inte att köra ens med riktiga credentials:
+  `chalmersIllExhangeLogin`, `chalmersIllExhangePass`, `chalmersIllSenderAddress`,
+  `chalmersILLArchiveProcessedMails`, `chalmersILLForwardingAddress`, `chillinStatisticalCodeId`,
+  `holdingPermanentLocationId`, `instanceIdentifierTypeId`, `instanceModesOfIssuance`,
+  `instanceResourceTypeId`, `instanceStatusId`, `itemMaterialTypeId`, `itemPermanentLoanTypeId`,
+  `itemPermanentLoanTypeIdInHouse`, `servicePointHuvudbiblioteketId`,
+  `servicePointLindholmenbiblioteketId`, `servicePointArkitekturbiblioteketId`, `LibPSearchUrl`,
+  `LibPSearchApiKey`.
+  Värdena finns bara i den driftsatta Windows-appens App Settings och måste hämtas därifrån.
+  Särskilt allvarligt: `chalmersIllSenderAddress` används av den **aktiva** Graph-vägen
+  (`MicrosoftGraphMailWebApi.cs:257, 331`), och de nio FOLIO-UUID:erna sätts i *fältinitierare* i
+  `Models/HoldingBasic.cs`, `ItemBasic.cs` och `InstanceBasic.cs`, dvs. de utvärderas vid
+  objektskapande och skickas som `null` in i FOLIO.
+  Tre nycklar finns i `App.config` men används inte i kod: `chalmersILLMailSignature`,
+  `messageTemplatesLink`, `sierraConnectionString` (den sista naturligt — `Patron/Sierra.cs` togs
+  bort i fas 0b).
+
+  **Upplägg (avstämt 2026-09-16):** `IChillinConfiguration` utökas till att täcka samtliga nycklar
+  och backas av `Microsoft.Extensions.Configuration`. Den injiceras överallt — i vyerna via
+  `@inject` i `_ViewImports.cshtml`, och in i FOLIO-POCO:erna via deras konstruktorer från
+  `FolioService`/`FolioItemService`, som redan är DI-konstruerade. Målet är **noll** statiska
+  `ConfigurationManager`-anrop kvar; halvvägs är värre än antingen.
+
+  **Gjort hittills:**
+  - [x] Appens egen `IConfiguration` omdöpt till `IChillinConfiguration` (commit `ae416fb`).
+    Krockade namnmässigt med `Microsoft.Extensions.Configuration.IConfiguration`, och en fil som
+    bara har `using Microsoft.Extensions.Configuration` hade tyst bundit mot fel interface.
+  - [ ] `appsettings.json` + `builder.Configuration` inkopplat
+  - [ ] De ~60 anropsställena migrerade
+  - [ ] `System.Configuration.ConfigurationManager`-paketet och `App.config` borttagna
 
 - [ ] **Sätt upp `appsettings.json` + miljöspecifika filer**
   Det finns ingen `Web.Debug.config`/`Web.Release.config`-transform idag, så det saknas miljöuppdelning
@@ -1477,6 +1597,91 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   `QueueBackgroundWorkItem`.) Väljs bakgrundsjobb i appen krävs `Always On`, och utskalning gör att
   jobbet annars körs en gång per instans.
 
+### Isolerad testserver på Linux-planen (isolerat läge, steg B)
+
+Avstämt med användaren 2026-09-16. Förutsätter fas 7 — dessförinnan skulle testservern behöva en
+egen SQL-databas, dvs. precis den externa integration hela idén går ut på att bli av med.
+Steg A (fejkarna, omkopplaren, dataroten) ligger vid brytpunkten efter fas 2 och ska vara gjort.
+
+Motivet: appen har aldrig körts skarpt i sitt nuvarande skick, och fas 7–11 är just den sträcka där
+tysta regressioner uppstår. En egen instans som är helt avskuren — inga mail når låntagare, inga
+poster skapas i FOLIO, inga personnummer skickas till PDB, ingen produktionsdata rörs — gör att de
+faserna kan verifieras löpande i stället för först vid driftsättning.
+
+Låt gärna den isolerade appen bli den **första** appen på den nya Linux-planen. Den provkör då
+gratis, utan produktionsrisk, precis det som listas ovan som "syns bara i Azure": ICU-sorteringen,
+`/home`-lagringens persistens, `ForwardedHeaders` bakom App Services front-end, uppladdningsgränsen
+och `Always On`.
+
+- [ ] **Beskär sökytan innan sökersättaren byggs**
+  Görs först och avgör hur stor resten blir — varje fråga som tas bort är en frågeform som aldrig
+  behöver implementeras. Inventerat 2026-09-16; samtliga `IOrderItemSearcher.Search`-anropsställen:
+  `ChalmersILLOrderListPageController.cs:41` (fritext från sökrutan — **enda genuint fria ytan**) och
+  `:50`, `ChalmersILLDiskPageController.cs:27`, `SystemSurfaceController.cs:186, 209, 227`,
+  `ChalmersOrderItemsMailSource.cs:470`, `AutomaticMailSendingEngine.cs:188`,
+  `BulkDataManager.cs:21`, `ProviderDataSurfaceController.cs:49`,
+  `StatisticsSurfaceController.cs:72` (`*` — hämtar allt), `DefaultStatMngr.cs:25`
+  (`StatisticsVariable.LuceneQueries`, genererade av JS i `ChalmersILLStatisticsPage.cshtml:274, 440`
+  — ser fri ut men är i praktiken `fält:(v1 OR v2) AND createDate:[a TO b] AND NOT createDate:d`),
+  `LibrisOrderItemsSource.cs:221, 226` (**död** — Libris avstängt), samt `AggregatedProviders()`
+  (enda aggregeringen).
+  Att göra: ta bort Libris-grenen; avgör om den utkommenterade `ManualAnonymizationItems`
+  (`ChalmersILLOrderListPageController.cs:67`) ska tillbaka eller tas bort; skriv ned statistiksidans
+  exakta frågeformer; bestäm och dokumentera vad sökrutan ska stödja. Resultatet blir en
+  **frågekravlista** som är både specifikation och testfall för nästa punkt.
+
+- [ ] **Bygg den minimala sökersättaren**
+  `IOrderItemSearcher` mot fas 7:s orderfiler, i minnet: läs in alla ordrar vid uppstart och håll
+  listan uppdaterad via `Added`/`Modified`/`Deleted`. Vid testserverns datamängd är linjär
+  genomsökning gott och väl snabb nog, och det tar bort hela problemet med ett index i otakt.
+  - **Fältuppslag:** NEST 6 härleder fältnamn i camelCase från property-namnen (`nodeId`,
+    `followUpDate`, `sierraInfo.record_id`). Ingen av de sökta properties i `OrderItemModel` har
+    `[JsonProperty]`. Serialisera med samma Newtonsoft-inställningar som ES-vägen och slå upp i
+    `JObject` — då blir fältnamnen automatiskt identiska.
+  - **⚠️ Textmatchningen är den detalj som är lätt att få fel.** ES analyserar textfält med
+    standardanalysatorn, som gör om `"03:Beställd"` till tokens `03` och `beställd`. Det är därför
+    `status:Beställd`, `status:03\:Beställd` och `status:"05:Levererad"` alla fungerar idag.
+    Implementeras matchningen som **stränglikhet returnerar merparten av frågorna noll träffar utan
+    att något fel kastas**. Tokenisera likadant: gemener, dela på icke-alfanumeriska tecken, matcha
+    på token; citerat värde = alla tokens i följd.
+  - **Frågespråk**, begränsat till frågekravlistan: `fält:värde`, `fält:"fras"`, `fält:(a OR b)`,
+    `fält:[a TO b]` (datum, `*` som öppen gräns), `AND`/`OR`/`NOT`, `-term`, `_exists_:fält` och
+    `!_exists_:fält`, parenteser, `*` = allt. Default-operatorn i ES `query_string` är `OR` — bevara.
+  - `Search(query, size, fields)` behöver inte projicera på riktigt; enda anroparen
+    (`SystemSurfaceController.cs:227`) läser bara `nodeId`. Sortera `CreateDate` fallande som
+    ES-implementationen. `AggregatedProviders()` grupperar på `providerName`, sorterar på antal
+    fallande och lägger `TIB`/`Libris`/`Subito` först (`ElasticSearchOrderItemSearcher.cs:76`).
+  - Tabelldriven testsvit mot ett litet inbyggt dataset, med frågekravlistan som testfall —
+    inklusive de analysatorberoende fallen.
+
+  **Avgränsning som måste skrivas in i fas 11:** en egen utvärderare avviker från ES i kantfall,
+  särskilt i sökrutan. Testservern kan därför **inte** användas för att verifiera sökbeteende — den
+  verifierar att appen fungerar. Sökningen ska provas mot riktig Elasticsearch före driftsättning.
+
+- [ ] **Sätt upp den isolerade App Service-instansen**
+  Egen webbapp på Linux-planen. Samma byggartefakt som produktionsappen — skillnaden ska vara
+  **uteslutande app settings**, aldrig en separat build eller gren.
+  App settings: `Chillin:Isolated=true`, `Chillin:DataPath=/home/data`, `BaseUrl`,
+  `testServer=<appens värdnamn>`, `showManulMailFetchingTools=true`. **Inga** Graph-, FOLIO-, PDB-
+  eller ES-hemligheter — frånvaron är i sig ett räcke som uppstartskontrollen verifierar.
+  `Always On` på, `HTTPS Only` på, `InvariantGlobalization` **inte** satt (ICU krävs för
+  `sv-se`-sorteringen). Kudu/SSH behövs för datauppladdning till `/home/data`.
+  Ingen delad deployment slot — en slot-swap mot produktionsappen skulle kunna föra över isolerat
+  läge dit.
+  **Sätt `testServer` direkt vid uppsättningen** — annars slår redirect-fällan ovan till och
+  skickar varje besökare till produktionsappen.
+  Överväg IP-restriktion: instansen har ingen riktig data, men den har heller inga spärrar, och
+  `PublicDataSurfaceController.GetChillinDataForSierraPatron` är `[AllowAnonymous]` med CORS `*`.
+
+- [ ] **Cron-jobben på testservern**
+  `SystemSurfaceController.Update` och `SendOutAutomaticMailsThatAreDue` driver automatiska
+  statusändringar, anonymisering och automatmail — flöden som annars aldrig provas. `testServer`-
+  inställningen ovan ger redan åtkomst: `IsRequestAuthorized()` (`SystemSurfaceController.cs:157-175`)
+  släpper igenom allt när värdnamnet matchar `testServer`.
+  **Notera att det är en medveten försvagning** som är acceptabel enbart för att instansen inte rör
+  något verkligt. `testServer` får aldrig sättas till produktionens värdnamn — det skulle öppna båda
+  endpointsen för hela internet.
+
 - [ ] **Uppdatera [README.md](README.md)**
   Setup-instruktionerna beskriver fortfarande hur man laddar ner Umbraco 6.1.6, packar upp det över
   repot och installerar ett Umbraco-paket via WebMatrix. Helt inaktuellt sedan Umbraco-borttagningen
@@ -1586,3 +1791,20 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   fortfarande fyller någon funktion, eller om de är engångsverktyg som kan arkiveras
 - [ ] Uppdatera [CLAUDE.md](CLAUDE.md)s Arkitekturnoter-sektion när fas 2, 6 och 7 är klara — de
   beskriver läget efter Umbraco-borttagningen och blir inaktuella
+
+- [ ] **Fyra latenta defekter hittade 2026-09-16, alla verifierade i koden**
+  Ingen är brådskande — de rör tomma index respektive kosmetik — men de ska med före driftsättning,
+  och de tre första blir naturliga att ta när motsvarande filbaserade implementation skrivs.
+  - `ElasticsearchTemplateService.CreateTemplate` rad 107-108 gör
+    `(response.Aggregations["max_id"] as ValueAggregate).Value.Value` — `NullReferenceException`
+    respektive `InvalidOperationException` på ett **tomt mallindex**, dvs. exakt vid första
+    uppsättningen av en ny miljö.
+  - `ChillinTextRepository.All()` gör `hit.Id` på ett `FirstOrDefault()`-resultat (NRE på tomt
+    index), och `ByTextField` gör `response.Documents.First()` (`InvalidOperationException`).
+    Samma sak: slår till först i en ny miljö.
+  - `BlobStorageMediaItemManager` skriver `Uri.EscapeDataString(name)` till blobmetadatan (rad 48)
+    men läser den **utan** `UnescapeDataString` (rad 102). `MediaItemModel.Name` kommer alltså
+    tillbaka procentkodad ("Bilaga%20ett.pdf") och visas så i gränssnittet.
+  - `FolioConnection.cs:12-15` läser fyra appSettings i **fältinitierare** med `.ToString()` —
+    saknad nyckel ger `NullReferenceException` redan under DI-uppbyggnaden, inte vid första
+    FOLIO-anropet. Faller bort om fas 6 gör konfigurationen injicerad.
