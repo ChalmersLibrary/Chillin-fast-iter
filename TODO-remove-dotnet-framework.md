@@ -544,7 +544,7 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
 **Slutsatsen är att webbläsartestning inte hör hemma i fas 11, utan här.** Sätts den upp nu blir den en
 återkopplingsslinga genom resten av migreringen i stället för en slutbesiktning.
 
-- [ ] **Gör Chromium + Puppeteer tillgängligt i Linux-containern**
+- [x] **Gör Chromium + Puppeteer tillgängligt i Linux-containern**
   Installera Chromium och Puppeteer i utvecklingscontainern så att sidor kan öppnas, klickas och
   skärmdumpas därifrån — både av utvecklare och av Claude, som kan läsa PNG-filer direkt och därmed
   faktiskt *se* resultatet i stället för att gissa utifrån HTML.
@@ -558,15 +558,20 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
   fullt tillräckligt för det som efterfrågas här (öppna sida, klicka, skärmdumpa), så välj det som är
   minst friktion i containern.
 
-  **Valt 2026-09-15: `Microsoft.Playwright`**, inte Puppeteer — hela kodbasen är redan .NET, och
-  Playwright kan peka på systemets Chromium (`ExecutablePath`) utan eget nedladdningssteg, så inget
-  separat Node-verktyg eller brandväggsundantag behövs. `chromium` tillagt i `.devcontainer/Dockerfile`
-  (apt, byggtid), `Microsoft.Playwright` tillagt i `Chalmers.ILL.Tests.csproj`, och en liten
-  `BrowserSmokeTest.cs` som bekräftar att Chromium går att starta (skippar, inte failar, om
-  `CHROMIUM_EXECUTABLE_PATH` saknas — så den bryter inte `dotnet test` innan rebuilden är gjord).
-  **Kräver en devcontainer-rebuild för att slutföras** (samma read-only-begränsning som traff SDK-
-  installationen tidigare — Claude kan inte skriva till `.devcontainer/` inifrån containern). Ej
-  ikryssad än; kryssas i efter rebuild + bekräftat grön `BrowserSmokeTest`.
+  **Provade `Microsoft.Playwright` först (2026-09-15)** — resonemanget om att slippa ett separat
+  Node-verktyg höll inte i praktiken. `chromium` (apt) fungerar fint: WebSocket-handskakningen mot
+  dess CDP-endpoint lyckas, och en rå CDP-navigering (`/json/new?url=...`) fungerar felfritt. Men
+  `Microsoft.Playwright`s .NET-drivrutin (dess egen Node-baserade relæprocess) hängde sig på **all**
+  riktig navigering — även mot en garanterat nåbar extern URL (`api.github.com`) — oavsett
+  `LaunchAsync` vs `ConnectOverCDPAsync`, host-resolver-flaggor, IPv4/IPv6. Bekräftat vara
+  drivrutinsspecifikt genom att köra **Puppeteer** (Node) mot samma Chromium-binär och samma
+  app-URL: fungerade felfritt direkt, inklusive hela inloggningsflödet.
+  **Bytte till Puppeteer** — `browser-check/` (nytt, `package.json` + `screenshot.js`, körs med
+  `npm run screenshot`) ersätter `Microsoft.Playwright`-paketet och `BrowserSmokeTest.cs`, båda
+  borttagna. `chromium` + `ENV CHROMIUM_EXECUTABLE_PATH` i `.devcontainer/Dockerfile` (krävde en
+  rebuild, samma read-only-begränsning som SDK-installationen tidigare — nu genomförd och verifierad).
+  Skärmdumpar av login → ifylld → inloggad (Desk-vy) → inställningssidan tagna och skickade till
+  användaren, hela flödet verifierat visuellt i en riktig webbläsare.
 
 - [x] **Se till att appen går att starta med så få beroenden som möjligt**
   För att brytpunkten ska vara användbar direkt måste inloggningssidan och startsidan gå att rendera

@@ -236,8 +236,9 @@ Migration/*.txt
 /.vscode
 desktop.ini
 
-# Screenshots from browser-driven verification (brytpunkten efter fas 2)
-Chalmers.ILL.Tests/Screenshots/
+# Browser-driven verification tool (brytpunkten efter fas 2) - node_modules and its output
+browser-check/node_modules/
+browser-check/screenshots/
 
 # Claude Code local settings (machine-specific permissions)
 .claude/settings.local.json

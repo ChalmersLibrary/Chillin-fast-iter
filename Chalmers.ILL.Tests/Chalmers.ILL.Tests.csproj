@@ -19,11 +19,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />
     <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
-    <!-- Browser-driven verification (brytpunkten efter fas 2). Points at the devcontainer's
-         apt-installed system Chromium via CHROMIUM_EXECUTABLE_PATH rather than downloading its
-         own browser build - that download comes from a CDN outside the runtime firewall's
-         allowlist. -->
-    <PackageReference Include="Microsoft.Playwright" Version="1.49.0" />
   </ItemGroup>
 
   <ItemGroup>
