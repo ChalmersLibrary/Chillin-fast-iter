@@ -14,8 +14,8 @@ namespace Chalmers.ILL.Patron
     public class PdbAffiliationDataProvider : IAffiliationDataProvider
     {
         private HttpClient _httpClient;
-        private IConfiguration _config;
-        public PdbAffiliationDataProvider(HttpClient httpClient, IConfiguration config)
+        private IChillinConfiguration _config;
+        public PdbAffiliationDataProvider(HttpClient httpClient, IChillinConfiguration config)
         {
             _httpClient = httpClient;
             _config = config;

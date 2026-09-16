@@ -6,7 +6,12 @@ using System.Threading.Tasks;
 
 namespace Chalmers.ILL.Configuration
 {
-    public interface IConfiguration
+    // Was IConfiguration. Renamed in fas 6: the app is moving to
+    // Microsoft.Extensions.Configuration, whose own IConfiguration would collide with this one on
+    // every file that needs both - and worse, would silently resolve to the wrong one in files that
+    // only `using Microsoft.Extensions.Configuration`. This is app configuration, not the framework
+    // abstraction, so it gets the distinct name.
+    public interface IChillinConfiguration
     {
         bool UseMicrosoftGraphMailService { get; }
         string MicrosoftGraphApiUserId { get; }

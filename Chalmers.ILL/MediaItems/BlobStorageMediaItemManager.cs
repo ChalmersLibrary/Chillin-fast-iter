@@ -15,9 +15,9 @@ namespace Chalmers.ILL.MediaItems
     {
         private const string containerName = "chillinmedia";
 
-        private IConfiguration _configuration;
+        private IChillinConfiguration _configuration;
 
-        public BlobStorageMediaItemManager(IConfiguration configuration)
+        public BlobStorageMediaItemManager(IChillinConfiguration configuration)
         {
             _configuration = configuration;
         }

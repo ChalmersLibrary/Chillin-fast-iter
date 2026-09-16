@@ -13,10 +13,10 @@ namespace Chalmers.ILL.Templates
 {
     public class ElasticsearchTemplateService : ITemplateService
     {
-        IConfiguration _config;
+        IChillinConfiguration _config;
         IElasticClient _elasticClient;
 
-        public ElasticsearchTemplateService(IConfiguration config, IElasticClient elasticClient)
+        public ElasticsearchTemplateService(IChillinConfiguration config, IElasticClient elasticClient)
         {
             _config = config;
             _elasticClient = elasticClient;

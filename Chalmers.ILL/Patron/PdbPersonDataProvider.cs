@@ -14,8 +14,8 @@ namespace Chalmers.ILL.Patron
     {
         private static readonly log4net.ILog _log = log4net.LogManager.GetLogger(typeof(PdbPersonDataProvider));
         private HttpClient _httpClient;
-        private IConfiguration _config;
-        public PdbPersonDataProvider(HttpClient httpClient, IConfiguration config)
+        private IChillinConfiguration _config;
+        public PdbPersonDataProvider(HttpClient httpClient, IChillinConfiguration config)
         {
             _httpClient = httpClient;
             _config = config;

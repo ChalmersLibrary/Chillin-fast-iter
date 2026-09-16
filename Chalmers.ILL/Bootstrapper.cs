@@ -28,13 +28,13 @@ namespace Chalmers.ILL
     {
         public static void RegisterTypes(IServiceCollection services)
         {
-            services.AddSingleton<IConfiguration, DefaultChillinConfiguration>();
+            services.AddSingleton<IChillinConfiguration, DefaultChillinConfiguration>();
 
             // Unity's imperative container let RegisterTypes resolve earlier registrations while
             // still building up later ones. IServiceCollection has no such resolve-as-you-go API,
             // so an interim provider is built partway through to get the same effect.
             var interim = services.BuildServiceProvider();
-            var config = interim.GetRequiredService<IConfiguration>();
+            var config = interim.GetRequiredService<IChillinConfiguration>();
 
             var elasticClientSettings = new ConnectionSettings(new Uri(config.ElasticSearchUrl));
             elasticClientSettings.DefaultIndex(config.ElasticSearchIndex);

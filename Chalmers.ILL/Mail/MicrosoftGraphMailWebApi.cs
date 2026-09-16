@@ -29,9 +29,9 @@ namespace Chalmers.ILL.Mail
 
         private IConfidentialClientApplication _app;
         private HttpClient _httpClient;
-        private IConfiguration _config;
+        private IChillinConfiguration _config;
 
-        public MicrosoftGraphMailWebApi(HttpClient httpClient, IConfiguration config)
+        public MicrosoftGraphMailWebApi(HttpClient httpClient, IChillinConfiguration config)
         {
             _httpClient = httpClient;
             _config = config;

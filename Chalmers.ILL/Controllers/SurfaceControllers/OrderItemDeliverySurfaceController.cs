@@ -25,10 +25,10 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         IChillinOrderConfiguration _orderConfig;
         ITemplateService _templateService;
         IMailService _mailService;
-        IConfiguration _config;
+        IChillinConfiguration _config;
 
         public OrderItemDeliverySurfaceController(IOrderItemManager orderItemManager, IChillinOrderConfiguration orderConfig,
-            ITemplateService templateService, IMailService mailService, IConfiguration config)
+            ITemplateService templateService, IMailService mailService, IChillinConfiguration config)
         {
             _orderItemManager = orderItemManager;
             _orderConfig = orderConfig;

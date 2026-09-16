@@ -3,7 +3,7 @@ using System.Configuration;
 
 namespace Chalmers.ILL.Configuration
 {
-    public class DefaultChillinConfiguration : IConfiguration
+    public class DefaultChillinConfiguration : IChillinConfiguration
     {
         public bool UseMicrosoftGraphMailService
         {
