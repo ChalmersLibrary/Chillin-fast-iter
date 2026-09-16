@@ -13,7 +13,6 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         // the settings page explicitly instead of reusing Request.Path.
         const string SettingsPageUrl = "/bestaellningar/instaellningar/";
 
-        IMemberInfoManager _memberInfoManager;
         readonly Func<string, string, bool> _validateUser;
         readonly Func<string, string, string, bool> _changePassword;
 
@@ -21,15 +20,14 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         // ASP.NET Core's DI-based controller activation is ambiguous between this constructor and
         // the test-only one below, and throws on the very first request - invisible to unit tests.
         [ActivatorUtilitiesConstructor]
-        public PasswordSurfaceController(IMemberInfoManager memberInfoManager, FileMembershipProvider membershipProvider)
-            : this(memberInfoManager, membershipProvider.ValidateUser, membershipProvider.ChangePassword)
+        public PasswordSurfaceController(FileMembershipProvider membershipProvider)
+            : this(membershipProvider.ValidateUser, membershipProvider.ChangePassword)
         {
         }
 
         // Allows tests to control the membership outcome without a configured Membership provider.
-        public PasswordSurfaceController(IMemberInfoManager memberInfoManager, Func<string, string, bool> validateUser, Func<string, string, string, bool> changePassword)
+        public PasswordSurfaceController(Func<string, string, bool> validateUser, Func<string, string, string, bool> changePassword)
         {
-            _memberInfoManager = memberInfoManager;
             _validateUser = validateUser;
             _changePassword = changePassword;
         }
@@ -46,7 +44,9 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             if (!ModelState.IsValid)
                 return Redirect(SettingsPageUrl + "?error=invalid-model");
 
-            var loginName = _memberInfoManager.GetCurrentMemberLoginName(Request, Response);
+            // Use the signed authentication identity, not the unsigned ChalmersILL_memberLoginName
+            // cookie - that cookie is client-writable and must never decide whose password changes.
+            var loginName = User.Identity?.Name ?? "";
 
             // Validate the current password via the configured membership provider
             if (!_validateUser(loginName, model.CurrentPassword))

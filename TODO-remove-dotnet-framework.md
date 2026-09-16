@@ -111,7 +111,7 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   redirect sker till `?success=true` oavsett utfall. Användaren får "lösenordet ändrat" även när det
   inte ändrades. `catch (Exception)` på rad 40-49 sväljer dessutom allt utan loggning.
 
-- [ ] **Lösenordsbyte och rollkontroll utgår från en osignerad klientcookie**
+- [x] **Lösenordsbyte och rollkontroll utgår från en osignerad klientcookie**
   `MemberInfoManager` lagrar login-namnet i cookien `ChalmersILL` utan signering, utan `HttpOnly` och
   utan `Secure`. `PasswordSurfaceController.cs:35` hämtar login-namnet därifrån (inte från
   `User.Identity.Name`) innan lösenordet byts, och vyerna `ChalmersILL.cshtml:32` /
@@ -120,6 +120,15 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   lösenord via `Membership.ValidateUser`, och `MemberAdminSurfaceController` skyddas av ett riktigt
   `[Authorize(Roles="SuperAdmin")]`), men designen är fel. Byt till `User.Identity.Name`/`User.IsInRole`.
   Görs lämpligen som en del av fas 3, men noteras här eftersom det är ett befintligt fel.
+
+  **Åtgärdat 2026-09-16.** Rollkontrollerna i vyerna använde redan `User.IsInRole` (gjordes som en del
+  av fas 3:s `Membership`/`Roles`-migrering). Kvarstod bara `PasswordSurfaceController`, som fortfarande
+  hämtade login-namnet via `IMemberInfoManager.GetCurrentMemberLoginName` (den osignerade cookien) i
+  stället för `User.Identity.Name`. Fixat, och `IMemberInfoManager`-beroendet togs bort ur controllern
+  helt eftersom det inte användes till något annat. Regressionstest tillagt:
+  `ChangePassword_UsesAuthenticatedIdentityNotClientCookie_ForLoginName` i
+  `PasswordSurfaceControllerTest.cs`, som sätter en avvikande cookie och verifierar att den signerade
+  identiteten vinner.
 
 - [x] **`Uri.EscapeUriString` korrumperar cookien vid vissa tecken**
   `MemberInfoManager.cs:53-55` och `:67-69` escapar cookie-subvärden med `Uri.EscapeUriString`. Den
