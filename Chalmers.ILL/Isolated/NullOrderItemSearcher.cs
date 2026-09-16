@@ -5,11 +5,11 @@ using Chalmers.ILL.OrderItems;
 
 namespace Chalmers.ILL.Isolated
 {
-    // NOT steg B's real search replacement (that needs fas 7 first, see
-    // TODO-remove-dotnet-framework.md, "Isolerat läge, steg B"). Exists only so
+    // NOT steg B's real search replacement (see TODO-remove-dotnet-framework.md, "Isolerat läge,
+    // steg B" - fas 7 has since landed, but steg B itself is still open). Exists only so
     // Bootstrapper.RegisterTypes never has to construct a real ElasticClient in isolated mode -
-    // EntityFrameworkOrderItemManager and friends still need *some* IOrderItemSearcher at Bootstrap
-    // time. The order list is empty and AggregatedProviders() yields nothing in isolated mode until
+    // FileOrderItemManager and friends still need *some* IOrderItemSearcher at Bootstrap time.
+    // The order list is empty and AggregatedProviders() yields nothing in isolated mode until
     // steg B lands; Added/Modified/Deleted are no-ops.
     public class NullOrderItemSearcher : IOrderItemSearcher
     {

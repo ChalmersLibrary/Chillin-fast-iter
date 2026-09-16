@@ -16,7 +16,7 @@ using System.IO;
 
 // Replaces Global.asax.cs (Application_Start) and EventHandlers/OwinStartup.cs (Startup.Configuration)
 // with a single minimal-hosting entry point (fas 2). OwinStartup did three things:
-// - DbMigrator (EF6 migrations) - unchanged, still needed until fas 7 removes the database.
+// - DbMigrator (EF6 migrations) - gone entirely now that fas 7 removed the database.
 // - Bootstrapper.Initialise(), which set up MVC's DependencyResolver - now builder.Services
 //   directly (see Bootstrapper.cs).
 // - app.MapSignalR() - now app.MapHub<NotificationHub>(...) below.
@@ -72,23 +72,11 @@ builder.Services.AddSignalR().AddJsonProtocol(options =>
 
 var app = builder.Build();
 
-// Was OwinStartup.Configuration's checkForPendingDatabaseMigrations block. Unchanged by this
-// sweep - EF6/SQL Server removal is fas 7.
-if (app.Services.GetRequiredService<Chalmers.ILL.Configuration.IChillinConfiguration>().CheckForPendingDatabaseMigrations)
-{
-    var configuration = new Chalmers.ILL.Migrations.Configuration();
-    var migrator = new System.Data.Entity.Migrations.DbMigrator(configuration);
-    if (System.Linq.Enumerable.Any(migrator.GetPendingMigrations()))
-    {
-        migrator.Update();
-    }
-}
-
 // Notifier needs IHubContext<NotificationHub>, only available once SignalR is registered and
 // the app is built - see the comment in Bootstrapper.RegisterTypes.
-if (app.Services.GetRequiredService<Chalmers.ILL.OrderItems.IOrderItemManager>() is EntityFrameworkOrderItemManager efOrderItemManager)
+if (app.Services.GetRequiredService<Chalmers.ILL.OrderItems.IOrderItemManager>() is FileOrderItemManager fileOrderItemManager)
 {
-    efOrderItemManager.SetNotifier(app.Services.GetRequiredService<Chalmers.ILL.SignalR.INotifier>());
+    fileOrderItemManager.SetNotifier(app.Services.GetRequiredService<Chalmers.ILL.SignalR.INotifier>());
 }
 
 if (app.Environment.IsDevelopment())

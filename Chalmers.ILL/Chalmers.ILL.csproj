@@ -21,9 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Database removal (fas 7) is a separate, later phase - EF6 stays for now. EF6 supports
-         net5.0+ since 6.3, so it isn't blocked by the TFM switch itself. -->
-    <PackageReference Include="EntityFramework" Version="6.5.1" />
     <PackageReference Include="Elasticsearch.Net" Version="6.3.1" />
     <PackageReference Include="NEST" Version="6.3.1" />
     <PackageReference Include="HtmlAgilityPack" Version="1.4.6" />

@@ -82,7 +82,9 @@ namespace Chalmers.ILL
 
             // Create all our singleton type instances.
             var mailService = new MailService(mediaItemManager, mailWebApi, config);
-            var orderItemManager = new EntityFrameworkOrderItemManager(orderConfig, orderItemSearcher);
+            var nodeIdGenerator = new NodeIdGenerator(config);
+            var orderIdIndex = new OrderIdIndex(config);
+            var orderItemManager = new FileOrderItemManager(orderConfig, orderItemSearcher, config, nodeIdGenerator, orderIdIndex);
             var providerService = new ProviderService(orderItemSearcher);
             var bulkDataManager = new BulkDataManager(orderItemSearcher);
 

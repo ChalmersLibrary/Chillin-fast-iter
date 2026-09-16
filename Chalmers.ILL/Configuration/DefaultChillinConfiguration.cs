@@ -107,6 +107,5 @@ namespace Chalmers.ILL.Configuration
         public string StatisticsUrl => Get(nameof(StatisticsUrl));
         public bool ShowManualMailFetchingTools => GetBool(nameof(ShowManualMailFetchingTools));
         public string ManualAnonymizationImplementationDate => Get(nameof(ManualAnonymizationImplementationDate));
-        public bool CheckForPendingDatabaseMigrations => GetBool(nameof(CheckForPendingDatabaseMigrations));
     }
 }

@@ -1321,7 +1321,7 @@ ca 10 000–100 000 ordrar.
 för att åtgärdas: dagens `Dictionary<threadId, DbContext>` utan låsning försvinner med EF6, och
 EF6-på-`net10.0` behöver inte längre verifieras.
 
-- [ ] **Implementera filbaserad `IOrderItemManager`**
+- [x] **Implementera filbaserad `IOrderItemManager`**
   Interfacet behålls oförändrat — det är implementationen som byts. Ersätt de 13 dataåtkomstställena
   i `EntityFrameworkOrderItemManager` (rad 47, 75, 131, 184, 353, 430, 522, 1434, 1453, 1625, 1744
   m.fl.) med läsning och skrivning av en fil per order.
@@ -1335,7 +1335,66 @@ EF6-på-`net10.0` behöver inte längre verifieras.
   - Ta samtidigt bort `Database/OrderItemsDbContext.cs`, hela `Migrations/` (19 migrationer, 39 filer)
     och den nu överflödiga klassen `SaveException` om den bara rör EF.
 
-- [ ] **Lös `NodeId`-genereringen — den kräver eftertanke**
+  **Genomfört 2026-09-16.** `Chalmers.ILL/OrderItems/FileOrderItemManager.cs` ersätter
+  `EntityFrameworkOrderItemManager` (borttagen, liksom `Database/OrderItemsDbContext.cs`,
+  `Migrations/` och `SaveException`; `EntityFramework`-paketreferensen borttagen ur csproj; EF-bara
+  attribut som `[Key, DatabaseGenerated]` städade bort från `OrderItemModel`/`SierraModel`/`LogItem`/
+  `OrderAttachment`). En fil per order under `DataPath/orders/{NodeId/1000:D3}/{NodeId}.json`.
+  `OrderId`→`NodeId` löst med en egen indexfil (`OrderIdIndex.cs`, se punkten om `NodeId` nedan för
+  varför inte ES) snarare än sökning.
+
+  **Det gamla trådnyckade `Dictionary<threadId, DbContext>`-mönstret är borttaget, men den batchning
+  det gav är INTE det** — den är medveten, inte ett EF-implementationsdetalj. Nästan varje
+  controller under `Controllers/SurfaceControllers/` anropar `Set*`/`AddLogItem` flera gånger med
+  `doReindex=false, doSignal=false` och avslutar med ett sista anrop med defaultvärdena (`true,
+  true`) som ska flusha alltihop i **en** filskrivning, **en** ES-indexering och **en**
+  SignalR-notifiering. Verifierat genom att läsa igenom samtliga anropsställen (inte bara
+  `EntityFrameworkOrderItemManager` själv) innan omskrivningen påbörjades. `FileOrderItemManager`
+  replikerar detta med en tråd-nyckad "pending order"-buffert (`_threadIdToPendingOrder`) istället
+  för EF:s identity map — samma trådaffinitets-antagande som förut (fas 4: "noll async-actions",
+  så en request kör på en och samma tråd hela vägen).
+
+  **Tre latenta fel hittade under genomläsningen, fixade som en del av omskrivningen** (inte
+  bevarade avsiktligt trasiga för "byte-identisk" kompatibilitet — se motivering per punkt):
+  - `SetReference` var den enda `Set*`-metoden vars interna `AddLogItem`-anrop **saknade** explicit
+    `false, false` (alla 16 andra har det). Effekten: `SetReference` sparade/reindexerade/notifierade
+    alltid direkt, oavsett vad anroparen bad om — `OrderItemReferenceSurfaceController.cs:47` anropar
+    den just med `false, false` och förlitar sig (omedvetet) på detta. Ofarligt idag (inget annat
+    anrop följer i den kedjan), men uppenbart oavsiktligt givet mönstret överallt annars. Fixat till
+    samma mönster som resten.
+  - Läsning av en order som inte finns kastade `NullReferenceException` inifrån `FillOutStuff(null)`
+    **innan** koden nådde sin egen `if (orderItem != null) ... else throw OrderItemNotFoundException`
+    — den avsedda kastsatsen var död kod. Osynligt för slutanvändaren (controllers fångar `Exception`
+    generellt), men gav sämre felmeddelanden vid felsökning. `FileOrderItemManager` kastar nu den
+    avsedda `OrderItemNotFoundException` med en beskrivande text.
+  - `FillOutStuff` (denormaliserar `*Id`-fält till strängar, t.ex. `DeliveryLibraryId` →
+    `DeliveryLibrary`) anropades inkonsekvent — vissa `Set*`-metoder körde den efter en mutation,
+    andra inte, vilket kunde lämna en sträng ur synk med sitt id i det som faktiskt sparades/
+    indexerades i ES (synligt först nästa gång ett *annat* fält råkade trigga en ny `FillOutStuff`).
+    `FileOrderItemManager` kör den nu ovillkorligen precis före varje skrivning — idempotent och
+    billigt, så ingen nackdel med att köra den "för ofta".
+
+  **En medveten förenkling:** den gamla tvåfas-skapelsen (spara för att få ett `NodeId` från EF:s
+  identity-kolumn, sätt sedan `OrderId` med det och spara igen) gjorde att en nyskapad order kortvarigt
+  syntes i ES med sitt temporära MD5-baserade `OrderId` innan den korrigerades vid den andra sparningen.
+  Med en egen `NodeId`-räknare (se nästa punkt) behövs ingen databasrundtripp för att få ett id —
+  `NodeId` och det slutgiltiga `OrderId` sätts i ett svep, en skrivning, en ES-indexering.
+  `MakeDuplicate` (som i EF-versionen batchade två olika entiteter — käll­ordern och kopian — i en enda
+  `SaveChanges`) hanteras nu som två sekventiella, oberoende operationer eftersom den nya bufferten bara
+  håller en orders pending-ändringar per tråd åt gången; kopian flushas alltid direkt (den har inget
+  senare anrop att batchas med), källordens logginlägg respekterar anroparens `doReindex`/`doSignal`.
+
+  Characterization-tester tillagda i `FileOrderItemManagerTest.cs` (14 st): batchningsmönstret end-to-end
+  (flera `false,false`-anrop + ett flushande default-anrop ger exakt en reindex/notify), att
+  `doReindex=false` utan uppföljande flush aldrig når disk, att `MakeDuplicate` loggar på båda
+  ordrarna, att `ResetAllAnonymizationFlags`/`SetIsAnonymized` inte sparar när inget ändrats, att
+  blandade `NodeId` inom samma tråds pending-batch kastar (`InvalidOperationException`) istället för
+  att tyst tappa data, `GetLockedOrderItems` mot ES, samt de två ursprungliga `FillOutStuff`-testerna.
+  191/191 gröna. Verifierat manuellt med `dotnet run` i Live-läge: appen startar, `Bootstrapper`
+  konstruerar `FileOrderItemManager`/`NodeIdGenerator`/`OrderIdIndex` utan fel, inloggningsflödet
+  fungerar identiskt mot brytpunkten.
+
+- [x] **Lös `NodeId`-genereringen — den kräver eftertanke**
   `NodeId` är idag en identity-kolumn. Den ligger i URL:er och i **tryckta QR-koder på fysiska
   följesedlar**, så den måste förbli `int` och får **aldrig** återanvändas eller kollidera.
   Behövs: en varaktig räknare med atomär uppräkning. Enkelinstans (fastställt beslut) gör detta
@@ -1344,14 +1403,28 @@ EF6-på-`net10.0` behöver inte längre verifieras.
   katalogen och inte i `wwwroot`.
   Sätt startvärdet till högsta befintliga `NodeId` + 1 vid migreringen.
 
-- [ ] **Flytta `EditedBy`-uppslaget till Elasticsearch**
+  **Genomfört 2026-09-16.** `Chalmers.ILL/OrderItems/NodeIdGenerator.cs` — en räknarfil
+  (`DataPath/orders/next-node-id.txt`), läst en gång och sedan hållen i minnet bakom ett lås,
+  skriven (atomiskt, temp+`File.Replace`) vid varje allokering. Saknas filen (färsk `DataPath`, eller
+  en migrering som inte hunnit sätta den) bootstrapas den från högsta befintliga `NodeId` bland
+  ordrarna på disk + 1, annars 1 — migreringsverktyget (se den punkten nedan) förväntas skriva filen
+  direkt för riktiga volymer istället för att förlita sig på skanningen.
+
+- [x] **Flytta `EditedBy`-uppslaget till Elasticsearch**
   `GetLocksForCurrentMember` (rad 184, `.Where(x => x.EditedBy == memberId)`) är den **enda** frågan
   som inte är en nyckeluppslagning. Med filer skulle den bli en full katalogskanning, vilket är
   oacceptabelt över Azure Files vid er volym. ES indexerar redan `editedBy` — låt frågan gå dit i
   stället. Liten ändring, men den måste göras, annars blir sidladdningen långsammare för varje order
   som tillkommer.
 
-- [ ] **Gör skrivningarna atomära och trådsäkra**
+  **Genomfört 2026-09-16.** `FileOrderItemManager.GetLockedOrderItems` gör
+  `_orderItemSearcher.Search("editedBy:\"" + memberId + "\"")`. Enda konsumenten
+  (`OrderItemSurfaceController.GetLocksForCurrentMember`) läser bara `item.NodeId` från resultatet,
+  så det spelar ingen roll att ES-dokumenten (till skillnad från EF-frågan, som körde med
+  `LazyLoadingEnabled=false` och inga `Include()`) råkar innehålla hela aggregatet — en förbättring,
+  inte en regression.
+
+- [x] **Gör skrivningarna atomära och trådsäkra**
   Skriv till temporär fil och byt namn (`File.Move`/`File.Replace`) så att en avbruten skrivning
   aldrig lämnar en halv order på disk. Lås per order vid läs–ändra–skriv-cykler.
   En fil per order ger **bättre** isolering än dagens `members.json`-mönster: två användare som
@@ -1359,6 +1432,13 @@ EF6-på-`net10.0` behöver inte längre verifieras.
   Notera att appen har en uttrycklig låsfunktion i domänen (`LockOrderItem`,
   `TakeOverLockedOrderItem`, `EditedBy`) — samtidig redigering är alltså ett designat scenario, inte
   ett kantfall.
+
+  **Genomfört 2026-09-16.** Skrivning: temp-fil + `File.Replace`/`File.Move`, samma mönster som
+  `MemberFileStore` (fas 6). Låsning: en `SemaphoreSlim(1,1)` per `NodeId`
+  (`ConcurrentDictionary<int, SemaphoreSlim>`), tagen när en order först läses in för mutation och
+  släppt när ändringen flushas eller (vid undantag) kastas bort — inte `lock`/`Monitor`, eftersom
+  Enter/Exit för en och samma order kan ske i olika anrop (batchningen ovan) och `Monitor` kräver att
+  samma anropsramverk släpper det som togs.
 
 - [x] **Bryt den cirkulära kopplingen `Notifier` ↔ `OrderItemManager`**
   `Bootstrapper.cs:191-199` konstruerar båda manuellt och kopplar ihop dem med
@@ -1368,7 +1448,7 @@ EF6-på-`net10.0` behöver inte längre verifieras.
   konstruktorn. Behövs oavsett lagringsval, men blir enklare nu när ingen `DbContext`-livstid ska
   koordineras.
 
-- [ ] **Flytta ES-indexeringen ut ur `SaveChanges`**
+- [x] **Flytta ES-indexeringen ut ur `SaveChanges`**
   `OrderItemsDbContext.SaveChanges` är idag overridad och pushar ändringar till Elasticsearch samt
   notifierar via `_notifier`. När `DbContext` försvinner måste den logiken flytta till den nya
   lagringsimplementationen. Det är ett bra tillfälle att göra ordningen explicit: skriv fil →
@@ -1377,6 +1457,17 @@ EF6-på-`net10.0` behöver inte längre verifieras.
   **Skriv characterization-tester för spara-flödet innan detta rörs.**
   `EntityFrameworkOrderItemManagerTest.cs` har idag bara 2 tester, och båda anropar den privata
   `FillOutStuff` via reflection — spara-vägen är helt otestad.
+
+  **Genomfört 2026-09-16, tillsammans med "Implementera filbaserad IOrderItemManager" ovan.**
+  `FileOrderItemManager.Flush` gör ordningen explicit: skriv fil → `_orderItemSearcher.Added`/
+  `.Modified` → `_notifier.ReportNewOrderItemUpdate` om `doSignal`. Ingen egen felhantering runt
+  ES-steget lades till utöver att undantag där redan förhindrar att den lokala pending-bufferten
+  och låset lämnas i ett inkonsekvent tillstånd (`DiscardPending` i `catch`) — fil och index kan
+  fortfarande hamna i otakt om ES-anropet kastar efter att filen redan skrivits, precis som i
+  EF-versionen (där `SaveChanges` kunde lyckas skriva till SQL men sedan kasta i
+  ES-indexeringsloopen). Inte en regression, men inte heller åtgärdat här; en riktig lösning
+  (t.ex. en reindexeringskö) hör hemma i fas 10:s "återställningsväg om indexet tappas".
+  Characterization-testerna för spara-flödet beskrivs under föregående punkt.
 
 - [ ] **Bygg engångsmigreringen från SQL till filer**
   Ett fristående verktyg som läser den befintliga databasen och skriver ut en fil per order.

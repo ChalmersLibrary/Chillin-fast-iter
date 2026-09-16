@@ -72,6 +72,5 @@ namespace Chalmers.ILL.Tests.Configuration
         public string StatisticsUrl { get; set; }
         public bool ShowManualMailFetchingTools { get; set; }
         public string ManualAnonymizationImplementationDate { get; set; }
-        public bool CheckForPendingDatabaseMigrations { get; set; }
     }
 }

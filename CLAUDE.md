@@ -86,9 +86,9 @@ Följande gäller läget efter Umbraco-borttagningen, dvs. utgångspunkten för 
 - `ChillinOrderConfiguration`/`IChillinOrderConfiguration` ligger kvar i namnrymden `Chalmers.ILL.UmbracoApi`
   men är **inte** Umbraco-typer — de är appkonfiguration. `Bootstrapper.cs` importerar fortfarande
   `using Chalmers.ILL.UmbracoApi` av den anledningen.
-- Den primära `IOrderItemManager` är `EntityFrameworkOrderItemManager` (EF6 mot SQL Server).
-  **Den ska ersättas av en filbaserad implementation i fas 7** — interfacet behålls, implementationen
-  byts. Skriv inte ny kod som förutsätter en databas.
+- Den primära `IOrderItemManager` är sedan fas 7 `FileOrderItemManager` (`Chalmers.ILL/OrderItems/`) —
+  en JSON-fil per order under `IChillinConfiguration.DataPath/orders/`, inte EF6/SQL Server. Databasen
+  är borttagen helt (inget `DbContext`, inga migrationer). Skriv inte ny kod som förutsätter en databas.
 - Datamodellen är redan ett dokumentaggregat: varje läsning hämtar hela ordern med `LogItemsList`,
   `AttachmentList` och `SierraInfo`. All sökning, statistik och bulkdata går via `IOrderItemSearcher`
   (Elasticsearch), aldrig via `DbContext`.

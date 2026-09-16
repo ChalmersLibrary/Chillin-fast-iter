@@ -1,18 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Web;
 
 namespace Chalmers.ILL.Models
 {
     public class LogItem
     {
-        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        // Was [DatabaseGenerated(DatabaseGeneratedOption.Identity)] - EF assigned this on save.
+        // Nothing does that anymore, so FileOrderItemManager.AppendLogItem sets it explicitly
+        // (SilentAnonymization matches manually-edited log entries back to originals by this Id).
         public Guid Id { get; set; }
 
-        [Required]
         public int OrderItemNodeId { get; set; }
         public int NodeId { get; set; }
 

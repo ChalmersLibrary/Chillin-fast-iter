@@ -47,7 +47,6 @@ namespace Chalmers.ILL.Tests.Configuration
             Assert.IsNull(sut.BaseUrl);
             Assert.IsNull(sut.FolioApiBaseAddress);
             Assert.IsFalse(sut.UseMicrosoftGraphMailService);
-            Assert.IsFalse(sut.CheckForPendingDatabaseMigrations);
             Assert.IsFalse(sut.Isolated);
         }
 

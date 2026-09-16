@@ -103,6 +103,5 @@ namespace Chalmers.ILL.Configuration
         string StatisticsUrl { get; }
         bool ShowManualMailFetchingTools { get; }
         string ManualAnonymizationImplementationDate { get; }
-        bool CheckForPendingDatabaseMigrations { get; }
     }
 }

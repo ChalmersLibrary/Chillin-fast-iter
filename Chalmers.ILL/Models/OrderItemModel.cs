@@ -1,8 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.RegularExpressions;
 
 namespace Chalmers.ILL.Models
@@ -40,7 +38,9 @@ namespace Chalmers.ILL.Models
 
         public string OrderId { get; set; }
 
-        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        // Was a SQL Server identity column - now allocated by NodeIdGenerator (fas 7). Still an
+        // int and still never reused: it's baked into URLs and into already-printed QR codes on
+        // physical delivery slips.
         public int NodeId { get; set; }
         public DateTime CreateDate { get; set; }
         public DateTime UpdateDate { get; set; }
