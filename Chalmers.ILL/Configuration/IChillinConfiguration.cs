@@ -18,6 +18,18 @@ namespace Chalmers.ILL.Configuration
     // (DefaultChillinConfiguration), not ConfigurationManager.AppSettings.
     public interface IChillinConfiguration
     {
+        // Isolerat läge (fas 6/isolerat läge steg A) - explicit switch, deliberately not derived
+        // from the hosting environment name (the isolated test server runs with Production's error
+        // handling, not Development's - see designbeslut "Isolerad testserver" in
+        // TODO-remove-dotnet-framework.md). Unset/unrecognized -> false: a fake silently left on is
+        // more dangerous than no fake at all.
+        bool Isolated { get; }
+
+        // Root directory for all on-disk state under isolated mode (and, from fas 7 onward, order
+        // files in Live mode too): members.json, chillinPrevalues.json, media, mail outbox/inbox,
+        // templates, chillin_text.json. Resolved, never null - see DefaultChillinConfiguration.
+        string DataPath { get; }
+
         // Hosts / network
         string BaseUrl { get; }
         string TestServer { get; }

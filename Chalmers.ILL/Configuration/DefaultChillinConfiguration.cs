@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 
 namespace Chalmers.ILL.Configuration
@@ -8,14 +11,40 @@ namespace Chalmers.ILL.Configuration
     public class DefaultChillinConfiguration : IChillinConfiguration
     {
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public DefaultChillinConfiguration(IConfiguration configuration)
+        public DefaultChillinConfiguration(IConfiguration configuration, IWebHostEnvironment environment)
         {
             _configuration = configuration;
+            _environment = environment;
         }
 
         private string Get(string key) => _configuration["Chillin:" + key];
         private bool GetBool(string key) => _configuration.GetValue<bool>("Chillin:" + key);
+
+        public bool Isolated => GetBool(nameof(Isolated));
+
+        // Resolution order (fas 6, isolerat läge steg A, "Datarot"): an explicit Chillin:DataPath
+        // wins; otherwise $HOME/data, which resolves to /home/<user>/data both in the devcontainer
+        // and on the Linux App Service (fas 10's Kudu-accessible home directory) - the whole point
+        // being dev/drift-parity; otherwise a directory next to (not under) ContentRootPath, so a
+        // local run without $HOME set still has somewhere to write that a deployment wouldn't
+        // overwrite.
+        public string DataPath
+        {
+            get
+            {
+                var explicitPath = Get(nameof(DataPath));
+                if (!string.IsNullOrWhiteSpace(explicitPath))
+                    return explicitPath;
+
+                var home = Environment.GetEnvironmentVariable("HOME");
+                if (!string.IsNullOrWhiteSpace(home))
+                    return Path.Combine(home, "data");
+
+                return Path.GetFullPath(Path.Combine(_environment.ContentRootPath, "..", "chillin-data"));
+            }
+        }
 
         public string BaseUrl => Get(nameof(BaseUrl));
         public string TestServer => Get(nameof(TestServer));

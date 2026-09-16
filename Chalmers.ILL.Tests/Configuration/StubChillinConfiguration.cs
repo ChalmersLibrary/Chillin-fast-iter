@@ -8,6 +8,9 @@ namespace Chalmers.ILL.Tests.Configuration
     // appsettings.json - tests override only the properties they care about via object initializers.
     public class StubChillinConfiguration : IChillinConfiguration
     {
+        public bool Isolated { get; set; }
+        public string DataPath { get; set; }
+
         public string BaseUrl { get; set; }
         public string TestServer { get; set; }
         public string LiveServer { get; set; }

@@ -21,7 +21,7 @@ namespace Chalmers.ILL.Tests.Configuration
                 .AddJsonFile($"appsettings.{environmentName}.json", optional: true)
                 .Build();
 
-            return new DefaultChillinConfiguration(configuration);
+            return new DefaultChillinConfiguration(configuration, new StubWebHostEnvironment());
         }
 
         [TestMethod]

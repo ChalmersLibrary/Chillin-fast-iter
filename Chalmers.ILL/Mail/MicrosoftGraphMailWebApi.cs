@@ -10,8 +10,6 @@ using System.Threading.Tasks;
 using System.Web;
 using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Models.Mail;
-using Chalmers.ILL.Utilities;
-using HtmlAgilityPack;
 using Microsoft.Identity.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -152,27 +150,12 @@ namespace Chalmers.ILL.Mail
                 {
                     var m = new MailQueueModel();
 
-                    // Load Message Body as HTML with HtmlAgilityPack
-                    HtmlAgilityPack.HtmlDocument htmlDoc = new HtmlAgilityPack.HtmlDocument();
-                    htmlDoc.LoadHtml(MailBodyFixer.RemoveHtmlAroundLinks(mailData.body.content.ToString().Replace("<br>", "<br>\n")));
-
-                    // Query for OrderItem properties in MailQueueModel
-                    if (htmlDoc.DocumentNode.HasChildNodes && htmlDoc.GetElementbyId("chalmers.ill.orderitem") != null)
-                    {
-                        m.PatronName = htmlDoc.GetElementbyId("PatronName").InnerText;
-                        m.PatronEmail = htmlDoc.GetElementbyId("PatronEmail").InnerText;
-                        m.PatronCardNo = htmlDoc.GetElementbyId("PatronCardNo").InnerText;
-                        m.OriginalOrder = htmlDoc.GetElementbyId("OriginalOrder").InnerText;
-                        if (htmlDoc.GetElementbyId("Purchase") != null)
-                        {
-                            m.IsPurchaseRequest = Convert.ToBoolean(htmlDoc.GetElementbyId("Purchase").InnerText);
-                        }
-                        else
-                        {
-                            m.IsPurchaseRequest = false;
-                        }
-                        m.DeliveryLibrary = htmlDoc.GetElementbyId("DeliveryLibrary").InnerText;
-                    }
+                    // Parses the hidden "chalmers.ill.orderitem" div (if present) into
+                    // PatronName/PatronEmail/PatronCardNo/OriginalOrder/IsPurchaseRequest/
+                    // DeliveryLibrary, and always sets MessageBody from the plain-text rendering.
+                    // Shared with Isolated.FileMailWebApi (fas 6, isolerat läge steg A) so the fake
+                    // exercises the same parsing rules instead of only the transport.
+                    IncomingMailParser.ParseIncomingMailBody(m, mailData.body.content.ToString());
 
                     // Load all attachments
                     var attachmentList = new List<MailAttachment>();
@@ -200,29 +183,6 @@ namespace Chalmers.ILL.Mail
                     m.DateTimeReceived = mailData.receivedDateTime.ToString().Replace("T", " ").Remove(16).Trim();
                     m.Attachments = attachmentList;
 
-                    // Message body as text only
-                    var sb = new StringBuilder();
-
-                    if (htmlDoc != null && htmlDoc.DocumentNode != null)
-                    {
-                        var textNodes = htmlDoc.DocumentNode.SelectNodes("//text()");
-                        if (textNodes != null)
-                        {
-                            foreach (HtmlNode node in textNodes)
-                            {
-                                if (!node.HasChildNodes)
-                                {
-                                    string text = node.InnerText;
-                                    if (!string.IsNullOrEmpty(text))
-                                        sb.AppendLine(text.Trim());
-                                }
-                            }
-                        }
-                    }
-
-                    var messageText = sb.ToString();
-                    m.MessageBody = Helpers.HtmlToPlainText(messageText);
-                    
                     PatchToMicrosoftGraph(_config.MicrosoftGraphApiEndpoint + "/users/" + _config.MicrosoftGraphApiUserId + "/mailFolders/inbox/messages/" + m.Id, "{ \"isRead\":true }");
 
                     // Add this message to list
