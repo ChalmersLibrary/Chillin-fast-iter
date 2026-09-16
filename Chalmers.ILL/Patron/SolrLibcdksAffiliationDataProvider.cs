@@ -1,8 +1,8 @@
-﻿using Chalmers.ILL.Models;
+﻿using Chalmers.ILL.Configuration;
+using Chalmers.ILL.Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -10,8 +10,18 @@ using System.Web;
 
 namespace Chalmers.ILL.Patron
 {
+    // Not wired up in Bootstrapper.cs - IAffiliationDataProvider currently resolves to
+    // PdbAffiliationDataProvider, and nothing constructs this class. Left in place (fas 6 just
+    // migrates its config access), flagged as dead code in TODO-remove-dotnet-framework.md, fas 6.
     public class SolrLibcdksAffiliationDataProvider : IAffiliationDataProvider
     {
+        private readonly IChillinConfiguration _config;
+
+        public SolrLibcdksAffiliationDataProvider(IChillinConfiguration config)
+        {
+            _config = config;
+        }
+
         public void GetAffiliationFromPersonNumber(string pnum, /*out*/ SierraModel sm)
         {
             sm.aff = "N/A";
@@ -25,10 +35,10 @@ namespace Chalmers.ILL.Patron
 
                 try
                 {
-                    HttpWebRequest fileReq = (HttpWebRequest)HttpWebRequest.Create(ConfigurationManager.AppSettings["patronAffiliationSolrQueryUrl"] + query + "&wt=json");
+                    HttpWebRequest fileReq = (HttpWebRequest)HttpWebRequest.Create(_config.PatronAffiliationSolrQueryUrl + query + "&wt=json");
 
-                    if (!String.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["patronCacheSolrBasicAuthUsername"]) && !String.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["patronCacheSolrBasicAuthPassword"]))
-                        fileReq.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(System.Text.Encoding.GetEncoding("ISO-8859-1").GetBytes(ConfigurationManager.AppSettings["patronCacheSolrBasicAuthUsername"] + ":" + ConfigurationManager.AppSettings["patronCacheSolrBasicAuthPassword"])));
+                    if (!String.IsNullOrWhiteSpace(_config.PatronCacheSolrBasicAuthUsername) && !String.IsNullOrWhiteSpace(_config.PatronCacheSolrBasicAuthPassword))
+                        fileReq.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(System.Text.Encoding.GetEncoding("ISO-8859-1").GetBytes(_config.PatronCacheSolrBasicAuthUsername + ":" + _config.PatronCacheSolrBasicAuthPassword)));
 
                     fileReq.CookieContainer = new CookieContainer();
                     fileReq.AllowAutoRedirect = true;
