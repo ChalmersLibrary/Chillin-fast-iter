@@ -938,9 +938,13 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   `Views/ChalmersILL.cshtml:150` gör cache-busting med `?r=@DateTime.Now.Ticks`, dvs. filen cachas
   aldrig — värt att byta mot en versionssträng eller `asp-append-version`.
 
-- [ ] **Ta bort NuGet-paketet `jQuery` 1.6.4 — det är oanvänt**
+- [x] **Ta bort NuGet-paketet `jQuery` 1.6.4 — det är oanvänt**
   Vyerna laddar bower-versionen (`~2.1.3`) från `/bower_components/jquery/dist/jquery.min.js`.
   NuGet-paketets jQuery används ingenstans. Det är alltså inte en uppgradering utan en borttagning.
+
+  **Redan gjort.** Verifierat 2026-09-16: ingen `<PackageReference Include="jQuery"`) finns i något
+  `.csproj` längre — försvann redan i fas 1b:s paketstädning (samma svep som Npgsql/döda paket/
+  OWIN-MVC5-stacken). Ingen kodändring behövdes, bara ikryssning.
 
 ---
 
