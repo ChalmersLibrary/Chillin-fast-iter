@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Chalmers.ILL.Members;
-using System.Configuration;
+using Chalmers.ILL.Configuration;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
@@ -21,6 +21,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         readonly Func<string, string, bool> _validateUser;
         readonly Func<string, IEnumerable<string>> _getRolesForUser;
         readonly Func<HttpContext, string, IEnumerable<string>, Task> _signIn;
+        readonly IChillinConfiguration _config;
 
         // Without this attribute, ASP.NET Core's ActivatorUtilities can't tell this constructor
         // apart from the test-only one below (both have parameter types it could, in principle,
@@ -28,19 +29,20 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         // argument types" at the first real request - invisible to unit tests, which construct
         // the controller directly and never go through DI at all.
         [ActivatorUtilitiesConstructor]
-        public LoginSurfaceController(IMemberInfoManager memberInfoManager, FileMembershipProvider membershipProvider, FileRoleProvider roleProvider)
-            : this(memberInfoManager, membershipProvider.ValidateUser, roleProvider.GetRolesForUser, SignInWithCookie)
+        public LoginSurfaceController(IMemberInfoManager memberInfoManager, FileMembershipProvider membershipProvider, FileRoleProvider roleProvider, IChillinConfiguration config)
+            : this(memberInfoManager, membershipProvider.ValidateUser, roleProvider.GetRolesForUser, SignInWithCookie, config)
         {
         }
 
         // Allows tests to control the membership/role outcome and avoid a real cookie sign-in,
         // without a configured Membership/Role provider.
-        public LoginSurfaceController(IMemberInfoManager memberInfoManager, Func<string, string, bool> validateUser, Func<string, IEnumerable<string>> getRolesForUser, Func<HttpContext, string, IEnumerable<string>, Task> signIn)
+        public LoginSurfaceController(IMemberInfoManager memberInfoManager, Func<string, string, bool> validateUser, Func<string, IEnumerable<string>> getRolesForUser, Func<HttpContext, string, IEnumerable<string>, Task> signIn, IChillinConfiguration config)
         {
             _memberInfoManager = memberInfoManager;
             _validateUser = validateUser;
             _getRolesForUser = getRolesForUser;
             _signIn = signIn;
+            _config = config;
         }
 
         // Was FormsAuthentication.SetAuthCookie(model.Login, false) plus a separate, live
@@ -71,7 +73,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
 
             var redirectUrl = roles.Any(r => string.Equals(r, "Desk", StringComparison.OrdinalIgnoreCase))
                 ? "/disk/?login=ok"
-                : ConfigurationManager.AppSettings["orderListPageUrl"] + "?login=ok";
+                : _config.OrderListPageUrl + "?login=ok";
             return Redirect(redirectUrl);
         }
     }

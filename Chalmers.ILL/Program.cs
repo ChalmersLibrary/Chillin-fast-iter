@@ -74,7 +74,7 @@ var app = builder.Build();
 
 // Was OwinStartup.Configuration's checkForPendingDatabaseMigrations block. Unchanged by this
 // sweep - EF6/SQL Server removal is fas 7.
-if (bool.Parse(System.Configuration.ConfigurationManager.AppSettings["checkForPendingDatabaseMigrations"] ?? "false"))
+if (app.Services.GetRequiredService<Chalmers.ILL.Configuration.IChillinConfiguration>().CheckForPendingDatabaseMigrations)
 {
     var configuration = new Chalmers.ILL.Migrations.Configuration();
     var migrator = new System.Data.Entity.Migrations.DbMigrator(configuration);

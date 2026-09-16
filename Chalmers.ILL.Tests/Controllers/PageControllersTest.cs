@@ -8,6 +8,7 @@ using Chalmers.ILL.Members;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Models.Page;
 using Chalmers.ILL.OrderItems;
+using Chalmers.ILL.Tests.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Chalmers.ILL.Tests.Controllers
@@ -136,7 +137,7 @@ namespace Chalmers.ILL.Tests.Controllers
         public void ChalmersILLOrderListPageController_Index_WithoutQuery_SearchesDefaultItems()
         {
             var searcher = new StubOrderItemSearcher();
-            var controller = new ChalmersILLOrderListPageController(new StubMemberInfoManager(), searcher);
+            var controller = new ChalmersILLOrderListPageController(new StubMemberInfoManager(), searcher, new StubChillinConfiguration());
             SetHttpContext(controller);
 
             var result = controller.Index() as ViewResult;
@@ -151,7 +152,7 @@ namespace Chalmers.ILL.Tests.Controllers
         public void ChalmersILLOrderListPageController_Index_WithOrderIdQuery_QuotesQuery()
         {
             var searcher = new StubOrderItemSearcher();
-            var controller = new ChalmersILLOrderListPageController(new StubMemberInfoManager(), searcher);
+            var controller = new ChalmersILLOrderListPageController(new StubMemberInfoManager(), searcher, new StubChillinConfiguration());
             SetHttpContext(controller, "query=cthb-abc12345-1");
 
             controller.Index();
@@ -163,7 +164,7 @@ namespace Chalmers.ILL.Tests.Controllers
         public void ChalmersILLOrderListPageController_Index_WithFreeTextQuery_DoesNotQuoteQuery()
         {
             var searcher = new StubOrderItemSearcher();
-            var controller = new ChalmersILLOrderListPageController(new StubMemberInfoManager(), searcher);
+            var controller = new ChalmersILLOrderListPageController(new StubMemberInfoManager(), searcher, new StubChillinConfiguration());
             SetHttpContext(controller, "query=some+text");
 
             controller.Index();

@@ -9,7 +9,7 @@ using Chalmers.ILL.SignalR;
 using Chalmers.ILL.Mail;
 using Chalmers.ILL.UmbracoApi;
 using Chalmers.ILL.Models;
-using System.Configuration;
+using Chalmers.ILL.Configuration;
 using Nest;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
@@ -32,10 +32,11 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         ISourceFactory _sourceFactory;
         IOrderItemSearcher _orderItemsSearcher;
         IAutomaticMailSendingEngine _automaticMailSendingEngine;
+        IChillinConfiguration _config;
 
         public SystemSurfaceController(IOrderItemManager orderItemManager, INotifier notifier, IMailWebApi exchangeMailWebApi,
             IChillinOrderConfiguration orderConfig, ISourceFactory sourceFactory, IOrderItemSearcher orderItemsSearcher,
-            IAutomaticMailSendingEngine automaticMailSendingEngine)
+            IAutomaticMailSendingEngine automaticMailSendingEngine, IChillinConfiguration config)
         {
             _orderItemManager = orderItemManager;
             _notifier = notifier;
@@ -44,6 +45,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             _sourceFactory = sourceFactory;
             _orderItemsSearcher = orderItemsSearcher;
             _automaticMailSendingEngine = automaticMailSendingEngine;
+            _config = config;
         }
 
         /// <summary>
@@ -158,13 +160,13 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         {
             var serverName = Request.Host.Host;
             var isLocalhost = serverName == "localhost";
-            var isTestServer = serverName == ConfigurationManager.AppSettings["testServer"];
+            var isTestServer = serverName == _config.TestServer;
 
             // ForwardedHeadersMiddleware (Program.cs) already folds X-Forwarded-For into
             // Connection.RemoteIpAddress, so no manual header parsing is needed here (fas 2).
             var clientIpAddr = Request.HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
 
-            var allowedIp = ConfigurationManager.AppSettings["cronServerIpAddress"];
+            var allowedIp = _config.CronServerIpAddress;
             var res = isLocalhost || isTestServer || (!String.IsNullOrWhiteSpace(allowedIp) && clientIpAddr == allowedIp);
 
             if (!res)

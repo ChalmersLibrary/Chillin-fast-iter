@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.Members;
 using Chalmers.ILL.Models.Page;
+using Chalmers.ILL.Tests.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -39,8 +40,8 @@ namespace Chalmers.ILL.Tests.Controllers
 
             var result = await controller.HandleLogin(new Models.LoginModel { Login = "otheruser", Password = "correct" }) as RedirectResult;
 
-            // orderListPageUrl isn't configured in the test app's config, so it resolves to empty -
-            // this pins today's behavior (no crash, no fallback URL), not a desired value.
+            // OrderListPageUrl isn't set on the stub config, so it resolves to empty - this pins
+            // today's behavior (no crash, no fallback URL), not a desired value.
             Assert.IsNotNull(result);
             Assert.AreEqual("?login=ok", result.Url);
         }
@@ -81,7 +82,7 @@ namespace Chalmers.ILL.Tests.Controllers
 
         private static LoginSurfaceController NewController(Func<string, string, bool> validateUser, Func<string, IEnumerable<string>> getRolesForUser, Func<HttpContext, string, IEnumerable<string>, Task> signIn)
         {
-            var controller = new LoginSurfaceController(new StubMemberInfoManager(), validateUser, getRolesForUser, signIn);
+            var controller = new LoginSurfaceController(new StubMemberInfoManager(), validateUser, getRolesForUser, signIn, new StubChillinConfiguration());
             var httpContext = new DefaultHttpContext();
             httpContext.Request.Path = "/login";
             controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
