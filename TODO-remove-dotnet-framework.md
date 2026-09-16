@@ -950,6 +950,20 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
 
 ## Fas 6: Dependency injection & konfiguration
 
+**⚠️ Fas 6 är en hård förutsättning för fas 10 — upptäckt 2026-09-16.** Appen läser konfiguration
+uteslutande via `System.Configuration.ConfigurationManager.AppSettings`, dvs. ur `App.config` som
+bakas in i deploymentartefakten som `Chalmers.ILL.dll.config`. Verifierat: **noll** förekomster av
+`Environment.GetEnvironmentVariable` i hela `Chalmers.ILL/`.
+
+På Windows-planen substituerade IIS in App Services Application Settings i `Web.config` — det är en
+Windows-/IIS-specifik plattformsfunktion. **På Linux-planen finns den inte:** app settings exponeras
+bara som miljövariabler. Med `Web.config` borttagen och `App.config` som brygga går appen därför
+**inte att konfigurera i Azure över huvud taget** förrän den här fasen är gjord. Punkten "Flytta
+`Local.config` till App Settings" i fas 10 förutsätter tyst att `IConfiguration` redan finns.
+
+Konsekvens för ordningen: fas 6 ska göras före fas 10, och före allt arbete som behöver en
+miljöstyrd inställning i Azure.
+
 - [x] **Ersätt Unity med `Microsoft.Extensions.DependencyInjection`**
   Paketet heter `Unity` 3.0.1304.1 i `packages.config` (assemblynamnet är `Microsoft.Practices.Unity`
   — sök på rätt sak vid PackageReference-migreringen).
@@ -1386,6 +1400,27 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Sätt `ASPNETCORE_ENVIRONMENT` här (se fas 6).
   Ta bort `<ExcludeFilesFromDeployment>Local.config</ExcludeFilesFromDeployment>` ur de tre
   konfigurationerna i csproj (fas 1) — mekanismen finns inte kvar.
+
+- [ ] **⚠️ Vyerna redirectar till produktion om värdnamnet är okänt — upptäckt 2026-09-16**
+  `Views/ChalmersILL.cshtml:7-15` och `Views/ChalmersILLLoginPage.cshtml:5-13` kör vid varje
+  sidladdning:
+  ```csharp
+  var isNotLocalhost        = Request.Host.Host != "localhost";
+  var isNotTestServer       = Request.Host.Host != AppSettings["testServer"];
+  var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == AppSettings["liveServer"]);
+  if (isNotLocalhost && isNotTestServer && isNotSecureLiveServer)
+      Response.Redirect("https://" + AppSettings["liveServer"], true);
+  ```
+  Den nya Linux-appen får ett nytt värdnamn (`*.azurewebsites.net`) innan domänen flyttas. Fram till
+  dess matchar varken `testServer` eller `liveServer`, och **varje besökare skickas rakt in i den
+  gamla produktionsappen** — vilket är precis tvärtemot avsikten med att köra de två parallellt under
+  fas 11. Sätt `testServer` till den nya appens värdnamn direkt vid uppsättningen.
+  Gäller i än högre grad en isolerad testinstans, som aldrig får bounca användare till drift.
+
+  **Bieffekt från fas 2 som inte åtgärdades:** `Response.Redirect(url, true)` i ASP.NET Core avbryter
+  inte exekveringen — andra argumentet är `permanent`, inte `endResponse`. Vyn fortsätter alltså
+  renderas efter redirecten. Fas 2 noterade att redirect från vy måste flytta till controllern; för
+  just de här två gjordes det inte.
 
 - [ ] **Dokumentera enkelinstans som uttrycklig förutsättning**
   Ingen SignalR-backplane behövs — beslutat, appen körs på en instans. Men beroendet är osynligt i
