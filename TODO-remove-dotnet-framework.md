@@ -1018,8 +1018,16 @@ miljöstyrd inställning i Azure.
   `log4net` har redan en egen fil (`Config/log4net.config` via `configSource`) — den behålls som fil,
   men kopplingen via `ConfigurationManager` byts mot explicit `XmlConfigurator.Configure(...)` i
   `Program.cs`. Se fas 0a: appendern måste dessutom bytas eftersom den pekar på en Umbraco-typ.
-  Alternativt: gå över till `Microsoft.Extensions.Logging` helt. Bestäm vilket — halvvägs är värre än
-  antingen.
+
+  **Beslut 2026-09-16: log4net behålls, `Microsoft.Extensions.Logging` väljs bort.** Avstämt med
+  användaren, som vill ha loggfiler på disk och minimal Azure-integration (ingen Application
+  Insights). `Microsoft.Extensions.Logging` har **ingen inbyggd filprovider** — Console, Debug,
+  EventSource och EventLog är allt som finns — så ett byte skulle kräva Serilog eller NLog som nytt
+  beroende, enbart för att återfå den funktion log4net redan har och som är verifierad
+  (`Log4NetConfigurationTest` skriver en rad och läser tillbaka den från disk). Argumenten för
+  ILogger var strukturerad loggning och Azure-native utdata; båda är bortvalda.
+  Kvarstår: `log4net` 2.0.12 har en känd sårbarhet (GHSA-4f7c-pmjv-c25w) och senaste version är
+  3.4.0 — ett majorsteg med egna brytande ändringar. Uppgraderingen hör hemma i fas 8, inte här.
   `entityFramework`-sektionen försvinner helt med EF6-borttagningen (fas 7), liksom
   `chillinOrderItemsDb`-connection-stringen — det finns ingen databas kvar att peka ut.
   `system.web.webPages.razor` hanteras av `_ViewImports.cshtml`.
