@@ -1,14 +1,13 @@
-@using System.Configuration;
 @{
     Layout = null;
 }
 @{
     var isNotLocalhost = Request.Host.Host != "localhost";
-    var isNotTestServer = Request.Host.Host != ConfigurationManager.AppSettings["testServer"];
-    var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == ConfigurationManager.AppSettings["liveServer"]);
+    var isNotTestServer = Request.Host.Host != Config.TestServer;
+    var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == Config.LiveServer);
     if (isNotLocalhost && isNotTestServer && isNotSecureLiveServer)
     {
-        Response.Redirect("https://" + ConfigurationManager.AppSettings["liveServer"], true);
+        Response.Redirect("https://" + Config.LiveServer, true);
     }
 }
 <!doctype html>

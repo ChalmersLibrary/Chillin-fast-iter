@@ -1,11 +1,10 @@
 ﻿@model Chalmers.ILL.Models.Page.ChalmersILLStartPageModel
-@using System.Configuration;
 @{
     Layout = "~/Views/ChalmersILL.cshtml";
 }
 
 @{
-    if (Convert.ToBoolean(ConfigurationManager.AppSettings["showManulMailFetchingTools"]))
+    if (Config.ShowManualMailFetchingTools)
     {
         <form class="form" role="form" onsubmit="return false;">
             <div class="row">

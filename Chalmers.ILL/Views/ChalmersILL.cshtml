@@ -1,16 +1,15 @@
 ﻿@model Chalmers.ILL.Models.Page.ChalmersILLModel
-@using System.Configuration;
 @{
     Layout = null;
 }
 
 @{
     var isNotLocalhost = Request.Host.Host != "localhost";
-    var isNotTestServer = Request.Host.Host != ConfigurationManager.AppSettings["testServer"];
-    var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == ConfigurationManager.AppSettings["liveServer"]);
+    var isNotTestServer = Request.Host.Host != Config.TestServer;
+    var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == Config.LiveServer);
     if (isNotLocalhost && isNotTestServer && isNotSecureLiveServer)
     {
-        Response.Redirect("https://" + ConfigurationManager.AppSettings["liveServer"], true);
+        Response.Redirect("https://" + Config.LiveServer, true);
     }
 }
 
@@ -45,7 +44,7 @@
 	<body>
         <div id="container">
             @{
-                if (Convert.ToBoolean(ConfigurationManager.AppSettings["showManulMailFetchingTools"]))
+                if (Config.ShowManualMailFetchingTools)
                 {
                     <img style="position:fixed; left:10px; bottom:10px;" src="~/images/chilli-plain.svg" onclick="lockScreen(); $.post('/SystemSurface/Update', {}, unlockScreen);" onerror="    onerror=null; this.src='~/images/chilli.png'" alt="Chilli">
                 }
@@ -108,7 +107,7 @@
                                 <ul class="dropdown-menu">
                                     <li><a href="/">Hjälp</a></li>
                                     <li><a href="/bestaellningar/instaellningar/">Inställningar</a></li>
-                                    <li><a href="@ConfigurationManager.AppSettings["statisticsUrl"]">Statistik</a></li>
+                                    <li><a href="@Config.StatisticsUrl">Statistik</a></li>
                                     <li><a href="/ChalmersILLLogoutPage">Logga ut</a></li>
                                 </ul>
                             </li>
@@ -172,7 +171,7 @@
             $.post("/OrderItemMailSurface/SendSimpleMail", {
                 OrderId: "... Nej, FEEDBACK",
                 recipientName: "Buggfixarna",
-                recipientEmail: "@ConfigurationManager.AppSettings["bugFixersMailingList"]",
+                recipientEmail: "@Config.BugFixersMailingList",
                 message: message,
                 attachments: []
             }).done(function (res) {

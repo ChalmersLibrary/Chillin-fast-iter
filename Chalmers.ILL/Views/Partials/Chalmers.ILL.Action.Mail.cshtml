@@ -1,6 +1,5 @@
 ﻿@model Chalmers.ILL.Models.PartialPage.ChalmersILLActionMailModel
 @using System.Globalization
-@using System.Configuration;
 
 <div class="action-header">Skicka mail</div>
 
@@ -106,7 +105,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <label>Ny status</label> <span class="glyphicon glyphicon-info-sign" data-toggle="popover" data-content="@ConfigurationManager.AppSettings["statusEditingAtMailSendInfo"]"></span>
+                <label>Ny status</label> <span class="glyphicon glyphicon-info-sign" data-toggle="popover" data-content="@Config.StatusEditingAtMailSendInfo"></span>
                 <!-- Status button -->
                 <div>
                     <div class="btn-group">
