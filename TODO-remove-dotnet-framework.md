@@ -1152,7 +1152,7 @@ miljöstyrd inställning i Azure.
   Web.config-nycklarna som redan var överflödiga (`ValidationSettings:UnobtrusiveValidationMode` m.fl.)
   togs aldrig med i `appsettings.json` eftersom de aldrig lästes av någon kod.
 
-- [ ] **Sätt upp `appsettings.json` + miljöspecifika filer**
+- [x] **Sätt upp `appsettings.json` + miljöspecifika filer**
   Det finns ingen `Web.Debug.config`/`Web.Release.config`-transform idag, så det saknas miljöuppdelning
   att bevara. Skapa `appsettings.json` + `appsettings.Development.json`/`appsettings.Production.json`.
   Kandidater för miljöspecifika värden: sökvägen till orderkatalogen (se fas 7 och 10),
@@ -1161,7 +1161,29 @@ miljöstyrd inställning i Azure.
   Ersätt samtidigt de tre icke-standardkonfigurationerna `ChillinTest.Debug`/`ChillinTest.Release`/
   `ChalmersILL` i csproj (se fas 1).
 
-- [ ] **Ta bort `<configSections>`**
+  **Genomfört 2026-09-16.** De fem uppräknade nycklarna (`BaseUrl`, `TestServer`, `LiveServer`,
+  `CronServerIpAddress`, `ElasticSearchUrl`) flyttades ut ur `appsettings.json` till
+  `appsettings.Development.json` (dagens localhost-värden) respektive `appsettings.Production.json`
+  (`"xxx"`-platshållare i väntan på fas 10:s riktiga Azure-värden — miljövariabler i Azure App
+  Settings övertrumfar ändå filen). `checkForPendingDatabaseMigrations`/`chillinOrderItemsDb` rördes
+  inte, som noterat ovan hör de till fas 7. De tre icke-standardkonfigurationerna i csproj behövde
+  **ingen åtgärd** — verifierat att `ChillinTest.Debug`/`ChillinTest.Release`/`ChalmersILL` redan
+  försvann som en bieffekt av SDK-style-konverteringen i fas 1a (0 träffar på `ChillinTest` i hela
+  repot).
+
+  **Sidofynd, hanterat:** ASP.NET Core defaultar `ASPNETCORE_ENVIRONMENT` till **Production** när
+  variabeln är osatt (ingen `launchSettings.json` fanns), vilket tyst hade bytt `dotnet run` från
+  fungerande localhost-värden till `appsettings.Production.json`s `"xxx"`-platshållare — exakt den
+  sortens fel brytpunkten efter fas 2 finns till för att fånga. `.devcontainer/`s filer är
+  skrivskyddade i den här sessionen (samma begränsning som SDK-installationen och Chromium-bytet
+  tidigare), så `ENV ASPNETCORE_ENVIRONMENT=Development` i `Dockerfile` var inte en väg. Löst med
+  standardmekanismen istället: `Chalmers.ILL/Properties/launchSettings.json` med en `Development`-
+  profil — den filen publiceras aldrig (SDK:n utesluter den från publish), så den påverkar inte
+  Azure-driftsättningen, bara lokal `dotnet run`. Verifierat med en full `dotnet run`: "Hosting
+  environment: Development" i loggen, `/` → 302 → `/ChalmersILLLoginPage`, login-sidan 200 — samma
+  flöde som brytpunktens ursprungliga verifiering.
+
+- [x] **Ta bort `<configSections>`**
   Tre poster: `log4net`, `entityFramework`, `system.web.webPages.razor`.
   `log4net` har redan en egen fil (`Config/log4net.config` via `configSource`) — den behålls som fil,
   men kopplingen via `ConfigurationManager` byts mot explicit `XmlConfigurator.Configure(...)` i
@@ -1179,6 +1201,17 @@ miljöstyrd inställning i Azure.
   `entityFramework`-sektionen försvinner helt med EF6-borttagningen (fas 7), liksom
   `chillinOrderItemsDb`-connection-stringen — det finns ingen databas kvar att peka ut.
   `system.web.webPages.razor` hanteras av `_ViewImports.cshtml`.
+
+  **Verifierat 2026-09-16: redan uppfyllt utan ny kod.** `<configSections>` fanns bara i `App.config`,
+  som togs bort i sin helhet i föregående punkt ("Migrera `ConfigurationManager.AppSettings`") — 0
+  träffar på `configSections`/`entityFramework`/`system.web.webPages.razor` kvar i repot (sökt över
+  alla `.config`/`.csproj`). `log4net` konfigureras redan explicit från `Program.cs` (fas 0a),
+  `system.web.webPages.razor` hanteras redan av `_ViewImports.cshtml` (fas 4). `entityFramework`-
+  sektionen och `chillinOrderItemsDb`-anslutningssträngen försvann alltså i praktiken redan här —
+  **notera dock:** `OrderItemsDbContext` (`base("chillinOrderItemsDb")`) har därmed **ingen kvarvarande
+  källa** för den anslutningssträngen. Ofarligt just nu (inget i isolerat/utvecklingsflödet rör
+  `EntityFrameworkOrderItemManager`), men databasen är alltså redan de facto onåbar innan fas 7 formellt
+  tar bort den. Inget att åtgärda här — det är precis vad fas 7 gör.
 
 ---
 
