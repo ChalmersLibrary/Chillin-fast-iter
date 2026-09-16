@@ -1,7 +1,7 @@
-﻿using Chalmers.ILL.Models;
+﻿using Chalmers.ILL.Configuration;
+using Chalmers.ILL.Models;
 using Chalmers.ILL.Repositories;
 using System;
-using static System.Configuration.ConfigurationManager;
 
 namespace Chalmers.ILL.Services
 {
@@ -13,18 +13,21 @@ namespace Chalmers.ILL.Services
         private readonly IFolioRepository _folioRepository;
         private readonly IJsonService _jsonService;
         private readonly IFolioUserService _folioUserService;
+        private readonly IChillinConfiguration _config;
 
         public FolioItemService
         (
             IChillinTextRepository chillinTextRepository,
-            IFolioRepository folioRepository, 
+            IFolioRepository folioRepository,
             IJsonService jsonService,
-            IFolioUserService folioUserService)
+            IFolioUserService folioUserService,
+            IChillinConfiguration config)
         {
             _folioRepository = folioRepository;
             _jsonService = jsonService;
             _chillinTextRepository = chillinTextRepository;
             _folioUserService = folioUserService;
+            _config = config;
         }
 
         public ItemQuery ByQuery(string query)
@@ -44,7 +47,7 @@ namespace Chalmers.ILL.Services
                 throw new ArgumentNullException(nameof(item));
             }
 
-            var user = _folioUserService.ByUserName(AppSettings["foliousername"]);
+            var user = _folioUserService.ByUserName(_config.FolioUsername);
             var source = new Source
             {
                 Id = user.Id,

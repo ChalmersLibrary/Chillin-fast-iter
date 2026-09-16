@@ -1,6 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using Chalmers.ILL.Configuration;
+using Newtonsoft.Json;
 using System;
-using System.Configuration;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -9,10 +9,10 @@ namespace Chalmers.ILL.Connections
 {
     public class FolioConnection : IFolioConnection
     {
-        private readonly string _folioApiBaseAddress = ConfigurationManager.AppSettings["folioApiBaseAddress"].ToString();
-        private readonly string _tenant = ConfigurationManager.AppSettings["folioXOkapiTenant"].ToString();
-        private readonly string _username = ConfigurationManager.AppSettings["folioUsername"].ToString();
-        private readonly string _password = ConfigurationManager.AppSettings["folioPassword"].ToString();
+        private readonly string _folioApiBaseAddress;
+        private readonly string _tenant;
+        private readonly string _username;
+        private readonly string _password;
         private string _token;
         private DateTime _tokenExpiration;
         private string _tokenPath;
@@ -22,8 +22,12 @@ namespace Chalmers.ILL.Connections
         private string _refreshDomain;
         private DateTime _refreshExpiration;
 
-        public FolioConnection()
+        public FolioConnection(IChillinConfiguration config)
         {
+            _folioApiBaseAddress = config.FolioApiBaseAddress;
+            _tenant = config.FolioXOkapiTenant;
+            _username = config.FolioUsername;
+            _password = config.FolioPassword;
         }
 
         public void ClearToken()

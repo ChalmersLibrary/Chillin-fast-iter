@@ -1,8 +1,8 @@
-﻿using Chalmers.ILL.Exceptions;
+﻿using Chalmers.ILL.Configuration;
+using Chalmers.ILL.Exceptions;
 using Chalmers.ILL.Models;
 using System;
 using System.Collections.Generic;
-using static System.Configuration.ConfigurationManager;
 
 namespace Chalmers.ILL.Services
 {
@@ -12,19 +12,22 @@ namespace Chalmers.ILL.Services
         private readonly IFolioInstanceService _folioInstanceService;
         private readonly IFolioHoldingService _folioHoldingService;
         private readonly IFolioCirculationService _folioCirculationService;
+        private readonly IChillinConfiguration _config;
 
         public FolioService
         (
             IFolioItemService folioItemService,
             IFolioInstanceService folioInstanceService,
             IFolioHoldingService folioHoldingService,
-            IFolioCirculationService folioCirculationService
+            IFolioCirculationService folioCirculationService,
+            IChillinConfiguration config
         )
         {
             _folioItemService = folioItemService;
             _folioInstanceService = folioInstanceService;
             _folioHoldingService = folioHoldingService;
             _folioCirculationService = folioCirculationService;
+            _config = config;
         }
 
         public void SetItemToWithdrawn(string barcode)
@@ -66,23 +69,23 @@ namespace Chalmers.ILL.Services
         }
 
         private Instance CreateInstance(string title, string orderId) =>
-            _folioInstanceService.Post(new InstanceBasic(title, orderId));
+            _folioInstanceService.Post(new InstanceBasic(title, orderId, _config.InstanceResourceTypeId, _config.InstanceStatusId, _config.InstanceModesOfIssuance, _config.InstanceIdentifierTypeId, _config.ChillinStatisticalCodeId));
 
-        private Holding CreateHolding(string instanceId) => 
-            _folioHoldingService.Post(new HoldingBasic(instanceId));
+        private Holding CreateHolding(string instanceId) =>
+            _folioHoldingService.Post(new HoldingBasic(instanceId, _config.FolioSourceId, _config.HoldingPermanentLocationId, _config.ChillinStatisticalCodeId));
 
-        private Item CreateItem(string holdingId, string barCode, bool readOnlyAtLibrary) => 
-            _folioItemService.Post(new ItemBasic(barCode, holdingId, readOnlyAtLibrary), readOnlyAtLibrary);
+        private Item CreateItem(string holdingId, string barCode, bool readOnlyAtLibrary) =>
+            _folioItemService.Post(new ItemBasic(barCode, holdingId, readOnlyAtLibrary, _config.ItemMaterialTypeId, _config.ChillinStatisticalCodeId, _config.ItemPermanentLoanTypeId, _config.ItemPermanentLoanTypeIdInHouse), readOnlyAtLibrary);
 
-        private Circulation CreateCirculation(string itemId, string requesterId, string pickupServicePoint, string instanceId, string holdingId) => 
+        private Circulation CreateCirculation(string itemId, string requesterId, string pickupServicePoint, string instanceId, string holdingId) =>
             _folioCirculationService.Post(new CirculationBasic(itemId, requesterId, ServicePoints()[pickupServicePoint], instanceId, holdingId));
 
         private Dictionary<string, string> ServicePoints() =>
             new Dictionary<string, string>()
             {
-                { "Huvudbiblioteket", AppSettings["servicePointHuvudbiblioteketId"] },
-                { "Lindholmenbiblioteket", AppSettings["servicePointLindholmenbiblioteketId"] },
-                { "Arkitekturbiblioteket", AppSettings["servicePointArkitekturbiblioteketId"] }
+                { "Huvudbiblioteket", _config.ServicePointHuvudbiblioteketId },
+                { "Lindholmenbiblioteket", _config.ServicePointLindholmenbiblioteketId },
+                { "Arkitekturbiblioteket", _config.ServicePointArkitekturbiblioteketId }
             };
     }
 }

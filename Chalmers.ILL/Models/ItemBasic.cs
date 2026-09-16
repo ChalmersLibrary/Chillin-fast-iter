@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using static System.Configuration.ConfigurationManager;
 
 namespace Chalmers.ILL.Models
 {
@@ -8,17 +7,14 @@ namespace Chalmers.ILL.Models
     {
         public string Barcode { get; set; }
         public bool DiscoverySuppress { get; set; } = true;
-        public string MaterialTypeId { get; set; } = AppSettings["itemMaterialTypeId"];
+        public string MaterialTypeId { get; set; }
         public string PermanentLoanTypeId { get; set; }
         public string HoldingsRecordId { get; set; }
         public Status Status { get; set; } = new Status();
         public List<CirculationNote> CirculationNotes { get; set; } = new List<CirculationNote>();
-        public string[] StatisticalCodeIds { get; set; } = new string[]
-            {
-                AppSettings["chillinStatisticalCodeId"]
-            };
+        public string[] StatisticalCodeIds { get; set; }
 
-        public ItemBasic(string barcode, string holdingsRecordId, bool readOnlyAtLibrary)
+        public ItemBasic(string barcode, string holdingsRecordId, bool readOnlyAtLibrary, string materialTypeId, string statisticalCodeId, string permanentLoanTypeId, string permanentLoanTypeIdInHouse)
         {
             if (string.IsNullOrEmpty(barcode))
             {
@@ -30,9 +26,11 @@ namespace Chalmers.ILL.Models
             }
             Barcode = barcode;
             HoldingsRecordId = holdingsRecordId;
+            MaterialTypeId = materialTypeId;
+            StatisticalCodeIds = new string[] { statisticalCodeId };
             PermanentLoanTypeId = readOnlyAtLibrary ?
-                AppSettings["itemPermanentLoanTypeIdInHouse"] :
-                AppSettings["itemPermanentLoanTypeId"];
+                permanentLoanTypeIdInHouse :
+                permanentLoanTypeId;
         }
     }
 

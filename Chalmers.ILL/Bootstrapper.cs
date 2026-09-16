@@ -55,7 +55,7 @@ namespace Chalmers.ILL
             services.AddTransient<IJsonService, JsonService>();
 
             // Comment these to not touch FOLIO
-            services.AddSingleton<IFolioConnection>(new FolioConnection()); // Singleton to reuse tokens between calls
+            services.AddSingleton<IFolioConnection>(new FolioConnection(config)); // Singleton to reuse tokens between calls
             services.AddTransient<IFolioItemService, FolioItemService>();
             services.AddTransient<IFolioRepository, FolioRepository>();
             services.AddTransient<IFolioService, FolioService>();
