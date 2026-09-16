@@ -1,4 +1,5 @@
-﻿using Chalmers.ILL.Mail;
+﻿using Chalmers.ILL.Configuration;
+using Chalmers.ILL.Mail;
 using Chalmers.ILL.MediaItems;
 using Chalmers.ILL.Patron;
 using Chalmers.ILL.Providers;
@@ -16,10 +17,11 @@ namespace Chalmers.ILL.OrderItems
         IPatronDataProvider _patronDataProvider;
         IPersonDataProvider _personDataProvider;
         IOrderItemSearcher _orderItemSearcher;
+        IChillinConfiguration _config;
 
         public ChalmersSourceFactory(IMailWebApi exchangeMailWebApi, IOrderItemManager orderItemManager, INotifier notifier,
             IMediaItemManager mediaItemManager, IPatronDataProvider patronDataProvider, IPersonDataProvider personDataProvider,
-            IOrderItemSearcher orderItemSearcher)
+            IOrderItemSearcher orderItemSearcher, IChillinConfiguration config)
         {
             _exchangeMailWebApi = exchangeMailWebApi;
             _orderItemManager = orderItemManager;
@@ -28,12 +30,13 @@ namespace Chalmers.ILL.OrderItems
             _patronDataProvider = patronDataProvider;
             _personDataProvider = personDataProvider;
             _orderItemSearcher = orderItemSearcher;
+            _config = config;
         }
 
         public List<ISource> Sources()
         {
             var res = new List<ISource>();
-            res.Add(new ChalmersOrderItemsMailSource(_exchangeMailWebApi, _orderItemManager, _notifier, _mediaItemManager, _patronDataProvider, _personDataProvider, _orderItemSearcher));
+            res.Add(new ChalmersOrderItemsMailSource(_exchangeMailWebApi, _orderItemManager, _notifier, _mediaItemManager, _patronDataProvider, _personDataProvider, _orderItemSearcher, _config));
             // res.Add(new LibrisOrderItemsSource(_umbraco, _orderItemManager, _patronDataProvider, _orderItemSearcher)); Removed due to service being discontinued 2025-09-08
             return res;
         }

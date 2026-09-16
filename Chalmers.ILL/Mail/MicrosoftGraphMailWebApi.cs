@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Dynamic;
 using System.Globalization;
 using System.Linq;
@@ -254,7 +253,7 @@ namespace Chalmers.ILL.Mail
 
         public void SendMailMessage(string orderId, string body, string subject, string recipientName, string recipientAddress, IDictionary<string, byte[]> attachments)
         {
-            string senderEmail = ConfigurationManager.AppSettings["chalmersIllSenderAddress"];
+            string senderEmail = _config.ChalmersIllSenderAddress;
 
             dynamic message = new ExpandoObject();
             message.subject = subject + " #" + orderId;
@@ -328,7 +327,7 @@ namespace Chalmers.ILL.Mail
 
         public void SendPlainMailMessage(string body, string subject, string recipientAddress)
         {
-            string senderEmail = ConfigurationManager.AppSettings["chalmersIllSenderAddress"];
+            string senderEmail = _config.ChalmersIllSenderAddress;
 
             dynamic message = new ExpandoObject();
             message.subject = subject;

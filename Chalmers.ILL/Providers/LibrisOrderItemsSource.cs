@@ -1,11 +1,11 @@
-﻿using Chalmers.ILL.Models;
+﻿using Chalmers.ILL.Configuration;
+using Chalmers.ILL.Models;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.Patron;
 using Chalmers.ILL.Utilities;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Net.Http;
 using System.Web;
@@ -22,6 +22,7 @@ namespace Chalmers.ILL.Providers
         IOrderItemManager _orderItemManager;
         IPatronDataProvider _patronDataProvider;
         IOrderItemSearcher _orderItemSearcher;
+        IChillinConfiguration _config;
 
         private List<OrderItemSeedModel> _seeds;
         private SourcePollingResult _result;
@@ -34,11 +35,12 @@ namespace Chalmers.ILL.Providers
         }
 
         public LibrisOrderItemsSource(IOrderItemManager orderItemManager, IPatronDataProvider patronDataProvider,
-            IOrderItemSearcher orderItemSearcher)
+            IOrderItemSearcher orderItemSearcher, IChillinConfiguration config)
         {
             _orderItemManager = orderItemManager;
             _patronDataProvider = patronDataProvider;
             _orderItemSearcher = orderItemSearcher;
+            _config = config;
         }
 
         public SourcePollingResult Poll()
@@ -63,14 +65,14 @@ namespace Chalmers.ILL.Providers
         {
             try
             {
-                var sigels = ConfigurationManager.AppSettings["librarySigel"].Split(',').Select(x => x.Trim()).ToList();
+                var sigels = _config.LibrarySigel.Split(',').Select(x => x.Trim()).ToList();
 
                 foreach (var sigel in sigels)
                 {
-                    var addressStr = ConfigurationManager.AppSettings["librisApiBaseAddress"] + "/api/userrequests/" + sigel;
+                    var addressStr = _config.LibrisApiBaseAddress + "/api/userrequests/" + sigel;
 
                     var httpClient = new HttpClient();
-                    httpClient.DefaultRequestHeaders.Add("api-key", ConfigurationManager.AppSettings["librisApiKey"]);
+                    httpClient.DefaultRequestHeaders.Add("api-key", _config.LibrisApiKey);
                     var task = httpClient.GetStringAsync(new Uri(addressStr));
 
                     task.Wait();
@@ -98,7 +100,7 @@ namespace Chalmers.ILL.Providers
                                     "ISBN/ISSN: " + ReplaceWithNotAvailableIfEmptyString(req.isxn.Value) + "\n" +
                                     "Meddelande från låntagare: " + ReplaceWithNotAvailableIfEmptyString(req.user_message.Value);
                                 seed.MessagePrefix = "LIBRIS LÅNTAGARBESTÄLLNING" + "\n\n" +
-                                    ConfigurationManager.AppSettings["librisApiBaseAddress"] + ConfigurationManager.AppSettings["librisApiUserRequestSuffix"] + "\n\n";
+                                    _config.LibrisApiBaseAddress + _config.LibrisApiUserRequestSuffix + "\n\n";
                                 _seeds.Add(seed);
                             }
                         }
@@ -171,10 +173,10 @@ namespace Chalmers.ILL.Providers
 
                 foreach (var order in orders)
                 {
-                    var addressStr = ConfigurationManager.AppSettings["librisApiBaseAddress"] + "/api/illrequests/Z/" + order.ProviderOrderId;
+                    var addressStr = _config.LibrisApiBaseAddress + "/api/illrequests/Z/" + order.ProviderOrderId;
 
                     var httpClient = new HttpClient();
-                    httpClient.DefaultRequestHeaders.Add("api-key", ConfigurationManager.AppSettings["librisApiKey"]);
+                    httpClient.DefaultRequestHeaders.Add("api-key", _config.LibrisApiKey);
                     var task = httpClient.GetStringAsync(new Uri(addressStr));
 
                     task.Wait();
@@ -198,13 +200,13 @@ namespace Chalmers.ILL.Providers
                             {
                                 var eventId = _orderItemManager.GenerateEventId(UPDATE_ORDER_FROM_LIBRIS_DATA_EVENT_TYPE);
                                 _orderItemManager.SetStatus(order.NodeId, "02:Åtgärda", eventId, false, false);
-                                _orderItemManager.AddLogItem(order.NodeId, "LIBRIS", "Negativt svar. " + ConfigurationManager.AppSettings["librisApiBaseAddress"] + "/lf.php?action=notfullfilled&id=" + req.request_id.Value, eventId);
+                                _orderItemManager.AddLogItem(order.NodeId, "LIBRIS", "Negativt svar. " + _config.LibrisApiBaseAddress + "/lf.php?action=notfullfilled&id=" + req.request_id.Value, eventId);
                             }
                             else if (order.Status == "03:Beställd" && req.status_code.Value == "7") // Status code 7 is "Kan reserveras" in Libris
                             {
                                 var eventId = _orderItemManager.GenerateEventId(UPDATE_ORDER_FROM_LIBRIS_DATA_EVENT_TYPE);
                                 _orderItemManager.SetStatus(order.NodeId, "02:Åtgärda", eventId, false, false);
-                                _orderItemManager.AddLogItem(order.NodeId, "LIBRIS", "Kan reserveras." + ConfigurationManager.AppSettings["librisApiBaseAddress"] + "/lf.php?action=may_reserve&id=" + req.request_id.Value, eventId);
+                                _orderItemManager.AddLogItem(order.NodeId, "LIBRIS", "Kan reserveras." + _config.LibrisApiBaseAddress + "/lf.php?action=may_reserve&id=" + req.request_id.Value, eventId);
                             }
                         }
                     }

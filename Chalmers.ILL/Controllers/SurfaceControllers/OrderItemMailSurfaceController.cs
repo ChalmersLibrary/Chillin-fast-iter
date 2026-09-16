@@ -4,10 +4,10 @@ using System.Linq;
 using System.Web;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
 using Chalmers.ILL.Extensions;
-using System.Configuration;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Chalmers.ILL.OrderItems;
@@ -31,15 +31,18 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         IChillinOrderConfiguration _orderConfig;
         IMailService _mailService;
         ITemplateService _templateService;
+        IChillinConfiguration _config;
 
         public OrderItemMailSurfaceController(IOrderItemManager orderItemManager, IMailWebApi exchangeMailWebApi,
-            IChillinOrderConfiguration orderConfig, IMailService mailService, ITemplateService templateService)
+            IChillinOrderConfiguration orderConfig, IMailService mailService, ITemplateService templateService,
+            IChillinConfiguration config)
         {
             _orderItemManager = orderItemManager;
             _exchangeMailWebApi = exchangeMailWebApi;
             _orderConfig = orderConfig;
             _mailService = mailService;
             _templateService = templateService;
+            _config = config;
         }
 
         /// <summary>
@@ -161,8 +164,8 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                         "<div id='Purchase'>False</div>\n" +
                         "<div id='DeliveryLibrary'>" + deliveryLibrary + "</div>\n" +
                     "</div>\n";
-                _exchangeMailWebApi.ConnectToExchangeService(ConfigurationManager.AppSettings["chalmersIllExhangeLogin"], ConfigurationManager.AppSettings["chalmersIllExhangePass"]);
-                _exchangeMailWebApi.SendPlainMailMessage(body, "New request from TEST #new", ConfigurationManager.AppSettings["chalmersIllSenderAddress"]);
+                _exchangeMailWebApi.ConnectToExchangeService(_config.ChalmersIllExchangeLogin, _config.ChalmersIllExchangePassword);
+                _exchangeMailWebApi.SendPlainMailMessage(body, "New request from TEST #new", _config.ChalmersIllSenderAddress);
 
                 json.Success = true;
                 json.Message = "Sent mail for new order.";

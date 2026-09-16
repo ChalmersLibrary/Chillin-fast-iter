@@ -1,8 +1,8 @@
-﻿using Chalmers.ILL.Controllers.SurfaceControllers;
+﻿using Chalmers.ILL.Configuration;
+using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.OrderItems;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Web;
 using Newtonsoft.Json;
@@ -36,6 +36,7 @@ namespace Chalmers.ILL.Mail
         IPatronDataProvider _patronDataProvider;
         IPersonDataProvider _personDataProvider;
         IOrderItemSearcher _orderItemSearcher;
+        IChillinConfiguration _config;
 
         private SourcePollingResult _result;
         public SourcePollingResult Result
@@ -47,8 +48,8 @@ namespace Chalmers.ILL.Mail
         }
 
         public ChalmersOrderItemsMailSource(IMailWebApi exchangeMailWebApi, IOrderItemManager orderItemManager,
-            INotifier notifier, IMediaItemManager mediaItemManager, IPatronDataProvider patronDataProvider, IPersonDataProvider personDataProvider, 
-            IOrderItemSearcher orderItemSearcher)
+            INotifier notifier, IMediaItemManager mediaItemManager, IPatronDataProvider patronDataProvider, IPersonDataProvider personDataProvider,
+            IOrderItemSearcher orderItemSearcher, IChillinConfiguration config)
         {
             _exchangeMailWebApi = exchangeMailWebApi;
             _orderItemManager = orderItemManager;
@@ -57,6 +58,7 @@ namespace Chalmers.ILL.Mail
             _patronDataProvider = patronDataProvider;
             _personDataProvider = personDataProvider;
             _orderItemSearcher = orderItemSearcher;
+            _config = config;
         }
 
         public SourcePollingResult Poll()
@@ -69,7 +71,7 @@ namespace Chalmers.ILL.Mail
             // Connect to Exchange Service
             try
             {
-                _exchangeMailWebApi.ConnectToExchangeService(ConfigurationManager.AppSettings["chalmersIllExhangeLogin"], ConfigurationManager.AppSettings["chalmersIllExhangePass"]);
+                _exchangeMailWebApi.ConnectToExchangeService(_config.ChalmersIllExchangeLogin, _config.ChalmersIllExchangePassword);
             }
             catch (Exception e)
             {
@@ -207,7 +209,7 @@ namespace Chalmers.ILL.Mail
                             _orderItemManager.AddSierraDataToLog(orderItemNodeId, item.SierraPatronInfo, eventId);
 
                             // Archive the mail message to correct folder
-                            if (ConfigurationManager.AppSettings["chalmersILLArchiveProcessedMails"] == "true")
+                            if (_config.ChalmersIllArchiveProcessedMails)
                             {
                                 var archiveFolderId = _exchangeMailWebApi.ArchiveMailMessage(item);
                                 list[index].ArchiveFolderId = archiveFolderId;
@@ -270,7 +272,7 @@ namespace Chalmers.ILL.Mail
                             // Archive the mail message to correct folder
                             try
                             {
-                                if (ConfigurationManager.AppSettings["chalmersILLArchiveProcessedMails"] == "true")
+                                if (_config.ChalmersIllArchiveProcessedMails)
                                 {
                                     var archiveFolderId = _exchangeMailWebApi.ArchiveMailMessage(item);
                                     list[index].ArchiveFolderId = archiveFolderId;
@@ -372,7 +374,7 @@ namespace Chalmers.ILL.Mail
                             // Archive the mail message to correct folder
                             try
                             {
-                                if (ConfigurationManager.AppSettings["chalmersILLArchiveProcessedMails"] == "true")
+                                if (_config.ChalmersIllArchiveProcessedMails)
                                 {
                                     var archiveFolderId = _exchangeMailWebApi.ArchiveMailMessage(item);
                                     list[index].ArchiveFolderId = archiveFolderId;
@@ -405,7 +407,7 @@ namespace Chalmers.ILL.Mail
                             // Forward failed mail to bug fixers.
                             try
                             {
-                                foreach (var addressWithPotentialWs in ConfigurationManager.AppSettings["bugFixersMailingList"].Split(','))
+                                foreach (var addressWithPotentialWs in _config.BugFixersMailingList.Split(','))
                                 {
                                     var address = addressWithPotentialWs.Trim();
                                     try
@@ -424,8 +426,8 @@ namespace Chalmers.ILL.Mail
                             }
 
                             // Forward failed mail to manual handling.
-                            _exchangeMailWebApi.ForwardMailMessage(item, ConfigurationManager.AppSettings["chalmersILLForwardingAddress"]);
-                            list[index].StatusResult = "This message has been forwarded to " + ConfigurationManager.AppSettings["chalmersILLForwardingAddress"];
+                            _exchangeMailWebApi.ForwardMailMessage(item, _config.ChalmersIllForwardingAddress);
+                            list[index].StatusResult = "This message has been forwarded to " + _config.ChalmersIllForwardingAddress;
                             _result.Errors++;
                             _result.Messages.Add(list[index].StatusResult);
                         }
@@ -441,8 +443,8 @@ namespace Chalmers.ILL.Mail
                     {
                         try
                         {
-                            _exchangeMailWebApi.ForwardMailMessage(item, ConfigurationManager.AppSettings["chalmersILLForwardingAddress"]);
-                            list[index].StatusResult = "This message has been forwarded to " + ConfigurationManager.AppSettings["chalmersILLForwardingAddress"];
+                            _exchangeMailWebApi.ForwardMailMessage(item, _config.ChalmersIllForwardingAddress);
+                            list[index].StatusResult = "This message has been forwarded to " + _config.ChalmersIllForwardingAddress;
                         }
                         catch (Exception e)
                         {

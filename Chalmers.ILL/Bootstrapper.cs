@@ -80,7 +80,7 @@ namespace Chalmers.ILL
             services.AddSingleton<IChillinOrderConfiguration>(orderConfig);
 
             // Create all our singleton type instances.
-            var mailService = new MailService(mediaItemManager, mailWebApi);
+            var mailService = new MailService(mediaItemManager, mailWebApi, config);
             var orderItemManager = new EntityFrameworkOrderItemManager(orderConfig, orderItemSearcher);
             var providerService = new ProviderService(orderItemSearcher);
             var bulkDataManager = new BulkDataManager(orderItemSearcher);
