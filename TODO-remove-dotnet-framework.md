@@ -1567,7 +1567,7 @@ GAC/VS, inte NuGet.
   **Kontrollera den faktiska Elasticsearch-serverversionen i drift innan valet görs** — den avgör om
   det räcker med en versionsuppgradering inom NEST eller om hela klientbytet krävs.
 
-- [ ] **Uppgradera övriga låsta paketversioner**
+- [x] **Uppgradera övriga låsta paketversioner**
   `Newtonsoft.Json` 8.0.1 (mycket gammal; överväg `System.Text.Json` för nya ställen men behåll
   Newtonsoft där `[JsonProperty]`-attribut används i modellerna), `HtmlAgilityPack` 1.4.6,
   `log4net` 2.0.12, `QRCoder` 1.4.3, `Microsoft.Identity.Client` 4.48.1 /
@@ -1577,6 +1577,17 @@ GAC/VS, inte NuGet.
   (`Repositories/FolioRepository.cs:93`, `Patron/FolioPatronDataProvider.cs:177`,
   `Connections/FolioConnection.cs:60, 99`, `Mail/MicrosoftGraphMailWebApi.cs:47, 402, 434, 472, 514,
   546`) — de är Framework-legacy och no-ops på modern .NET.
+
+  **Genomfört 2026-09-17.** `Newtonsoft.Json` var redan uppgraderad till 13.0.3 sedan tidigare (kvar
+  bara att lämna orörd). Uppgraderade: `HtmlAgilityPack` → 1.13.0 (tar samtidigt bort NU1701-varningen
+  om att paketet restaurerades mot `.NETFramework` i stället för `net10.0`), `log4net` → 3.4.0 (tas
+  bort GHSA-4f7c-pmjv-c25w; samma bump krävdes i `Chalmers.ILL.Tests.csproj` — annars NU1605
+  package-downgrade-fel, testprojektet hade en egen direkt referens), `QRCoder` → 1.8.0,
+  `Microsoft.Identity.Client` → 4.90.0 (tar bort GHSA-x674-v45j-fwxw), `Microsoft.IdentityModel.Abstractions`
+  → 8.22.0. Ingen av API-ytorna som används (`LogManager`/`ILog`/`XmlConfigurator`,
+  `QRCodeGenerator`/`PngByteQRCode`, MSAL:s `ConfidentialClientApplicationBuilder`) hade brytande
+  ändringar. Samtliga 10 `ServicePointManager.SecurityProtocol`-anrop borttagna (Tls12 är default sedan
+  länge på modern .NET, no-op). 220/220 gröna oförändrat.
 
 - [x] **Rensa `packages\`-katalogen från obsoleta mappar**
   Ligger kvar på disk men finns inte i någon `packages.config` (kvarlämning efter Umbraco-borttagningen):

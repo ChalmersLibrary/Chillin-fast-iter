@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="2.0.12" />
+    <PackageReference Include="log4net" Version="3.4.0" />
     <!-- WebApplicationFactory<Program> - only possible for the first time in fas 6, isolerat läge
          steg A, since Bootstrapper.RegisterTypes previously needed real integrations to construct. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />

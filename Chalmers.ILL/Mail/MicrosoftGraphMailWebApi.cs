@@ -40,8 +40,6 @@ namespace Chalmers.ILL.Mail
         /// <returns>The Service reference</returns>
         public void ConnectToExchangeService(string username, string password)
         {
-            System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-
             _app = ConfidentialClientApplicationBuilder.Create(_config.MicrosoftGraphClientId)
                 .WithClientSecret(_config.MicrosoftGraphClientSecret)
                 .WithAuthority(new Uri(_config.MicrosoftGraphAuthority))
@@ -357,8 +355,6 @@ namespace Chalmers.ILL.Mail
         {
             dynamic res = null;
 
-            System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-
             var tokenTask = _app.AcquireTokenForClient(scopes).ExecuteAsync();
             tokenTask.Wait();
             var tokenResult = tokenTask.Result;
@@ -388,8 +384,6 @@ namespace Chalmers.ILL.Mail
         private dynamic PostToMicrosoftGraph(string url, string data = null)
         {
             dynamic res = null;
-
-            System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
             var tokenTask = _app.AcquireTokenForClient(scopes).ExecuteAsync();
             tokenTask.Wait();
@@ -426,8 +420,6 @@ namespace Chalmers.ILL.Mail
         private dynamic PutToUpload(string url, byte[] data, IDictionary<string, string> headers = null)
         {
             dynamic res = null;
-
-            System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
             using (var requestMessage = new HttpRequestMessage(HttpMethod.Put, url))
             {
@@ -469,8 +461,6 @@ namespace Chalmers.ILL.Mail
         {
             dynamic res = null;
 
-            System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-
             var tokenTask = _app.AcquireTokenForClient(scopes).ExecuteAsync();
             tokenTask.Wait();
             var tokenResult = tokenTask.Result;
@@ -500,8 +490,6 @@ namespace Chalmers.ILL.Mail
         private dynamic PatchToMicrosoftGraph(string url, string data)
         {
             dynamic res = null;
-
-            System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
             var tokenTask = _app.AcquireTokenForClient(scopes).ExecuteAsync();
             tokenTask.Wait();

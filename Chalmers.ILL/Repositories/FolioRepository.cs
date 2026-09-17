@@ -89,8 +89,6 @@ namespace Chalmers.ILL.Repositories
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(_folioConnection.GetFolioApiBaseAddress() + folioRequest.Path);
 
-            System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-
             request.Accept = folioRequest.Accept;
             request.ContentType = "application/json";
             request.Headers["x-okapi-tenant"] = _folioConnection.GetTenant();

@@ -61,8 +61,6 @@ namespace Chalmers.ILL.Connections
                     request.Headers["x-okapi-tenant"] = _tenant;
                     request.Method = "POST";
 
-                    System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-
                     request.CookieContainer.Add(new Cookie("folioRefreshToken", _refresh, _refreshPath, _refreshDomain));
                     var requestStream = request.GetRequestStream();
                     requestStream.Write(new byte[0], 0, 0);
@@ -99,8 +97,6 @@ namespace Chalmers.ILL.Connections
                 request.ContentType = "application/json";
                 request.Headers["x-okapi-tenant"] = _tenant;
                 request.Method = "POST";
-
-                System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
                 UTF8Encoding encoding = new UTF8Encoding();
                 var bodyBytes = encoding.GetBytes("{ \"username\": \"" + _username + "\", \"password\": \"" + _password + "\" }");

@@ -174,7 +174,6 @@ namespace Chalmers.ILL.Patron
         private dynamic GetDataFromFolio(string pathAndQuery)
         {
             dynamic res = null;
-            System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
             if (_folioConnection.NeedNewToken())
             {

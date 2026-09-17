@@ -23,14 +23,14 @@
   <ItemGroup>
     <PackageReference Include="Elasticsearch.Net" Version="6.3.1" />
     <PackageReference Include="NEST" Version="6.3.1" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.4.6" />
-    <PackageReference Include="log4net" Version="2.0.12" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.48.1" />
-    <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="6.22.0" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.13.0" />
+    <PackageReference Include="log4net" Version="3.4.0" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.90.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="8.22.0" />
     <!-- Newtonsoft.Json 8.0.1 predates netstandard support and cannot be restored for
          net10.0 - bumped to a version with a net-modern target. No API used here changed. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="QRCoder" Version="1.4.3" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
     <!-- WindowsAzure.Storage (legacy SDK, .NET Framework-only) replaced by Azure.Storage.Blobs
          in BlobStorageMediaItemManager - this was fas 8, pulled forward because the old
          package's dependency chain (Microsoft.Data.OData etc.) cannot target net10.0. -->
