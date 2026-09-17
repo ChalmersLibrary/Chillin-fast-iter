@@ -2,20 +2,33 @@
 
 This is the system that is used on Chalmers Library for handling incoming inter library loans and purchases. It is highly tailored to our needs and you should not expect to be able to just take it and use it for your purposes without much hard work and many modifications. Hopefully the code can still be an interesting platform to start from or to draw inspiration from if developing something similar. We welcome constructive criticism and ideas.
 
+## Status
+
+This branch is mid-migration away from .NET Framework/`System.Web` to modern .NET, running on
+Linux instead of Windows/IIS. See [CLAUDE.md](CLAUDE.md) for the current architecture and
+[TODO-remove-dotnet-framework.md](TODO-remove-dotnet-framework.md) for what's done and what's left
+(client-side asset pipeline and Azure deployment are the two big remaining pieces). The steps below
+describe the current, not-yet-finished state - they will keep changing until that TODO list is
+checked off.
+
 ## Prerequisites
-1. npm https://www.npmjs.com
-2. bower http://bower.io
-3. An Exchange-account for incoming and outgoing mail.
+1. [.NET SDK 10](https://dotnet.microsoft.com/download) or later.
+2. For full/live mode: an [Elasticsearch](https://www.elastic.co) instance, and (for mail/patron
+   lookups) Microsoft Graph and FOLIO credentials. None of these are required for isolated mode
+   below.
 
 ## Setup
 1. Clone this repository.
-2. Delete all files in the repository except the .git folder.
-3. Download Umbraco 6.1.6 and unzip it into the repository folder. https://our.umbraco.org/contribute/releases/616/
-4. Rename the unzipped folder to "Chalmers.ILL".
-5. Download the Chillin Initial Configuration Umbraco package from the [latest release](https://github.com/ChalmersLibrary/Chillin/releases/latest).
-6. Setup Umbraco, for example by using Microsoft WebMatrix's "Open as a Web Site" capabilities.
-7. Install the Chillin Initial Configuration Umbraco package into Umbraco (Some things are missing in this package and needs to be added manually).
-8. Create a member and assign the proper roles.
-9. Close down Microsoft Web Matrix or corresponding and do "git checkout -- ." in the repository.
-
-You should now be able to open the solution file in Visual Studio and play around with the project. Be prepared though that the system needs some configuration in the Web.config file before it will be able to function properly.
+2. Build and test: `dotnet build Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj` and
+   `dotnet test Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj` (see [CLAUDE.md](CLAUDE.md)'s
+   Testrutiner section).
+3. To run the app locally without any real Elasticsearch/mail/patron integrations, start it in
+   **isolated mode**: set `Chillin__Isolated=true` and `Chillin__DataPath=<a local directory>` as
+   environment variables, then `dotnet run --project Chalmers.ILL`. A `members.json` (see
+   `Chalmers.ILL/Config/members.example.json` for the format - password hashes are generated with
+   `Microsoft.AspNetCore.Identity.PasswordHasher<T>` in `IdentityV2` compatibility mode) and a
+   `chillinPrevalues.json` (see `Chalmers.ILL/Config/chillinPrevalues.example.json`) under that data
+   path are needed to log in and classify orders.
+4. Full/live mode is configured through `appsettings.json`/`appsettings.{Environment}.json` rather
+   than a checked-in file with real secrets - see `IChillinConfiguration` and the "Fastställda
+   designbeslut" table in [TODO-remove-dotnet-framework.md](TODO-remove-dotnet-framework.md).

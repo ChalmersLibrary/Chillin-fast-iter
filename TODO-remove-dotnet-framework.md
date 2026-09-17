@@ -2201,11 +2201,20 @@ och `Always On`.
   något verkligt. `testServer` får aldrig sättas till produktionens värdnamn — det skulle öppna båda
   endpointsen för hela internet.
 
-- [ ] **Uppdatera [README.md](README.md)**
+- [x] **Uppdatera [README.md](README.md)**
   Setup-instruktionerna beskriver fortfarande hur man laddar ner Umbraco 6.1.6, packar upp det över
   repot och installerar ett Umbraco-paket via WebMatrix. Helt inaktuellt sedan Umbraco-borttagningen
   och blir än mer missvisande efter den här migreringen. `Prerequisites` nämner npm, bower och ett
   Exchange-konto — alla tre stämmer inte längre efter fas 5 och 8.
+
+  **Genomfört 2026-09-17.** Umbraco/WebMatrix-installationsstegen och npm/bower/Exchange-kraven
+  borttagna helt. Ersatt med: en "Status"-sektion som pekar till CLAUDE.md och den här TODO-filen i
+  stället för att duplicera detaljer som ändå ändras löpande, `dotnet build`/`dotnet test`-stegen,
+  och hur man kör appen lokalt i **isolerat läge** (`Chillin__Isolated=true`) utan att behöva
+  Elasticsearch/Graph/FOLIO — den enklaste vägen in för en ny utvecklare just nu.
+  **Medvetet inte skrivet ännu:** något om klient-assets (npm/bower-ersättningen) eftersom fas 5:s
+  asset-strategi inte är beslutad än — bättre att inte beskriva den innan den finns, än att beskriva
+  fel sak. Uppdatera README igen när den punkten landar.
 
 ---
 
