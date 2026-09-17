@@ -1578,11 +1578,15 @@ GAC/VS, inte NuGet.
   `Connections/FolioConnection.cs:60, 99`, `Mail/MicrosoftGraphMailWebApi.cs:47, 402, 434, 472, 514,
   546`) — de är Framework-legacy och no-ops på modern .NET.
 
-- [ ] **Rensa `packages\`-katalogen från obsoleta mappar**
+- [x] **Rensa `packages\`-katalogen från obsoleta mappar**
   Ligger kvar på disk men finns inte i någon `packages.config` (kvarlämning efter Umbraco-borttagningen):
   `UmbracoCms.6.1.6`, `UmbracoCms.Core.6.1.6`, `ClientDependency*`, `Lucene.Net.2.9.4.1`,
   `MiniProfiler.2.1.0`, `SharpZipLib.0.86.0`, `xmlrpcnet.2.5.0`, `CommonServiceLocator.1.0`,
   `Unity.Mvc4.1.4.0.0`, `Unity.WebAPI.5.1`. Hela `packages\` försvinner med PackageReference.
+
+  **Redan gjort.** Verifierat 2026-09-16: `packages\` finns inte längre på disk någonstans i
+  repot — försvann redan när `packages.config` togs bort i fas 1a:s PackageReference-konvertering.
+  Ingen kodändring behövdes, bara ikryssning.
 
 ---
 
@@ -1591,7 +1595,7 @@ GAC/VS, inte NuGet.
 Nuläge: **23 `[TestClass]`, 151 `[TestMethod]`** (verifierat), inga `[Ignore]`/`[DataRow]`/
 `[TestCategory]`.
 
-- [ ] **Byt från MSTest v1 till MSTest v3**
+- [x] **Byt från MSTest v1 till MSTest v3**
   `Chalmers.ILL.Tests.csproj:81` refererar `Microsoft.VisualStudio.QualityTools.UnitTestFramework`
   Version 10.0.0.0 — GAC-referens utan HintPath, dvs. den allra äldsta MSTest-varianten. Projektet har
   dessutom legacy-testprojekt-GUID (`{3AC096D0-...}`), `<TestProjectType>UnitTest</TestProjectType>`
@@ -1604,6 +1608,15 @@ Nuläge: **23 `[TestClass]`, 151 `[TestMethod]`** (verifierat), inga `[Ignore]`/
   Lägg till **Moq** (eller NSubstitute) samtidigt — projektet har inget mockningsbibliotek alls idag.
   Notera ordningsberoendet: **Microsoft Fakes måste bort först** (fas 0b), annars går sviten inte att
   köra under `dotnet test`.
+
+  **Åtgärdat 2026-09-16.** Själva ramverksbytet var redan klart sedan fas 1a (verifierat:
+  `Chalmers.ILL.Tests.csproj` refererar bara `MSTest.TestFramework`/`MSTest.TestAdapter` 3.6.4, ingen
+  spår av `Microsoft.VisualStudio.QualityTools.UnitTestFramework` eller legacy-testprojekt-GUID).
+  Kvarstod bara Moq-tillägget. Tillagt (4.20.72) med ett minimalt bevis-test,
+  `Infrastructure/MoqSmokeTest.cs`, som mockar `INotifier` och verifierar anropet — bara för att
+  bevisa att det faktiskt löser sig och fungerar under `dotnet test` på `net10.0`. Befintliga tester
+  rörs inte: handskrivna stubbar förblir det etablerade mönstret för dem, Moq är bara tillgängligt för
+  nya tester som vill ha det.
 
 - [ ] **Skriv om `RoutingTest.cs` — den dyraste enskilda testposten**
   11 tester som bygger en tom `RouteCollection`, kör `RouteConfig.RegisterRoutes(routes)` och matchar
@@ -1632,13 +1645,19 @@ Nuläge: **23 `[TestClass]`, 151 `[TestMethod]`** (verifierat), inga `[Ignore]`/
   `PageControllersTest.cs:198-208`, `OrderItemSurfaceControllerTest.cs:137-145`,
   `PasswordSurfaceControllerTest.cs:80-88`, `Members/MemberInfoManagerTest.cs:154-156`.
 
-- [ ] **Ta bort döda referenser ur `Chalmers.ILL.Tests.csproj`**
+- [x] **Ta bort döda referenser ur `Chalmers.ILL.Tests.csproj`**
   Direkta assembly-referenser till `System.Web`, `System.Web.ApplicationServices`,
   `System.Web.Extensions`, `System.Web.Abstractions`, `System.Web.Helpers`, `System.Web.Http`,
   `System.Web.Mvc`, `System.Web.Routing`, `Microsoft.Exchange.WebServices`,
   `Microsoft.Practices.Unity` faller bort naturligt vid SDK-style-konverteringen.
   Ta bort `app.config` (17 binding redirects, samtliga irrelevanta i modern .NET) och HintPath-
   referensen till `..\Chalmers.ILL\bin\System.Web.Mvc.dll`.
+
+  **Redan gjort.** Verifierat 2026-09-16: `Chalmers.ILL.Tests.csproj` har idag bara fem
+  `PackageReference` (log4net, Mvc.Testing, Test.Sdk, MSTest.TestAdapter/TestFramework) plus en
+  `ProjectReference` och en `FrameworkReference` — inga assembly-`<Reference>`, inget `app.config`,
+  ingen HintPath. Föll bort naturligt i fas 1a/1b:s SDK-style- och TFM-svep. Ingen kodändring
+  behövdes, bara ikryssning.
 
 - [ ] **Täck luckorna som granskningen avslöjade**
   Utöver omskrivningarna ovan saknas tester helt för: `LoginSurfaceController.HandleLogin`,
