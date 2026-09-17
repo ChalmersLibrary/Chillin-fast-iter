@@ -1835,6 +1835,22 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   `bower_components/` (fas 5). Uppdatera de hårdkodade absoluta sökvägarna i vyerna — det finns noll
   `Url.Content`/`Url.Action`-anrop, alla länkar är strängar.
 
+  **`Scripts/`/`Css/`/`images/`-delen genomförd 2026-09-17.** Flyttade (via `git mv`, historik
+  bevarad) till `Chalmers.ILL/wwwroot/Scripts`, `wwwroot/Css`, `wwwroot/images`. Eftersom
+  wwwroot-roten mappas till `/` av standard-`UseStaticFiles()` hamnar filerna på exakt samma
+  URL:er som förut (`/Scripts/...`, `/Css/...`, `/images/...`) — **noll vyändringar behövdes**, bara
+  `Program.cs`s tillfälliga `foreach`-loop (en `StaticFileOptions`/`PhysicalFileProvider` per mapp,
+  pekande på projektroten) borttagen till förmån för den vanliga `app.UseStaticFiles()`.
+  Verifierat med en riktig körning i isolerat läge: `GET /Scripts/chalmers.ill.js`,
+  `/Css/chalmers.ill.main.css` och `/images/cth_logo.png` gav alla 200, ingen längre
+  "WebRootPath was not found"-varning i loggen vid uppstart.
+  **Kvar:** `bower_components/`-ersättningen (fas 5, separat punkt nedan) — den delen kräver en
+  faktisk asset-pipeline-avvägning (npm-versioner vs. nuvarande bower-pinnade versioner) och
+  visuell/webbläsarverifiering som inte gick att göra i den här sessionens sandbox (Chromium
+  startar men DevTools-websocketen kopplas ner direkt — troligen en begränsning i den här specifika
+  verktygssandlådan, inte i den riktiga devcontainern). Görs som egen punkt när det kan
+  webbläsarverifieras.
+
 - [x] **Rensa Windows-antaganden ur sökvägshanteringen**
   Linux både i utveckling och drift, så fel här upptäcks nu i devcontainern i stället för först i
   Azure. Gå igenom:

@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.IO;
@@ -101,21 +100,12 @@ forwardedHeadersOptions.KnownIPNetworks.Clear();
 forwardedHeadersOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
+// Scripts/, Css/, images/ moved under wwwroot/ (fas 10, "Flytta statiska filer till wwwroot/") -
+// the default wwwroot-rooted UseStaticFiles() below serves them at the same /Scripts, /Css,
+// /images request paths the views already hardcode, so no view changes were needed. The
+// bower_components/ replacement (fas 5's asset-strategy item) is a separate, not yet done, piece
+// of this same move.
 app.UseStaticFiles();
-// Assets still live under Scripts/, Css/, images/ (project root) rather than wwwroot/ - moving
-// them is fas 5's asset-strategy item. Served explicitly here in the meantime.
-foreach (var (path, requestPath) in new[] { ("Scripts", "/Scripts"), ("Css", "/Css"), ("images", "/images") })
-{
-    var full = System.IO.Path.Combine(builder.Environment.ContentRootPath, path);
-    if (System.IO.Directory.Exists(full))
-    {
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(full),
-            RequestPath = requestPath
-        });
-    }
-}
 
 app.UseRouting();
 
