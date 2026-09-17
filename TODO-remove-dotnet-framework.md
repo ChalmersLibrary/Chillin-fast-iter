@@ -1618,7 +1618,7 @@ Nuläge: **23 `[TestClass]`, 151 `[TestMethod]`** (verifierat), inga `[Ignore]`/
   rörs inte: handskrivna stubbar förblir det etablerade mönstret för dem, Moq är bara tillgängligt för
   nya tester som vill ha det.
 
-- [ ] **Skriv om `RoutingTest.cs` — den dyraste enskilda testposten**
+- [x] **Skriv om `RoutingTest.cs` — den dyraste enskilda testposten**
   11 tester som bygger en tom `RouteCollection`, kör `RouteConfig.RegisterRoutes(routes)` och matchar
   URL:er via tre handskrivna stubbar: `StubHttpContext : HttpContextBase` (rad 160),
   `StubHttpRequest : HttpRequestBase` (rad 175), `StubServerUtility : HttpServerUtilityBase` (rad 188).
@@ -1630,7 +1630,16 @@ Nuläge: **23 `[TestClass]`, 151 `[TestMethod]`** (verifierat), inga `[Ignore]`/
   `umbraco/surface/...`-aliaset (QR-koderna!), `/bestaellningar`, `/disk`,
   `/bestaellningar/instaellningar` — var och en med och utan avslutande slash.
 
-- [ ] **Ersätt `HttpContextBase`-baserad testinfrastruktur i controllertesterna**
+  **Redan gjort.** Verifierat 2026-09-17: `Chalmers.ILL.Tests/Controllers/RoutingTest.cs` innehåller
+  redan 11 tester som kör requests genom den riktiga `RouteConfig.RegisterRoutes` via endpoint-routing
+  (`WebApplication` + en terminal-middleware som läser matchat `controller`/`action` ur route-values —
+  se filens `Resolve`-hjälpmetod), inte den gamla `RouteCollection`/`HttpContextBase`-stubben. All
+  täckning ovan finns: default-route (rot-URL och explicit), `ChalmersILLOrderListPage`,
+  umbraco-surface-aliaset, `bestaellningar`/`disk`/`instaellningar` med och utan avslutande slash,
+  plus regressionstestet för instaellningar-vs-wildcard-ordningen. Skrevs om som en del av fas 1b/2:s
+  stora svep men kryssades aldrig av här. Ingen kodändring behövdes, bara ikryssning.
+
+- [x] **Ersätt `HttpContextBase`-baserad testinfrastruktur i controllertesterna**
   33 controller-instansieringar i 10 filer, alla med direkt `new` och handskrivna stubbar. **Tre olika
   HttpContext-strategier används parallellt**, och bara en av dem är svår:
   - **Svår:** riktig `new HttpContext(request, response)` + `HttpContextWrapper` —
@@ -1644,6 +1653,14 @@ Nuläge: **23 `[TestClass]`, 151 `[TestMethod]`** (verifierat), inga `[Ignore]`/
   parametrar. När interfacet ändras (fas 2) slår det igenom i fyra teststubbar:
   `PageControllersTest.cs:198-208`, `OrderItemSurfaceControllerTest.cs:137-145`,
   `PasswordSurfaceControllerTest.cs:80-88`, `Members/MemberInfoManagerTest.cs:154-156`.
+
+  **Redan gjort.** Verifierat 2026-09-17: sökning efter `HttpContextBase`/`HttpContextWrapper`/
+  `HttpRequestBase`/`HttpResponseBase`/`StubHttpContext` i hela repot (kod och tester) ger noll
+  träffar. `MediaItemControllersTest.cs`, `PageControllersTest.cs` och `OrderItemSurfaceControllerTest.cs`
+  har var sin `SetHttpContext`-hjälpmetod byggd på `DefaultHttpContext` + `ControllerContext`.
+  `IMemberInfoManager` tar redan `Microsoft.AspNetCore.Http.HttpRequest`/`HttpResponse`, inte
+  `System.Web`-varianterna. Föll ut naturligt ur fas 1b/2:s stora svep. Ingen kodändring behövdes,
+  bara ikryssning.
 
 - [x] **Ta bort döda referenser ur `Chalmers.ILL.Tests.csproj`**
   Direkta assembly-referenser till `System.Web`, `System.Web.ApplicationServices`,
