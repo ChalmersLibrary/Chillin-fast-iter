@@ -21,8 +21,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Elasticsearch.Net" Version="6.3.1" />
-    <PackageReference Include="NEST" Version="6.3.1" />
+    <!-- Latest within the 6.x line (fas 8) - NEST's major version is pinned to the Elasticsearch
+         server's major version, so this stays compatible with whatever 6.x server is in drift
+         without needing to know the exact minor. A jump to a newer major (NEST 7/8, or
+         Elastic.Clients.Elasticsearch) is a client-and-possibly-server decision that needs the
+         actual server version confirmed first - see TODO-remove-dotnet-framework.md, fas 8. -->
+    <PackageReference Include="Elasticsearch.Net" Version="6.8.11" />
+    <PackageReference Include="NEST" Version="6.8.11" />
     <PackageReference Include="HtmlAgilityPack" Version="1.13.0" />
     <PackageReference Include="log4net" Version="3.4.0" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.90.0" />

@@ -1642,6 +1642,16 @@ GAC/VS, inte NuGet.
   **Kontrollera den faktiska Elasticsearch-serverversionen i drift innan valet görs** — den avgör om
   det räcker med en versionsuppgradering inom NEST eller om hela klientbytet krävs.
 
+  **Delvis genomfört 2026-09-17: `6.3.1` → `6.8.11`, den senaste versionen inom 6.x-linjen** (både
+  `Elasticsearch.Net` och `NEST`). Det här kräver **inte** att veta serverns exakta minorversion —
+  NEST major-versionen är låst mot serverns major-version, så `6.8.11` pratar samma protokoll med
+  vilken 6.x-server som helst, precis som `6.3.1` redan gjorde. Bygge och testsvit gröna utan
+  ändringar i anropande kod (225/225) — inga brytande API-ändringar inom 6.x-linjen träffade den yta
+  som faktiskt används här. **Kvar, och avsiktligt inte gjort här:** beslutet om att hoppa till en ny
+  major (NEST 7/8 eller `Elastic.Clients.Elasticsearch`) kräver fortfarande den faktiska
+  ES-serverversionen i drift, som ingen i den här sessionen haft tillgång till — samma typ av
+  avstämning som flera andra punkter i fas 6/10 väntar på (t.ex. de 19 saknade appSettings-nycklarna).
+
 - [x] **Uppgradera övriga låsta paketversioner**
   `Newtonsoft.Json` 8.0.1 (mycket gammal; överväg `System.Text.Json` för nya ställen men behåll
   Newtonsoft där `[JsonProperty]`-attribut används i modellerna), `HtmlAgilityPack` 1.4.6,
