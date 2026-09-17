@@ -1676,11 +1676,25 @@ Nuläge: **23 `[TestClass]`, 151 `[TestMethod]`** (verifierat), inga `[Ignore]`/
   ingen HintPath. Föll bort naturligt i fas 1a/1b:s SDK-style- och TFM-svep. Ingen kodändring
   behövdes, bara ikryssning.
 
-- [ ] **Täck luckorna som granskningen avslöjade**
+- [x] **Täck luckorna som granskningen avslöjade**
   Utöver omskrivningarna ovan saknas tester helt för: `LoginSurfaceController.HandleLogin`,
   `PasswordSurfaceController.ChangePassword`s success-väg, `[Authorize(Roles="SuperAdmin")]`,
   att oinloggade requests faktiskt avvisas, och de två maskin-till-maskin-endpointsen från fas 0a.
   Prioritera dessa **före** fas 3, inte efter.
+
+  **Redan gjort.** Verifierat 2026-09-17, samtliga fem täckta:
+  - `LoginSurfaceControllerTest.cs` täcker `HandleLogin` fullständigt (giltiga uppgifter för både
+    `Desk`- och icke-`Desk`-roll, ogiltiga uppgifter, ogiltig modell, CSRF-attributet).
+  - `PasswordSurfaceControllerTest.cs` har `ChangePassword_ChangeSucceeds_RedirectsWithSuccess` för
+    success-vägen, plus de tre felvägarna och regressionstestet för identitet-vs-cookie.
+  - `AuthorizationTest.cs` har `MemberAdminSurfaceController_SuperAdminAttribute_ActuallyDeniesNonSuperAdminUsers`,
+    som kör den riktiga `IAuthorizationService`-pipelinen (inte bara reflection på attributet) och
+    verifierar att en `Desk`-roll nekas medan `SuperAdmin` släpps igenom.
+  - `IsolatedModeSmokeTest.Root_Unauthenticated_RedirectsToLoginPage` kör en oinloggad request genom
+    hela `WebApplicationFactory`-pipelinen och verifierar 302 till inloggningssidan.
+  - De två maskin-till-maskin-endpointsen (`SystemSurfaceController`, `PublicDataSurfaceController`)
+    har `[AllowAnonymous]`-characterization-tester i `AuthorizationTest.cs` sedan fas 0a-punkten
+    gjordes klar. Ingen kodändring behövdes här, bara ikryssning.
 
 ---
 
