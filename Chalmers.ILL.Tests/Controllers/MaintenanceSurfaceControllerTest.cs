@@ -1,12 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Chalmers.ILL.Controllers.SurfaceControllers;
 using Chalmers.ILL.MediaItems;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Models.Mail;
 using Chalmers.ILL.OrderItems;
+using Chalmers.ILL.Tests.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 using static Chalmers.ILL.Models.OrderItemModel;
 
 namespace Chalmers.ILL.Tests.Controllers
@@ -23,7 +27,7 @@ namespace Chalmers.ILL.Tests.Controllers
                 new MediaItemIdAndOrderItemId("media-2", 20)
             };
             var orderItemManager = new StubOrderItemManager();
-            var controller = new MaintenanceSurfaceController(orderItemManager, new StubMediaItemManager(deleted));
+            var controller = NewController(orderItemManager, new StubMediaItemManager(deleted));
 
             var result = controller.RunMaintenanceJobs() as JsonResult;
             var response = result?.Value as ResultResponse;
@@ -39,7 +43,7 @@ namespace Chalmers.ILL.Tests.Controllers
         [TestMethod]
         public void RunMaintenanceJobs_MediaItemDeletionFails_ReturnsFailureWithoutThrowing()
         {
-            var controller = new MaintenanceSurfaceController(new StubOrderItemManager(), new ThrowingMediaItemManager());
+            var controller = NewController(new StubOrderItemManager(), new ThrowingMediaItemManager());
 
             var result = controller.RunMaintenanceJobs() as JsonResult;
             var response = result?.Value as ResultResponse;
@@ -47,6 +51,73 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.IsNotNull(response);
             Assert.IsFalse(response.Success);
             StringAssert.Contains(response.Message, "Failed to remove old media items.");
+        }
+
+        [TestMethod]
+        public void RebuildSearchIndex_NoOrdersDirectory_ReturnsSuccessWithZeroCount()
+        {
+            var dataPath = Path.Combine(Path.GetTempPath(), "chillin-rebuild-" + Guid.NewGuid());
+            var searcher = new RecordingOrderItemSearcher();
+            var controller = NewController(new StubOrderItemManager(), new StubMediaItemManager(new List<MediaItemIdAndOrderItemId>()), dataPath, searcher);
+
+            var result = controller.RebuildSearchIndex() as JsonResult;
+            var response = result?.Value as ResultResponse;
+
+            Assert.IsNotNull(response);
+            Assert.IsTrue(response.Success);
+            Assert.AreEqual("Reindexed 0 orders.", response.Message);
+            Assert.AreEqual(0, searcher.AddedItems.Count);
+        }
+
+        [TestMethod]
+        public void RebuildSearchIndex_OrderFilesOnDisk_CallsAddedForEachAndSkipsCorruptOnes()
+        {
+            var dataPath = Path.Combine(Path.GetTempPath(), "chillin-rebuild-" + Guid.NewGuid());
+            var ordersDirectory = Path.Combine(dataPath, "orders");
+            Directory.CreateDirectory(ordersDirectory);
+            File.WriteAllText(Path.Combine(ordersDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1 }));
+            File.WriteAllText(Path.Combine(ordersDirectory, "2.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 2 }));
+            File.WriteAllText(Path.Combine(ordersDirectory, "corrupt.json"), "{ not valid json");
+            var searcher = new RecordingOrderItemSearcher();
+            var controller = NewController(new StubOrderItemManager(), new StubMediaItemManager(new List<MediaItemIdAndOrderItemId>()), dataPath, searcher);
+
+            var result = controller.RebuildSearchIndex() as JsonResult;
+            var response = result?.Value as ResultResponse;
+
+            Assert.IsNotNull(response);
+            Assert.IsTrue(response.Success);
+            Assert.AreEqual("Reindexed 2 orders.", response.Message);
+            CollectionAssert.AreEquivalent(new List<int> { 1, 2 }, searcher.AddedItems.Select(o => o.NodeId).ToList());
+        }
+
+        [TestMethod]
+        public void RebuildSearchIndex_SearcherThrows_ReturnsFailureWithoutThrowing()
+        {
+            var dataPath = Path.Combine(Path.GetTempPath(), "chillin-rebuild-" + Guid.NewGuid());
+            var ordersDirectory = Path.Combine(dataPath, "orders");
+            Directory.CreateDirectory(ordersDirectory);
+            File.WriteAllText(Path.Combine(ordersDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1 }));
+            var controller = NewController(new StubOrderItemManager(), new StubMediaItemManager(new List<MediaItemIdAndOrderItemId>()), dataPath, new ThrowingOrderItemSearcher());
+
+            var result = controller.RebuildSearchIndex() as JsonResult;
+            var response = result?.Value as ResultResponse;
+
+            Assert.IsNotNull(response);
+            Assert.IsFalse(response.Success);
+            StringAssert.Contains(response.Message, "Failed to rebuild the search index.");
+        }
+
+        private static MaintenanceSurfaceController NewController(
+            IOrderItemManager orderItemManager,
+            IMediaItemManager mediaItemManager,
+            string dataPath = null,
+            IOrderItemSearcher orderItemSearcher = null)
+        {
+            return new MaintenanceSurfaceController(
+                orderItemManager,
+                mediaItemManager,
+                new StubChillinConfiguration { DataPath = dataPath },
+                orderItemSearcher ?? new RecordingOrderItemSearcher());
         }
 
         class StubMediaItemManager : IMediaItemManager
@@ -122,6 +193,30 @@ namespace Chalmers.ILL.Tests.Controllers
             public void MakeDuplicate(int orderNodeId, string eventId, bool doReindex = true, bool doSignal = true) { }
             public void SetIsAnonymized(int nodeId, bool isAnonymized, string eventId, bool doReindex = true, bool doSignal = true) { }
             public void ResetAllAnonymizationFlags(int nodeId, string eventId, bool doReindex = true, bool doSignal = true) { }
+        }
+
+        class RecordingOrderItemSearcher : IOrderItemSearcher
+        {
+            public List<OrderItemModel> AddedItems { get; } = new List<OrderItemModel>();
+
+            public IEnumerable<OrderItemModel> Search(string query) => new List<OrderItemModel>();
+            public SearchResult Search(string query, int start, int size) => new SearchResult { Count = 0, Items = new List<OrderItemModel>() };
+            public IEnumerable<OrderItemModel> Search(string query, int size, string[] fields) => new List<OrderItemModel>();
+            public IEnumerable<string> AggregatedProviders() => new List<string>();
+            public void Added(OrderItemModel item) => AddedItems.Add(item);
+            public void Modified(OrderItemModel item) { }
+            public void Deleted(OrderItemModel item) { }
+        }
+
+        class ThrowingOrderItemSearcher : IOrderItemSearcher
+        {
+            public IEnumerable<OrderItemModel> Search(string query) => new List<OrderItemModel>();
+            public SearchResult Search(string query, int start, int size) => new SearchResult { Count = 0, Items = new List<OrderItemModel>() };
+            public IEnumerable<OrderItemModel> Search(string query, int size, string[] fields) => new List<OrderItemModel>();
+            public IEnumerable<string> AggregatedProviders() => new List<string>();
+            public void Added(OrderItemModel item) => throw new InvalidOperationException("Search index unavailable.");
+            public void Modified(OrderItemModel item) { }
+            public void Deleted(OrderItemModel item) { }
         }
     }
 }

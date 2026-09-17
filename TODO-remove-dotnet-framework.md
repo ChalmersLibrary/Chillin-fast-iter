@@ -837,6 +837,20 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
     mediafiler), och `BulkDataManager` läser bara. Lägg till en `RebuildSearchIndex` som går igenom
     orderfilerna och anropar `IOrderItemSearcher.Added`. Den behövs ändå i drift, som
     återställningsväg om indexet tappas — och den är obligatorisk efter varje uppladdning av testdata.
+
+    **Denna deluppgift genomförd 2026-09-17.** `MaintenanceSurfaceController.RebuildSearchIndex`
+    (nytt `[HttpPost]`, samma auktoriseringsnivå som `RunMaintenanceJobs` — inget extra
+    rollkrav utöver det globala inloggningskravet) går igenom `IChillinConfiguration.DataPath/orders/`
+    och anropar `IOrderItemSearcher.Added` per order. Filinläsningen (`Directory.EnumerateFiles` +
+    `JsonConvert.DeserializeObject`, med per-fil felfångst så att en korrupt fil loggas och hoppas
+    över i stället för att stoppa hela körningen) låg redan dubblerad i
+    `Isolated.InMemoryOrderItemSearcher`s konstruktor — bruten ut till en delad
+    `OrderItems/OrderFileReader.cs` som båda nu använder. Fem nya tester i
+    `MaintenanceSurfaceControllerTest.cs` (saknad katalog, blandning av giltiga/korrupta filer,
+    sökaren kastar). 223/223 gröna.
+    **Kvar i den här punkten:** själva testdatan (orderfiler, `chillinPrevalues.json`,
+    `members.json`) nedan är fortfarande inte skapad — `RebuildSearchIndex` är bara vägen in i ES,
+    inte innehållet.
   - **`chillinPrevalues.json`** med riktiga värden i `"NN:Etikett"`-format — utan det är
     statusdropdownen tom och ingen order går att klassificera.
   - **`members.json`** med minst tre konton, ett per roll (`Desk`, `Administrator`, `SuperAdmin`),

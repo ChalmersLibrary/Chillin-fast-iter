@@ -1,13 +1,10 @@
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Isolated.Search;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.OrderItems;
-using Newtonsoft.Json;
 
 namespace Chalmers.ILL.Isolated
 {
@@ -35,22 +32,9 @@ namespace Chalmers.ILL.Isolated
 
         public InMemoryOrderItemSearcher(IChillinConfiguration config)
         {
-            var ordersDirectory = Path.Combine(config.DataPath, "orders");
-            if (!Directory.Exists(ordersDirectory))
-                return;
-
-            foreach (var file in Directory.EnumerateFiles(ordersDirectory, "*.json", SearchOption.AllDirectories))
+            foreach (var item in OrderFileReader.ReadAll(config.DataPath, _log))
             {
-                try
-                {
-                    var item = JsonConvert.DeserializeObject<OrderItemModel>(File.ReadAllText(file));
-                    if (item != null)
-                        _byNodeId[item.NodeId] = new OrderItemDocument(item);
-                }
-                catch (Exception e)
-                {
-                    _log.Error("Failed to load order file " + file + " into the in-memory search index.", e);
-                }
+                _byNodeId[item.NodeId] = new OrderItemDocument(item);
             }
         }
 
