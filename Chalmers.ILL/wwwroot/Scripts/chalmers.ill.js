@@ -1280,10 +1280,13 @@ function loadPatronDataView(id) {
 }
 
 /* SIGNALR RELATED */
-var notifier = $.connection.notificationHub;
+var notificationHubConnection = new signalR.HubConnectionBuilder()
+    .withUrl("/notificationHub")
+    .withAutomaticReconnect([5000]) // Re-start connection after 5 seconds, matching the old jquery.signalR reconnect delay.
+    .build();
 
 // Message from SignalR called updateStream when node has been Saved
-notifier.client.updateStream = function (value) {
+notificationHubConnection.on("updateStream", function (value) {
     // Check if the node which is signaled is open here.
     if (value.UpdateFromMail && $("#edit-" + value.NodeId).length > 0)
     {
@@ -1342,20 +1345,15 @@ notifier.client.updateStream = function (value) {
 
     // Add to debug messages
     $("#debug-bucket .panel-body").prepend("<div>NodeId=" + value.NodeId + ", EditedBy=" + value.EditedBy + ", EditedByMemberName=" + value.EditedByMemberName + "</div>");
-};
-
-$.connection.hub.disconnected(function () {
-    setTimeout(function () {
-        $.connection.hub.start();
-    }, 5000); // Re-start connection after 5 seconds
 });
 
-/* Starting the signalR hub connections */
-$.connection.hub.start()
-    .done(function () {
+/* Starting the signalR hub connection. withAutomaticReconnect above handles reconnecting after the
+   initial connection drops; this only covers the very first connection attempt. */
+notificationHubConnection.start()
+    .then(function () {
         $("#debug-bucket .panel-body").prepend('Connected to signalR notification hub');
     })
-    .fail(function () {
+    .catch(function () {
         alert("Could not Connect to signalR notification hub");
     });
 

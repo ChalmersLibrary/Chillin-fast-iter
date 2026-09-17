@@ -1092,7 +1092,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   **Säkerhetsnotering:** hubben är helt oautentiserad idag — det globala MVC-`AuthorizeAttribute`
   skyddar inte SignalR-endpointen. Överväg `[Authorize]` på hubben i samma veva.
 
-- [ ] **Byt klient-JS från `jquery.signalR` till `@microsoft/signalr`**
+- [x] **Byt klient-JS från `jquery.signalR` till `@microsoft/signalr`**
   Alla `$.connection`-anrop ligger i **`Scripts/chalmers.ill.js`** — fyra stycken på rad 1283
   (`$.connection.notificationHub`), 1347 och 1349 (`hub.disconnected` + reconnect efter 5 s) samt 1354
   (`hub.start()` med `.done()`/`.fail()`). Vyerna innehåller **noll** `$.connection`-anrop, bara
@@ -1104,6 +1104,28 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   `<script src="/signalr/hubs">` är den servergenererade hub-proxyn — den **finns inte alls** i
   ASP.NET Core SignalR, vilket är varför `$.connection.notificationHub` fungerar utan explicit hubnamn
   idag. Ersätts av `new signalR.HubConnectionBuilder().withUrl("/notificationHub")`.
+
+  **Genomfört 2026-09-17.** `wwwroot/Scripts/chalmers.ill.js`: `$.connection.notificationHub` → en
+  `signalR.HubConnectionBuilder().withUrl("/notificationHub").withAutomaticReconnect([5000])`
+  (samma 5-sekundersfördröjning som den gamla manuella `hub.disconnected`/`setTimeout`-koden, men nu
+  hanterad av klientbiblioteket). `notifier.client.updateStream = function(value) {...}` →
+  `notificationHubConnection.on("updateStream", function (value) {...})`, oförändrad body — servern
+  sätter redan `PayloadSerializerOptions.PropertyNamingPolicy = null` (fas 5:s SignalR-serverpunkt),
+  så payloaden är fortfarande PascalCase och `value.NodeId` m.fl. behövde inte ändras.
+  `hub.start().done()/.fail()` → `.start().then()/.catch()`.
+  Vendorat separat från den större bower-ersättningen (se nästa punkt): `@microsoft/signalr` finns på
+  npm (till skillnad från flera av de andra bower-paketen, se den punkten), så
+  `npm pack @microsoft/signalr@10.0.11` + kopiera `dist/browser/signalr.min.js` till
+  `wwwroot/lib/signalr/signalr.min.js` krävde ingen version- eller CDN-avvägning. `README.md` i samma
+  mapp dokumenterar hur filen uppdateras. `Views/ChalmersILL.cshtml`s `<script src="/bower_components/
+  signalr/jquery.signalR.min.js">` **och** den efterföljande `<script src="/signalr/hubs">` (den
+  numera obefintliga hub-proxyn) ersatta med en enda `<script src="/lib/signalr/signalr.min.js">`.
+  Verifierat i isolerat läge (`dotnet run`, `Chillin:Isolated=true`): `GET /lib/signalr/signalr.min.js`
+  och `GET /Scripts/chalmers.ill.js` ger båda 200, roten redirectar fortfarande till login (302) som
+  förut. Ingen egen browsersession kunde köras (samma Puppeteer/DevTools-begränsning som noteras vid
+  bower-punkten), så själva WebSocket-uppkopplingen mot hubben är inte verifierad i en riktig
+  webbläsare — det bör göras som en del av brytpunktens löpande kontroll. 224/224 gröna
+  (`dotnet test`, ingen ändring i testantal — ren klient-JS/vy-ändring, ingen C#-yta berörd).
 
 - [ ] **Ersätt bower med en modern asset-strategi — blockerar deploy-pipelinen**
   **Detta saknades helt i den tidigare listan och är ett verkligt deployment-hinder.**
