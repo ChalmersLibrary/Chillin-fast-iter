@@ -914,6 +914,41 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
     `IsolatedModeSmokeTest.RenderOrderItem_SeededOrderWithLogItems_RendersWithoutThrowing` (inloggning
     + riktig HTTP-request mot en seedad order), verifierat att den fallerar om endera fixen tas bort
     var för sig och om båda tas bort samtidigt. 226/226 gröna.
+  - **Tredje sidofyndet:** att sedan svepa igenom alla ~25 `Render*Action`-endpoints (samtliga
+    order-actionsfliken kan visa) mot en seedad order gav ytterligare fem 500:or:
+    - **Mallar saknades helt.** `OrderItemClaimSurface/RenderClaimAction`,
+      `OrderItemMailSurface/RenderMailAction`,
+      `OrderItemPatronReturnDateSurface/RenderPatronReturnDateAction` och
+      `OrderItemReceiveBookSurface/RenderReceiveBookAction` kastade alla
+      `TemplateServiceException` ("Hittade ingen mall med nodnamn=...") —
+      `ITemplateService.GetTemplateData(string nodeName)` behandlar en saknad namngiven mall som
+      ett hårt fel (till skillnad från `GetTemplateData(int, OrderItemModel)`-overloaden, som har
+      en tom-läge-fallback). Samma sorts obligatoriskt "seed-innehåll" som `chillinPrevalues.json`
+      — utan de finns flera kärnflöden (reklamation, mail, återlämningsdatum, bokmottagning) inte
+      körbara alls, varken i isolerat läge eller i en helt ny produktionsdriftsättning. Åtgärd:
+      `DevDataSeeder.SeedSystemTemplatesIfMissing`, som listar samtliga 13 `NodeName` som
+      förekommer i något `GetTemplateData(string, ...)`-anrop i hela kodbasen (grepat, inte
+      gissat) och skriver en platshållarmall per namn direkt i `Isolated.FileTemplateService`s
+      egna filformat (`DataPath/templates/{Id}.json` — `ITemplateService.CreateTemplate` kunde
+      inte användas, den genererar sitt eget `NodeName` och tar inte emot ett explicit sådant).
+      `Automatic = true` på samtliga (de plockas inte manuellt via nod-id, till skillnad från
+      listan `GetManualTemplates()` visar).
+    - **Genuin nollkontroll-bugg**, inte ett seed-databehov:
+      `ChalmersILLActionReceiveBookModel.SetTitleInformation` gjorde `titleInformation.Contains(text)`
+      där `text` kommer från `IChillinTextRepository.ByTextField("standardTitleText").StandardTitleText`
+      — `null` så fort den inte konfigurerats, vilket är precis den tom-index-kontraktsfix som redan
+      gjordes för `ChillinTextRepository` (se "Fyra latenta defekter" ovan): tomt index → tomt
+      `ChillinText`-objekt, inte kastat undantag — men det tomma objektets `StandardTitleText` är
+      fortfarande `null`, och ingen konsument nedströms var skyddad mot det.
+      `string.Contains(null)` kastar `ArgumentNullException` för **varje** order med satt
+      `TitleInformation` (dvs. alla seedade ordrar) så länge ingen administratör konfigurerat en
+      standardtitel. Fixat genom att behandla `null` som `""`.
+      Regressionstester tillagda i `IsolatedModeSmokeTest`
+      (`RenderEditTemplatesAction_NoTemplatesYet_RendersWithoutThrowing`,
+      `RenderReceiveBookAction_NoStandardTitleTextConfigured_RendersWithoutThrowing`), en delad
+      `LoginAsSuperAdminAsync`-hjälpmetod infördes för att slippa duplicera inloggningsflödet en
+      fjärde gång. 228/228 gröna. Samtliga ~25 `Render*Action`-endpoints (inklusive alla sju
+      leveranstypspartials) verifierade manuellt att ge 200 mot en seedad order efter fixarna.
   - **Inte gjort:** ingen egen browsersession kunde köras i den här sandlådan (samma
     Puppeteer/DevTools-begränsning som noteras i fas 5) — verifieringen ovan är HTTP/curl-baserad,
     inte en riktig skärmdump. Den löpande webbläsarkontrollen som denna punkt är tänkt att möjliggöra

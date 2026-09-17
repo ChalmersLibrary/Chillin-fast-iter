@@ -37,6 +37,68 @@ namespace Chalmers.ILL.Isolated
 
             SeedPrevaluesIfMissing(dataPath);
             SeedMembersIfMissing(dataPath);
+            SeedSystemTemplatesIfMissing(dataPath);
+        }
+
+        // Found by exercising every order-action endpoint against a seeded order (fas 10,
+        // "Använd brytpunkten löpande"): ClaimBookMailTemplate, SignatureTemplate,
+        // ReturnDateChangedMailTemplate and BookAvailableMailTemplate all threw
+        // TemplateServiceException ("Hittade ingen mall med nodnamn=...") - ITemplateService.
+        // GetTemplateData(string nodeName) treats a missing named template as a hard error, not an
+        // empty-state fallback (unlike GetTemplateData(int, OrderItemModel), which has one). These
+        // 13 node names (every literal passed to GetTemplateData(string, ...) anywhere in the
+        // codebase - grepped, not guessed) are exactly as load-bearing as chillinPrevalues.json's
+        // OrderStatus/OrderType values: the app can't render several core actions without them, in
+        // isolated mode or in a real fresh deployment. Content is a placeholder - unlike the
+        // status/type prevalues, nothing branches on template *text*, only on NodeName existing at
+        // all, so a placeholder body is functionally complete, just not the real production wording.
+        private static readonly string[] RequiredSystemTemplateNodeNames = new[]
+        {
+            "CourtesyNoticeMailTemplate",
+            "LoanPeriodOverMailTemplate",
+            "LoanPeriodReallyOverMailTemplate",
+            "LoanPeriodReallyReallyOverMailTemplate",
+            "ArticleAvailableInInfodiskMailTemplate",
+            "ArticleDeliveryByMailTemplate",
+            "ArticleDeliveryByPostTemplate",
+            "ArticleDeliveryByInternpostTemplate",
+            "BookAvailableMailTemplate",
+            "BookAvailableForReadingAtLibraryMailTemplate",
+            "ClaimBookMailTemplate",
+            "SignatureTemplate",
+            "ReturnDateChangedMailTemplate",
+        };
+
+        private static void SeedSystemTemplatesIfMissing(string dataPath)
+        {
+            // Written directly as Isolated.FileTemplateService's own one-file-per-template format
+            // (DataPath/templates/{Id}.json) rather than through ITemplateService.CreateTemplate -
+            // that method assigns its own auto-generated NodeName and offers no way to set the
+            // exact NodeName these lookups require.
+            var templatesDirectory = Path.Combine(dataPath, "templates");
+            if (Directory.Exists(templatesDirectory))
+                return;
+
+            Directory.CreateDirectory(templatesDirectory);
+
+            var id = 1;
+            foreach (var nodeName in RequiredSystemTemplateNodeNames)
+            {
+                var template = new Template
+                {
+                    Id = id,
+                    NodeName = nodeName,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = DateTime.Now,
+                    NodeTypeAlias = "ChalmersILLTemplate",
+                    Description = nodeName,
+                    Data = "[Platshållartext för " + nodeName + " - ersätt med riktig mallText.]",
+                    Automatic = true,
+                    Acquisition = false,
+                };
+                WriteNewFileAtomically(Path.Combine(templatesDirectory, id + ".json"), JsonConvert.SerializeObject(template, Formatting.Indented));
+                id++;
+            }
         }
 
         private static void SeedPrevaluesIfMissing(string dataPath)

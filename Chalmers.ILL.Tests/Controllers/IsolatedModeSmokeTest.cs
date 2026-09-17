@@ -143,6 +143,27 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
+        // A third find from the same sweep. OrderItemReceiveBookSurfaceController.RenderReceiveBookAction
+        // reads IChillinTextRepository.ByTextField("standardTitleText") - which, per the fix noted
+        // in TODO-remove-dotnet-framework.md's Städning section, returns an *empty* ChillinText
+        // (StandardTitleText left at its default null) rather than throwing when that entry hasn't
+        // been configured yet, exactly the state of any fresh DataPath. That null then reached
+        // ChalmersILLActionReceiveBookModel.SetTitleInformation, which did
+        // titleInformation.Contains(text) - ArgumentNullException for any order with real
+        // TitleInformation set (i.e. every seeded order), the moment no standard title text has
+        // ever been configured. Fixed by treating a null "text" the same as an empty one.
+        [TestMethod]
+        public async Task RenderReceiveBookAction_NoStandardTitleTextConfigured_RendersWithoutThrowing()
+        {
+            using var factory = CreateFactory();
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsSuperAdminAsync(client);
+
+            var response = await client.GetAsync("/OrderItemReceiveBookSurface/RenderReceiveBookAction?nodeId=1");
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
         // Shared by both view-rendering regression tests above - DevDataSeeder (fas 10) always
         // creates this account with SuperAdmin/Administrator/Desk, so any authenticated page is
         // reachable through it without a test needing its own members.json setup.
