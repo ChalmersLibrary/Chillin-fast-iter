@@ -1928,7 +1928,7 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   — verifierade genom att tillfälligt återställa den gamla raden att testet då slår om till 301 och en
   fullt renderad body, dvs. det fångar bugg exakt som den beskrivs ovan.
 
-- [ ] **Dokumentera enkelinstans som uttrycklig förutsättning**
+- [x] **Dokumentera enkelinstans som uttrycklig förutsättning**
   Ingen SignalR-backplane behövs — beslutat, appen körs på en instans. Men beroendet är osynligt i
   koden och tyst i sitt felläge, så det ska skrivas ned där någon hittar det:
   `Notifier` skickar via `Clients.All`, vilket bara når klienter anslutna till **samma instans**.
@@ -1940,6 +1940,10 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   instanser som skriver. Efter fas 7 är detta en **hårdare** förutsättning än tidigare, eftersom
   orderlagringen då saknar en databas som annars hade hanterat samtidighet.
   Lägg noteringen i README eller i CLAUDE.md:s arkitekturnoter, inte bara som en kodkommentar.
+
+  **Genomfört 2026-09-17.** Tillagd i [CLAUDE.md](CLAUDE.md)s Arkitekturnoter (inte bara README,
+  eftersom det är precis den sortens "osynligt i koden"-fallgrop noteringen ska skydda mot när någon
+  senare skriver ny kod).
 
 - [ ] **Slå på `Always On`**
   App Service laddar ur inaktiva appar, vilket ger kallstart för cron-anropen.

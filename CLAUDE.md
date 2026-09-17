@@ -108,6 +108,15 @@ aktuella läget på grenen, inte bara startpunkten för det arbete som återstå
   `IsolationGuard` och "Fastställda designbeslut" ovan.
 - `INotifier.ReportNewOrderItemUpdate` har bara `OrderItemModel`-overloaden kvar; `IContent`-overloaden
   är borttagen.
+- **Enkelinstans är en hård förutsättning, inte bara en skalningsdetalj** (se "Fastställda
+  designbeslut" ovan). Två saker slutar fungera tyst om appen någonsin körs på fler än en instans:
+  `Notifier` skickar SignalR-notiser via `Clients.All`, vilket bara når klienter anslutna till
+  *samma* instans — utan en backplane (Azure SignalR Service/Redis) tappar användare på andra
+  instanser realtidsuppdateringar utan att något fel loggas. Och den filbaserade lagringen (fas 7:
+  `FileOrderItemManager`, `MemberFileStore`) låser bara inom processen — den tål inte flera
+  instanser som skriver samtidigt, och har efter fas 7 ingen databas som annars hade hanterat det.
+  Skriv inte kod som antar flera instanser (t.ex. distribuerad låsning) utan att först ha löst båda
+  dessa.
 
 ## TODO-lista
 
