@@ -415,9 +415,9 @@
                 @:<div class="log-item-container @(evenRow ? "even" : "odd")">
                     <div class="row log-item-header">
                         <div class="col-sm-8">
-                            @if (!String.IsNullOrEmpty(logItem.EventId))
+                            @if (!String.IsNullOrEmpty(logItem.EventId) && Model.EventIdToEventNameMapping.TryGetValue(Convert.ToInt32(logItem.EventId.Substring(logItem.EventId.Length - 2)), out var eventName))
                             {
-                                @Model.EventIdToEventNameMapping[Convert.ToInt32(logItem.EventId.Substring(logItem.EventId.Length - 2))]
+                                @eventName
                             }
                             else
                             {

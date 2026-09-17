@@ -176,7 +176,16 @@ namespace Chalmers.ILL.Isolated
                 // flush once" pattern every controller in the app uses (see FileOrderItemManager's
                 // class-level comment), so one seeded order is one disk write, not six.
                 var nodeId = orderItemManager.CreateOrderItemInDbFromOrderItemSeedModel(seedModel, doReindex: false, doSignal: false);
-                var eventId = orderItemManager.GenerateEventId(0);
+
+                // Event type 20 ("Order skapad från maildata" - see
+                // Models/PartialPage/ChalmersILLOrderItemModel.EventIdToEventNameMapping), the
+                // closest existing fit for an order created from structured data rather than a
+                // user action. Any of the mapping's ~30 numeric keys must be used here - the
+                // order detail view (Chalmers.ILL.OrderItem.cshtml) looks up
+                // EventIdToEventNameMapping[eventType] to label the log group and throws
+                // KeyNotFoundException for anything else (caught while verifying this seeder:
+                // GenerateEventId(0) produced "-00", which isn't a key in that dictionary).
+                var eventId = orderItemManager.GenerateEventId(20);
 
                 orderItemManager.SetTitleInformation(nodeId, order.TitleInformation, eventId, false, false);
                 orderItemManager.SetReference(nodeId, order.Reference, eventId, false, false);

@@ -899,6 +899,21 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
     run` mot en tom scratch-`DataPath`: `chillinPrevalues.json`/`members.json`/17 orderfiler skapas,
     inloggning som `superadmin` fungerar, och `/ChalmersILLOrderListPage?query=*` renderar alla 17
     med rätt typ/status/leveransbibliotek/å-ä-ö. 225/225 gröna (`dotnet test`).
+  - **Andra sidofyndet:** att sedan öppna varje seedad orders detaljvy (`OrderItemSurface/
+    RenderOrderItem`) gav `KeyNotFoundException` på alla 17 — `Chalmers.ILL.OrderItem.cshtml`s
+    logg-gruppheader gör `Model.EventIdToEventNameMapping[typKodFrånEventId]` utan `TryGetValue`,
+    och saknar alltså en fallback för en typkod som inte är en av de ~30 mappade nycklarna. Två
+    orsaker, båda fixade: (1) seedern själv använde `GenerateEventId(0)` — typkod 0 finns inte i
+    mappningen (den börjar på 1) — ändrat till typkod 20 ("Order skapad från maildata", närmaste
+    rimliga befintliga kategori; `CreateOrderItemInDbFromOrderItemSeedModel` anropas idag bara
+    härifrån, ingen riktig controller använder den, så det finns ingen etablerad konvention att
+    följa). (2) själva vyn är skör mot **varje** framtida/befintlig logglogg vars `EventId` råkar
+    bära en typkod utanför mappningen (t.ex. gammal data från innan en kategori fanns, eller en
+    manuellt trasig `EventId`) — gjord defensiv med `TryGetValue` + samma "Okänd händelse"-fallback
+    som redan fanns för ett tomt `EventId`. Regressionstest tillagt:
+    `IsolatedModeSmokeTest.RenderOrderItem_SeededOrderWithLogItems_RendersWithoutThrowing` (inloggning
+    + riktig HTTP-request mot en seedad order), verifierat att den fallerar om endera fixen tas bort
+    var för sig och om båda tas bort samtidigt. 226/226 gröna.
   - **Inte gjort:** ingen egen browsersession kunde köras i den här sandlådan (samma
     Puppeteer/DevTools-begränsning som noteras i fas 5) — verifieringen ovan är HTTP/curl-baserad,
     inte en riktig skärmdump. Den löpande webbläsarkontrollen som denna punkt är tänkt att möjliggöra

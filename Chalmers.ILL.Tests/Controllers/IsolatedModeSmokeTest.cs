@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Chalmers.ILL.Members;
 using Microsoft.AspNetCore.Http;
@@ -94,6 +95,45 @@ namespace Chalmers.ILL.Tests.Controllers
             using var client = factory.CreateClient();
 
             var response = await client.GetAsync("/ChalmersILLLoginPage");
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        // Found by manually exercising DevDataSeeder's output (fas 10, "Ordna testdata för
+        // utvecklingsmiljön") against a real running app - every one of the 17 seeded orders'
+        // detail view crashed with KeyNotFoundException. Chalmers.ILL.OrderItem.cshtml's log-group
+        // header does Model.EventIdToEventNameMapping[eventTypeFromLastTwoCharsOfEventId] with no
+        // fallback for an eventId whose type isn't one of the ~30 mapped keys - exactly what the
+        // seeder produced before it was fixed to use a real event type, and exactly what would
+        // happen to *any* real order whose log entries carry an eventId type outside that mapping.
+        // Exercises the real login flow (CSRF token included) because this bug only shows up once
+        // Razor actually renders the partial view - the controller-level test in
+        // OrderItemSurfaceControllerTest only asserts on the model, never renders anything.
+        [TestMethod]
+        public async Task RenderOrderItem_SeededOrderWithLogItems_RendersWithoutThrowing()
+        {
+            using var factory = CreateFactory();
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+            var loginPageHtml = await (await client.GetAsync("/ChalmersILLLoginPage")).Content.ReadAsStringAsync();
+            var token = Regex.Match(loginPageHtml, "__RequestVerificationToken[^>]*value=\"([^\"]*)\"").Groups[1].Value;
+
+            using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/umbraco/surface/LoginSurface/HandleLogin")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["Login"] = "superadmin",
+                    ["Password"] = "chillin-dev-superadmin",
+                    ["__RequestVerificationToken"] = token
+                })
+            };
+            var loginResponse = await client.SendAsync(loginRequest);
+            Assert.AreEqual(HttpStatusCode.Found, loginResponse.StatusCode, "Seeded superadmin login failed - DevDataSeeder's members.json seeding may be broken.");
+
+            // NodeId 1 is DevDataSeeder's "01:Ny" order - status/type/reference are all set via
+            // SetStatus/SetType/SetReference, each of which appends a LogItem under the same
+            // eventId, so this order always has at least one grouped log entry to render.
+            var response = await client.GetAsync("/OrderItemSurface/RenderOrderItem?nodeId=1");
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
