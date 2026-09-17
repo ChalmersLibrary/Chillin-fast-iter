@@ -1762,13 +1762,28 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Bonus: den nuvarande regelns bugg med `appendQueryString="false"` (tappade query strings) försvinner
   på köpet.
 
-- [ ] **Konfigurera `ForwardedHeaders` för App Service**
+- [x] **Konfigurera `ForwardedHeaders` för App Service**
   Krävs för två saker: att `Request.IsHttps`/`Scheme` blir rätt, och att cron-serverns IP-kontroll
   fungerar. På App Service är front-endens IP varken känd eller stabil, så standardmönstret är att
   rensa `KnownProxies` och `KnownNetworks` — annars förkastas headern och `RemoteIpAddress` blir
   plattformens adress i stället för klientens. Alternativt kan
   `Microsoft.AspNetCore.AzureAppServices.HostingStartup` sköta det.
   Bevara `:port`-strippningen: Azure skickar `X-Forwarded-For` på formen `ip:port`.
+
+  **Åtgärdat 2026-09-16.** `Program.cs`s `app.UseForwardedHeaders(...)` (tillagd i fas 2) satte bara
+  `ForwardedHeaders`-flaggan, inte `KnownNetworks`/`KnownProxies` — dvs. exakt den lucka den här
+  punkten varnar för. Med defaultvärdena (bara loopback trådigt) hade middleware:t tyst förkastat
+  `X-Forwarded-For` från App Services front-end och cron-serverns IP-kontroll skulle ha nekat allt,
+  precis som fas 0a:s ursprungliga fynd. Fixat med `KnownNetworks.Clear()`/`KnownProxies.Clear()`.
+  Regressionstest tillagt: `IsolatedModeSmokeTest.ForwardedHeaders_XForwardedForWithPort_SetsRemoteIpAddressEvenBehindAnUntrustedProxy`,
+  som medvetet sätter den inkommande anslutningens `RemoteIpAddress` till en icke-loopback-adress
+  (TestServer simulerar annars loopback, som redan är trådigt by default och därför inte hade fångat
+  bugg) — verifierat att testet fallerar utan fixen och går igenom med den. `:port`-strippningen är
+  middleware:ts egen och krävde ingen egen kod.
+  Notera: en fullständig end-to-end-verifiering genom `SystemSurfaceController.Update()` visade att
+  `IsRequestAuthorized()` nu korrekt auktoriserar (bekräftat separat), men att sidoeffekten
+  (källpollningens resultat) ändå kan bli tom av skäl som är helt orelaterade till detta — se separat
+  notering vid `ChalmersOrderItemsMailSource`/isolerat läge, inte samma bugg och inte åtgärdad här.
 
 - [ ] **Flytta `Local.config` till App Settings**
   App Service Application Settings blir miljövariabler och läses av `IConfiguration` utan extra kod —

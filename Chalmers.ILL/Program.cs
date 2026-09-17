@@ -91,10 +91,19 @@ else
 // SystemSurfaceController's cron-server IP check reads Connection.RemoteIpAddress - behind
 // Azure App Service's front-end that's the proxy's IP unless X-Forwarded-For is folded in here
 // first (fas 2: "HTTP_X_FORWARDED_FOR -> ForwardedHeaders-middleware, inte manuell header-parsning").
-app.UseForwardedHeaders(new ForwardedHeadersOptions
+// Fas 10: the default KnownProxies/KnownNetworks only trust loopback, but App Service's front-end
+// is neither loopback nor a known, stable address - left at the default, the middleware silently
+// rejects the header and RemoteIpAddress stays the front-end's own address, which denies the cron
+// server (and any real client IP check) without any error anywhere. Cleared per the standard
+// App Service pattern; the port on "ip:port" is still stripped correctly, that parsing is the
+// middleware's own, not something done here.
+var forwardedHeadersOptions = new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+};
+forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeadersOptions);
 
 app.UseStaticFiles();
 // Assets still live under Scripts/, Css/, images/ (project root) rather than wwwroot/ - moving

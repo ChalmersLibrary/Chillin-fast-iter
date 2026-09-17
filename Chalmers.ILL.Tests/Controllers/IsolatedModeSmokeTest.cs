@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -90,6 +91,42 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreEqual(HttpStatusCode.Found, response.StatusCode);
             Assert.AreEqual("https://live.example.com/", response.Headers.Location.ToString());
             Assert.AreEqual(string.Empty, await response.Content.ReadAsStringAsync());
+        }
+
+        // Fas 10, "Konfigurera ForwardedHeaders för App Service": SystemSurfaceController's
+        // cron-server IP check (and any real-client-IP check) relies entirely on
+        // ForwardedHeadersMiddleware folding X-Forwarded-For into Connection.RemoteIpAddress
+        // (fas 2). On Azure App Service the immediate connecting proxy is neither loopback nor a
+        // known/stable address, so the middleware's *default* KnownProxies/KnownNetworks
+        // (loopback only) would reject the header - RemoteIpAddress would stay the proxy's own
+        // address and the cron server would be silently denied (Update() swallows the failure
+        // and returns an empty, still-200-OK result - fas 0a). Tested directly against the
+        // middleware rather than through SystemSurfaceController.Update(), because that action's
+        // *own* result also depends on ChalmersOrderItemsMailSource.Poll() succeeding, which is
+        // unrelated to this fix and not something this test should be coupled to.
+        [TestMethod]
+        public async Task ForwardedHeaders_XForwardedForWithPort_SetsRemoteIpAddressEvenBehindAnUntrustedProxy()
+        {
+            using var factory = CreateFactory();
+
+            var context = await factory.Server.SendAsync(c =>
+            {
+                c.Request.Method = "GET";
+                c.Request.Path = "/ChalmersILLLoginPage";
+                c.Request.Host = new HostString("cron-caller.example.com");
+                // Azure sends X-Forwarded-For as "ip:port" - the middleware's own parsing must
+                // strip the port (fas 2's note that this is already relied upon elsewhere).
+                c.Request.Headers["X-Forwarded-For"] = "203.0.113.5:54321";
+                // TestServer's simulated connection defaults to loopback, which the middleware's
+                // *default* KnownNetworks/KnownProxies already trust regardless of this fix -
+                // that would make the test pass even without it. Set it to a non-loopback address
+                // instead, standing in for Azure App Service's own front-end/load balancer hop,
+                // which is exactly what isn't loopback and isn't a known/stable address in
+                // production - the scenario this fix is for.
+                c.Connection.RemoteIpAddress = IPAddress.Parse("10.0.0.4");
+            });
+
+            Assert.AreEqual("203.0.113.5", context.Connection.RemoteIpAddress?.ToString());
         }
     }
 }
