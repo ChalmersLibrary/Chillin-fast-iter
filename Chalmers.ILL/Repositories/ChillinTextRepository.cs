@@ -24,7 +24,11 @@ namespace Chalmers.ILL.Repositories
                 .Size(1)
                 .Query(q => q.Bool(b => b.Must(m => m.Exists(e => e.Field(textField)))))
                 .Source(s => s.Includes(i => i.Field(textField))));
-            return response.Documents.First();
+            // An empty index (e.g. a freshly set-up environment, before the first Put) is a real
+            // state, not an error - .First() used to throw InvalidOperationException here (fas 0a
+            // latent defect). Mirrors Isolated.FileChillinTextRepository's "missing document -> empty
+            // ChillinText" contract instead of crashing.
+            return response.Documents.FirstOrDefault() ?? new ChillinText();
         }
 
         public ChillinTextDto All()
@@ -34,11 +38,12 @@ namespace Chalmers.ILL.Repositories
                  .Type(Type)
                  .Size(1)
                  .Query(q => q.MatchAll()));
+            // Same empty-index case as ByTextField above - hit used to be null-dereferenced here.
             IHit<ChillinText> hit = response.Hits.FirstOrDefault();
             return new ChillinTextDto
             {
-                Id = hit.Id,
-                Source = hit.Source
+                Id = hit?.Id,
+                Source = hit?.Source ?? new ChillinText()
             };
         }
 

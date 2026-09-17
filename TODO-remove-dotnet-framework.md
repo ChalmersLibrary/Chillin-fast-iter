@@ -2235,7 +2235,7 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
 - [ ] Uppdatera [CLAUDE.md](CLAUDE.md)s Arkitekturnoter-sektion när fas 2, 6 och 7 är klara — de
   beskriver läget efter Umbraco-borttagningen och blir inaktuella
 
-- [ ] **Fyra latenta defekter hittade 2026-09-16, alla verifierade i koden**
+- [x] **Fyra latenta defekter hittade 2026-09-16, alla verifierade i koden**
   Ingen är brådskande — de rör tomma index respektive kosmetik — men de ska med före driftsättning,
   och de tre första blir naturliga att ta när motsvarande filbaserade implementation skrivs.
   - `ElasticsearchTemplateService.CreateTemplate` rad 107-108 gör
@@ -2251,3 +2251,21 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   - `FolioConnection.cs:12-15` läser fyra appSettings i **fältinitierare** med `.ToString()` —
     saknad nyckel ger `NullReferenceException` redan under DI-uppbyggnaden, inte vid första
     FOLIO-anropet. Faller bort om fas 6 gör konfigurationen injicerad.
+
+  **Åtgärdat 2026-09-17.** Två av de fyra hade redan fallit bort som bieffekt av tidigare
+  fasarbete: `ElasticsearchTemplateService.CreateTemplate` finns inte längre i den formen —
+  fas 6:s `TemplateServiceBase`-refaktorering (delad mellan `ElasticsearchTemplateService` och
+  `Isolated.FileTemplateService`) skriver om `CreateTemplate` till att beräkna nästa id från
+  `LoadAllTemplates().Max(...)` med `all.Count > 0 ? ... : 0` som fallback — redan tomindex-säker.
+  `FolioConnection` tar sedan fas 6 sin konfiguration via injicerad `IChillinConfiguration` i
+  konstruktorn, inte via fältinitierare mot `ConfigurationManager.AppSettings`. Kvar var de två
+  faktiska buggarna: `ChillinTextRepository.All()`/`ByTextField` fixade att spegla
+  `Isolated.FileChillinTextRepository`s redan etablerade kontrakt (tomt index → tom `ChillinText`,
+  inte kastat undantag) — regressionstester i `ChillinTextRepositoryTest.cs` (4 st, med `IElasticClient`
+  mockad via Moq) för både tomt och icke-tomt index på båda metoderna.
+  `BlobStorageMediaItemManager.PopulateStoredMediaItemFromBlob` läser nu med `Uri.UnescapeDataString`
+  för att matcha skrivvägens `EscapeDataString`. Inget nytt test tillagt för den klassen specifikt:
+  den har ingen DI-sömn för `BlobContainerClient`/`BlobClient` (nyas upp direkt i `GetContainer()`),
+  och ingen Azure Storage-emulator finns i den här miljön — samma gräns som redan är dokumenterad
+  designbeslut för "Isolerad testserver" (Blob Storage fejkas i processen istället för enhetstestas
+  mot den riktiga klienten, se `Isolated.FileMediaItemManager`).

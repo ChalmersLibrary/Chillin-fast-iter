@@ -99,7 +99,10 @@ namespace Chalmers.ILL.MediaItems
         {
             var properties = blob.GetProperties().Value;
             mediaItem.Id = blob.Name;
-            mediaItem.Name = properties.Metadata["name"];
+            // The name was written through Uri.EscapeDataString below (Azure blob metadata values
+            // must be ASCII) - reading it back without the matching UnescapeDataString left names
+            // percent-encoded in the UI (fas 0a latent defect).
+            mediaItem.Name = Uri.UnescapeDataString(properties.Metadata["name"]);
             mediaItem.OrderItemNodeId = Convert.ToInt32(properties.Metadata["orderItemNodeId"]);
             mediaItem.Url = MediaItemUrlBuilder.Build(_configuration.BaseUrl, mediaItem.Id);
             mediaItem.CreateDate = Convert.ToDateTime(properties.Metadata["createDate"]);
