@@ -7,7 +7,6 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web;
 using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Models.Mail;
 using Microsoft.Identity.Client;

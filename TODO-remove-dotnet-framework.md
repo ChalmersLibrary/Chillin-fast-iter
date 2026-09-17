@@ -2461,3 +2461,17 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   och ingen Azure Storage-emulator finns i den här miljön — samma gräns som redan är dokumenterad
   designbeslut för "Isolerad testserver" (Blob Storage fejkas i processen istället för enhetstestas
   mot den riktiga klienten, se `Isolated.FileMediaItemManager`).
+
+- [x] **82 döda `using System.Web;`-rader utöver de sju som fas 0b redan städade**
+  Fas 0b:s "Ta bort döda `using`-rader"-punkt fångade `System.Web.Mvc`/`Hosting`/EWS/Npgsql-raderna
+  men missade den absolut vanligaste: ett rakt `using System.Web;` utan namnrymdskvalificering,
+  spritt över 82 filer i `Models/`, `Controllers/SurfaceControllers/`, `Mail/`, `Patron/`, `Extensions/`
+  m.fl. Kompilerar utan fel trots att `System.Web.Mvc`/`System.Web.Hosting` etc. är borta sedan
+  fas 1b/2 — modern .NET skeppar fortfarande ett minimalt `System.Web`-facade
+  (`System.Web.HttpUtility`/`System.Web.dll` i delade ramverket) med bara `HttpUtility`/`IHtmlString`,
+  så namnrymden existerar och `using`-raden ger inget byggfel även när den inte används. Verifierat
+  med sökning: **noll** av de 82 filerna använder `HttpUtility` eller `IHtmlString` — alla raderna var
+  alltså helt döda, inte kvarlevande kompatibilitetsanvändning.
+  Åtgärd: `sed -i '/^using System\.Web;$/d'` över de 82 filerna (för många för Edit-verktyget, se
+  [Arbetsrutiner](#arbetsrutiner) i CLAUDE.md om script vid orimligt stort antal edits). 225/225
+  gröna, ingen ändring i anropande kod behövdes.

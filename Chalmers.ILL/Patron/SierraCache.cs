@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
-using System.Web;
 using Chalmers.ILL.Models;
 
 namespace Chalmers.ILL.Patron
