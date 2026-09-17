@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
-using System.Configuration;
 using Newtonsoft.Json;
 using System.Globalization;
 using Chalmers.ILL.Statistics;

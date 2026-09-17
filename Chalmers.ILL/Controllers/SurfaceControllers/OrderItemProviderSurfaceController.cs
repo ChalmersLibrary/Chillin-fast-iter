@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.Utilities;
 using Chalmers.ILL.Extensions;
-using System.Configuration;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.Models.PartialPage;
 using Chalmers.ILL.Providers;

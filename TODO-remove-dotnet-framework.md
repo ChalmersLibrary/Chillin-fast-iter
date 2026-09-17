@@ -2475,3 +2475,11 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   Åtgärd: `sed -i '/^using System\.Web;$/d'` över de 82 filerna (för många för Edit-verktyget, se
   [Arbetsrutiner](#arbetsrutiner) i CLAUDE.md om script vid orimligt stort antal edits). 225/225
   gröna, ingen ändring i anropande kod behövdes.
+
+  Samma sökning hittade 8 döda `using System.Configuration;`-rader (`FolioRepository.cs`,
+  `OrderItemProviderSurfaceController.cs`, `OrderItemPatronDataSurfaceController.cs`,
+  `OrderItemSurfaceController.cs`, `OrderItemClaimSurfaceController.cs`,
+  `StatisticsSurfaceController.cs`, `FolioPatronDataProvider.cs`, `PdbAffiliationDataProvider.cs`) —
+  kompilerar av samma skäl (namnrymden finns fortfarande, troligen via ett transitivt paketberoende,
+  även om `System.Configuration.ConfigurationManager`-paketet togs bort i fas 6), men ingen av dem
+  använder `ConfigurationManager` eller något annat ur namnrymden. Borttagna i samma svep.

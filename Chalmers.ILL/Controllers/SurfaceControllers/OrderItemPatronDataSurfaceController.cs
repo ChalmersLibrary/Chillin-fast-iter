@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Newtonsoft.Json;
 using Chalmers.ILL.Patron;
-using System.Configuration;
 using System.Net;
 using System.IO;
 using Chalmers.ILL.OrderItems;

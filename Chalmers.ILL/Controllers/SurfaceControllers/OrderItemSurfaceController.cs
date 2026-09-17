@@ -10,7 +10,6 @@ using Chalmers.ILL.Extensions;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.Members;
 using Newtonsoft.Json;
-using System.Configuration;
 using Chalmers.ILL.SignalR;
 using Chalmers.ILL.UmbracoApi;
 using Chalmers.ILL.Models.PartialPage;
