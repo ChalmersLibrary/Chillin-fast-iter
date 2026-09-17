@@ -1765,6 +1765,19 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Se även `Extensions/DateTimeExtensions.cs:13`, som formaterar med `CultureInfo.CurrentCulture`;
   formatsträngen är explicit så risken är liten, men beteendet skiljer sig om ingen locale är satt.
 
+  **Devcontainer-delen verifierad 2026-09-17, automatiserad i stället för att vänta till fas 11.**
+  Nytt regressionstest, `TemplateServiceBaseTest.GetManualTemplates_SortsDescriptionsUsingSwedishCollation`,
+  bevisar den korrekta sv-se-ordningen (`Apa, Zebra, Åsa, Äpple, Öppettider`) mot en riktig
+  `CultureInfo("sv-se")`-sortering, inte bara en manuell okulärbesiktning. Bekräftat att testet
+  faktiskt fångar felet: körning med `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` (motsvarande
+  `InvariantGlobalization=true`/en ICU-lös basbild) gör att testet **kastar**
+  `CultureNotFoundException` — dvs. hårdare och tydligare fel än den ursprungliga farhågan om en tyst
+  felsortering, men lika lätt att missa manuellt och nu omöjligt att missa i testsviten. Ingen
+  `InvariantGlobalization`-flagga finns i något csproj, och `ldconfig -p | grep icu` visar ICU
+  installerat i den här devcontainern.
+  **Kvar:** samma verifiering mot den faktiska App Service-avbildningen (Linux-planet, fas 10 i
+  övrigt) går inte att göra förrän den finns.
+
 - [x] **Gör sökvägarna till `members.json` och `chillinPrevalues.json` konfigurerbara**
   Efter fas 2 läses båda relativt `IWebHostEnvironment.ContentRootPath`, dvs. från `wwwroot` — och
   det duger inte i drift av två skäl: deployment skriver över katalogen, och vid Run-From-Package är
