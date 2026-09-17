@@ -2,7 +2,6 @@
 using Chalmers.ILL.Mail;
 using Chalmers.ILL.MediaItems;
 using Chalmers.ILL.Patron;
-using Chalmers.ILL.Providers;
 using Chalmers.ILL.SignalR;
 using System.Collections.Generic;
 
@@ -36,8 +35,9 @@ namespace Chalmers.ILL.OrderItems
         public List<ISource> Sources()
         {
             var res = new List<ISource>();
+            // Libris (the only other source there ever was) was discontinued 2025-09-08 and its
+            // class removed entirely (fas 10, "Beskär sökytan") - this is the one remaining source.
             res.Add(new ChalmersOrderItemsMailSource(_exchangeMailWebApi, _orderItemManager, _notifier, _mediaItemManager, _patronDataProvider, _personDataProvider, _orderItemSearcher, _config));
-            // res.Add(new LibrisOrderItemsSource(_umbraco, _orderItemManager, _patronDataProvider, _orderItemSearcher)); Removed due to service being discontinued 2025-09-08
             return res;
         }
     }

@@ -36,11 +36,6 @@ namespace Chalmers.ILL.Tests.Configuration
         public string ElasticSearchIndex { get; set; }
         public string ElasticSearchTemplatesIndex { get; set; }
 
-        public string LibrisApiBaseAddress { get; set; }
-        public string LibrisApiUserRequestSuffix { get; set; }
-        public string LibrisApiKey { get; set; }
-        public string LibrarySigel { get; set; }
-
         public string FolioApiBaseAddress { get; set; }
         public string FolioXOkapiTenant { get; set; }
         public string FolioUsername { get; set; }

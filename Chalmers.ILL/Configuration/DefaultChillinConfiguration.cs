@@ -71,11 +71,6 @@ namespace Chalmers.ILL.Configuration
         public string ElasticSearchIndex => Get(nameof(ElasticSearchIndex));
         public string ElasticSearchTemplatesIndex => Get(nameof(ElasticSearchTemplatesIndex));
 
-        public string LibrisApiBaseAddress => Get(nameof(LibrisApiBaseAddress));
-        public string LibrisApiUserRequestSuffix => Get(nameof(LibrisApiUserRequestSuffix));
-        public string LibrisApiKey => Get(nameof(LibrisApiKey));
-        public string LibrarySigel => Get(nameof(LibrarySigel));
-
         public string FolioApiBaseAddress => Get(nameof(FolioApiBaseAddress));
         public string FolioXOkapiTenant => Get(nameof(FolioXOkapiTenant));
         public string FolioUsername => Get(nameof(FolioUsername));

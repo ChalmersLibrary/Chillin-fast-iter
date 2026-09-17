@@ -49,7 +49,6 @@ namespace Chalmers.ILL.Isolated
             ("ChalmersIllExchangePassword", c => c.ChalmersIllExchangePassword),
             ("FolioPassword", c => c.FolioPassword),
             ("PatronCacheSolrBasicAuthPassword", c => c.PatronCacheSolrBasicAuthPassword),
-            ("LibrisApiKey", c => c.LibrisApiKey),
             ("LibPSearchApiKey", c => c.LibPSearchApiKey),
         };
 

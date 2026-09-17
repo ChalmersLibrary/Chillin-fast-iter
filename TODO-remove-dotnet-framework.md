@@ -1935,7 +1935,7 @@ gratis, utan produktionsrisk, precis det som listas ovan som "syns bara i Azure"
 `/home`-lagringens persistens, `ForwardedHeaders` bakom App Services front-end, uppladdningsgränsen
 och `Always On`.
 
-- [ ] **Beskär sökytan innan sökersättaren byggs**
+- [x] **Beskär sökytan innan sökersättaren byggs**
   Görs först och avgör hur stor resten blir — varje fråga som tas bort är en frågeform som aldrig
   behöver implementeras. Inventerat 2026-09-16; samtliga `IOrderItemSearcher.Search`-anropsställen:
   `ChalmersILLOrderListPageController.cs:41` (fritext från sökrutan — **enda genuint fria ytan**) och
@@ -1951,6 +1951,67 @@ och `Always On`.
   (`ChalmersILLOrderListPageController.cs:67`) ska tillbaka eller tas bort; skriv ned statistiksidans
   exakta frågeformer; bestäm och dokumentera vad sökrutan ska stödja. Resultatet blir en
   **frågekravlista** som är både specifikation och testfall för nästa punkt.
+
+  **Genomfört 2026-09-16.**
+
+  **Libris-grenen borttagen.** `Providers/LibrisOrderItemsSource.cs` (242 rader, bekräftat
+  oanropad — `ChalmersSourceFactory.Sources()` hade bara en utkommenterad `new
+  LibrisOrderItemsSource(...)`-rad) raderad helt. Följde med: `IChillinConfiguration`/
+  `DefaultChillinConfiguration`/`StubChillinConfiguration`s `LibrisApiBaseAddress`/
+  `LibrisApiUserRequestSuffix`/`LibrisApiKey`/`LibrarySigel` (bekräftat oanvända utanför den döda
+  klassen), motsvarande nycklar i `appsettings.json`, och `LibrisApiKey`-posten i
+  `IsolationGuard.SecretKeys`. (Sträng-värdet `"Libris"` som `ProviderName`/statistik-kategori i
+  `StatisticsSurfaceControllerTest.cs` är ett orelaterat datafält, inte den här integrationen —
+  rörs inte.)
+
+  **`ManualAnonymizationItems` — beslut: lämnas orörd, ingen fråga att stödja.** Den utkommenterade
+  raden (`ChalmersILLOrderListPageController.cs:64`) refererar `manualAnonymizationQueryString`, en
+  variabel som **inte finns någonstans** i filen — går alltså inte ens att avkommentera utan att
+  skriva ny kod. Båda kodvägarna sätter redan `ManualAnonymizationItems` till en tom `SearchResult`,
+  så funktionen är redan och har länge varit permanent tom i praktiken (vyn har ett helt UI-avsnitt,
+  `Views/ChalmersILLOrderListPage.cshtml:224-231`, som därför aldrig renderar något). Att återuppliva
+  den kräver en affärsregel för "vilka ordrar behöver manuell anonymisering" som inte finns
+  dokumenterad någonstans — det är ett produktbeslut, inte en sökfråga-fråga, och ligger utanför den
+  här punktens mandat. Eftersom den utfärdar noll frågor idag behöver sökersättaren inte stödja
+  något för den. Flaggat för fas 11: antingen implementera på riktigt eller ta bort UI-avsnittet.
+
+  **Frågekravlistan** (facit för nästa punkt, "Bygg den minimala sökersättaren"):
+  - **Fältuppslag (nyckel-baserat, majoriteten):** `fält:värde` (`providerName:"TIB"`,
+    `sierraInfo.record_id:12345`), `fält:"fras"` (`status:"05:Levererad"`, kolon i värdet — visar att
+    kolon inte får vara ett delimiter-tecken i tokeniseringen), `fält:v1\:Etikett`
+    (escaped-kolon-formen, samma sak utan citat — `status:01\:Ny`), upprepad disjunktion
+    `fält:v1 OR fält:v2 OR ...` (statistiksidans faktiska JS-genererade form — inte NEST-genvägen
+    `fält:(v1 OR v2)`, men semantiskt samma sak och båda bör stödjas), grupperat med parenteser och
+    `AND`/`OR` i godtycklig kombination (`(type:Bok AND status:(...)) OR (type:Artikel AND
+    status:Transport)`), datumintervall `fält:[start TO slut]` med `*` som öppen gräns i **båda**
+    ändar (`updateDate:[* TO 2025-09-16]`, `followUpDate:[1975-01-01T... TO now]`),
+    `_exists_:fält`/`!_exists_:fält` (parentes runt negationen:
+    `(isAnonymizedAutomatically:false OR (!_exists_:isAnonymizedAutomatically))`), **negerad
+    parentesgrupp** med bindestreck-prefix på hela gruppen, inte bara ett enskilt villkor:
+    `-(status:Transport AND (previousStatus:Utlånad OR previousStatus:Krävd OR
+    previousStatus:Infodisk))` (`BulkDataManager.cs`) — svårare än ett enkelt `-term` och måste
+    testas separat. `*` ensamt (`StatisticsSurfaceController.cs`) = hämta allt.
+  - **⚠️ Ett fall saknades i den ursprungliga beskrivningen ovan, upptäckt vid genomgången:**
+    `ChalmersILLOrderListPageController.Index()`s sökruta skickar `queryString` **helt utan
+    fältprefix** när texten inte matchar ordernummer-mönstret (`^cthb-[a-zA-Z0-9]{8}-[0-9]+$`) — dvs.
+    en bokstavlig fritextsträng som "Andersson" med noll `:`. ES:s `query_string` faller i det
+    läget tillbaka på indexets `default_field` (ES6-default `*`, dvs. alla fält). Det är **den**
+    verkligt fria ytan, och den enda frågeformen ovan som inte är fältstyrd. Sökersättaren måste
+    definiera ett explicit default-fältset (rimligen `reference` + patronrelaterade textfält — de
+    fält användare rimligen skriver in i sökrutan) snarare än att söka i alla ~30 fält på
+    `OrderItemModel`, annars blir "fritext" antingen orealistiskt brett eller kräver att man
+    replikerar hela ES-mappningen. **Öppen fråga, avsiktligt inte beslutad här** — kräver avstämning
+    med användaren om vilka fält som ska vara defaultfält innan nästa punkt påbörjas.
+  - **Aggregation (inte en fråga):** `AggregatedProviders()` grupperar dokument på `providerName`,
+    sorterar fallande på antal, och lägger `TIB`/`Libris`/`Subito` (i den ordningen) först oavsett
+    antal (`ElasticSearchOrderItemSearcher.cs:76`) — **notera:** `Libris` som sorteringsprioritet är
+    en `providerName`-datakategori på befintliga ordrar (historiska poster), inte samma sak som den
+    nu borttagna integrationskoden; den kategorin finns kvar i data och måste finnas kvar i
+    sorteringen.
+  - **Textmatchningens tokenisering** (redan känd risk från fas 10:s ursprungstext, bekräftad här):
+    kolon (`:` i `status:01\:Ny`) och `?` (`Förlorad\?` i `ChalmersILLDiskPageController.cs`) måste
+    tokeniseras bort (gemener, dela på icke-alfanumeriska tecken), annars matchar `status:Ny` inte
+    `"01:Ny"`.
 
 - [ ] **Bygg den minimala sökersättaren**
   `IOrderItemSearcher` mot fas 7:s orderfiler, i minnet: läs in alla ordrar vid uppstart och håll

@@ -60,13 +60,6 @@ namespace Chalmers.ILL.Configuration
         string ElasticSearchIndex { get; }
         string ElasticSearchTemplatesIndex { get; }
 
-        // Libris (source discontinued 2025-09-08, but the class still compiles - see
-        // Providers/LibrisOrderItemsSource.cs)
-        string LibrisApiBaseAddress { get; }
-        string LibrisApiUserRequestSuffix { get; }
-        string LibrisApiKey { get; }
-        string LibrarySigel { get; }
-
         // FOLIO
         string FolioApiBaseAddress { get; }
         string FolioXOkapiTenant { get; }
