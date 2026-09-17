@@ -2498,3 +2498,16 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   kompilerar av samma skäl (namnrymden finns fortfarande, troligen via ett transitivt paketberoende,
   även om `System.Configuration.ConfigurationManager`-paketet togs bort i fas 6), men ingen av dem
   använder `ConfigurationManager` eller något annat ur namnrymden. Borttagna i samma svep.
+
+- [x] **Ytterligare en tom-lista-krasch, hittad genom att öppna varje flik under Inställningar mot
+  en färsk `DataPath`**
+  Samma kategori som "Fyra latenta defekter hittade 2026-09-16" ovan, men i en vy, inte en
+  repository-klass, och därför inte fångad av samma sökning då: `Views/Partials/Settings/
+  EditTemplates.cshtml` gjorde `Model.Templates.First().Data` för att förifylla textarean med den
+  först listade mallens innehåll — `InvalidOperationException` ("Sequence contains no elements") så
+  fort noll mallar finns, vilket är det normala läget för **varje** ny `DataPath` (isolerat läge,
+  den isolerade testservern, eller en helt ny produktionsdriftsättning) innan någon skapat en mall.
+  Fixat till `FirstOrDefault()?.Data`. Regressionstest tillagt:
+  `IsolatedModeSmokeTest.RenderEditTemplatesAction_NoTemplatesYet_RendersWithoutThrowing`
+  (inloggning via en delad `LoginAsSuperAdminAsync`-hjälpmetod, delad med föregående punkts test),
+  verifierat att det fallerar utan fixen. 227/227 gröna.

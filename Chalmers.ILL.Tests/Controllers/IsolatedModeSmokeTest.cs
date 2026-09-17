@@ -114,7 +114,40 @@ namespace Chalmers.ILL.Tests.Controllers
         {
             using var factory = CreateFactory();
             using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsSuperAdminAsync(client);
 
+            // NodeId 1 is DevDataSeeder's "01:Ny" order - status/type/reference are all set via
+            // SetStatus/SetType/SetReference, each of which appends a LogItem under the same
+            // eventId, so this order always has at least one grouped log entry to render.
+            var response = await client.GetAsync("/OrderItemSurface/RenderOrderItem?nodeId=1");
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        // Found the same way as the test above: opening every tab reachable from the settings page
+        // against a freshly seeded (so template-less) DataPath. Views/Partials/Settings/
+        // EditTemplates.cshtml did Model.Templates.First().Data to prefill the edit textarea with
+        // the first template's content - throwing InvalidOperationException ("Sequence contains no
+        // elements") the moment zero templates exist, which is exactly the state of any new
+        // DataPath (isolated dev, the isolated test server, or a fresh production deploy) before
+        // anyone has created one. Fixed to FirstOrDefault()?.Data.
+        [TestMethod]
+        public async Task RenderEditTemplatesAction_NoTemplatesYet_RendersWithoutThrowing()
+        {
+            using var factory = CreateFactory();
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsSuperAdminAsync(client);
+
+            var response = await client.GetAsync("/TemplatesSurface/RenderEditTemplatesAction");
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        // Shared by both view-rendering regression tests above - DevDataSeeder (fas 10) always
+        // creates this account with SuperAdmin/Administrator/Desk, so any authenticated page is
+        // reachable through it without a test needing its own members.json setup.
+        private static async Task LoginAsSuperAdminAsync(HttpClient client)
+        {
             var loginPageHtml = await (await client.GetAsync("/ChalmersILLLoginPage")).Content.ReadAsStringAsync();
             var token = Regex.Match(loginPageHtml, "__RequestVerificationToken[^>]*value=\"([^\"]*)\"").Groups[1].Value;
 
@@ -129,13 +162,6 @@ namespace Chalmers.ILL.Tests.Controllers
             };
             var loginResponse = await client.SendAsync(loginRequest);
             Assert.AreEqual(HttpStatusCode.Found, loginResponse.StatusCode, "Seeded superadmin login failed - DevDataSeeder's members.json seeding may be broken.");
-
-            // NodeId 1 is DevDataSeeder's "01:Ny" order - status/type/reference are all set via
-            // SetStatus/SetType/SetReference, each of which appends a LogItem under the same
-            // eventId, so this order always has at least one grouped log entry to render.
-            var response = await client.GetAsync("/OrderItemSurface/RenderOrderItem?nodeId=1");
-
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         // Fas 10, "Vyerna redirectar till produktion om värdnamnet är okänt": with an unrecognised

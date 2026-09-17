@@ -47,7 +47,7 @@
         <button class="btn btn-default btn-xs" onclick="addTextAtSelection('{{S:HomeLibrary}}');">S:HomeLibrary</button>
     </div>
     <div class="form-group">
-        <textarea class="form-control" rows="24" id="template-data" name="template-data" data-template-id="@firstId">@Model.Templates.First().Data</textarea>
+        <textarea class="form-control" rows="24" id="template-data" name="template-data" data-template-id="@firstId">@Model.Templates.FirstOrDefault()?.Data</textarea>
     </div>
     <button class="btn btn-success" onclick="saveTemplate();">Spara ändringar</button>
 </div>
