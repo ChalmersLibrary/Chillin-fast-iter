@@ -14,10 +14,7 @@ namespace Chalmers.ILL.UmbracoApi
 
         // Was AppDomain.CurrentDomain.BaseDirectory unconditionally - now takes the directory to
         // read chillinPrevalues.json from, so Bootstrapper can point it at IChillinConfiguration's
-        // DataPath (fas 6, isolerat läge steg A, "Datarot"). The parameterless overload keeps the
-        // old default for anything constructing this directly outside DI.
-        public ChillinOrderConfiguration() : this(AppDomain.CurrentDomain.BaseDirectory) { }
-
+        // DataPath (fas 6, isolerat läge steg A, "Datarot").
         public ChillinOrderConfiguration(string configDirectory)
         {
             _lists = LoadLists(configDirectory);

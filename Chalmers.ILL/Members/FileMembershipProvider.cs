@@ -26,8 +26,6 @@ namespace Chalmers.ILL.Members
         private readonly Func<List<MemberAccount>> _loadAccounts;
         private readonly Action<List<MemberAccount>> _saveAccounts;
 
-        public FileMembershipProvider() : this(MemberFileStore.Load, MemberFileStore.Save) { }
-
         public FileMembershipProvider(Func<List<MemberAccount>> loadAccounts, Action<List<MemberAccount>> saveAccounts)
         {
             _loadAccounts = loadAccounts;

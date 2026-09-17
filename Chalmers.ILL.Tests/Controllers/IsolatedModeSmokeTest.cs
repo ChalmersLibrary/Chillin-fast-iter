@@ -1,11 +1,17 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Chalmers.ILL.Members;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace Chalmers.ILL.Tests.Controllers
 {
@@ -19,9 +25,22 @@ namespace Chalmers.ILL.Tests.Controllers
     [TestClass]
     public class IsolatedModeSmokeTest
     {
+        // Fas 10 discovery (2026-09-16): Bootstrapper.RegisterTypes reads IChillinConfiguration
+        // (config.Isolated, config.DataPath, ...) to decide which DI seams to register, and it does
+        // that *before* builder.Build() runs. WebApplicationFactory<Program>.WithWebHostBuilder's
+        // ConfigureAppConfiguration customization is only spliced into the builder as part of
+        // Build() itself for a minimal-hosting Program.cs - too late for that early read. It was
+        // silently seeing only the process's real appsettings/env vars all along: every test below
+        // that predates this comment was actually exercising RegisterLiveSeams against whatever
+        // ambient config this machine happens to have, not RegisterIsolatedSeams, and nothing
+        // caught it because the live seams don't crash just from being constructed (NEST/FOLIO
+        // clients are lazy). Environment variables, unlike ConfigureAppConfiguration, *are* part of
+        // what WebApplication.CreateBuilder(args) composes immediately - so setting them (which is
+        // also literally how App Settings reach the app in Azure) is what actually threads
+        // overrides through to that early read.
         private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null)
         {
-            var dataPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "chillin-isolated-smoke-" + System.Guid.NewGuid());
+            var dataPath = Path.Combine(Path.GetTempPath(), "chillin-isolated-smoke-" + Guid.NewGuid());
 
             var config = new Dictionary<string, string>
             {
@@ -35,13 +54,25 @@ namespace Chalmers.ILL.Tests.Controllers
                     config[kvp.Key] = kvp.Value;
             }
 
-            return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            var previousValues = new Dictionary<string, string>();
+            foreach (var kvp in config)
             {
-                builder.ConfigureAppConfiguration((_, configBuilder) =>
-                {
-                    configBuilder.AddInMemoryCollection(config);
-                });
-            });
+                var envKey = kvp.Key.Replace(":", "__");
+                previousValues[envKey] = Environment.GetEnvironmentVariable(envKey);
+                Environment.SetEnvironmentVariable(envKey, kvp.Value);
+            }
+
+            try
+            {
+                var factory = new WebApplicationFactory<Program>();
+                _ = factory.Server; // force the host (and Bootstrapper.RegisterTypes) to build now, while the env vars above are set
+                return factory;
+            }
+            finally
+            {
+                foreach (var kvp in previousValues)
+                    Environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
+            }
         }
 
         [TestMethod]
@@ -127,6 +158,36 @@ namespace Chalmers.ILL.Tests.Controllers
             });
 
             Assert.AreEqual("203.0.113.5", context.Connection.RemoteIpAddress?.ToString());
+        }
+
+        // Fas 10, "Gör sökvägarna till members.json och chillinPrevalues.json konfigurerbara":
+        // Bootstrapper.RegisterTypes registers FileMembershipProvider/FileRoleProvider with a
+        // factory bound to Chillin:DataPath's members.json (fas 6, isolerat läge steg A) - but
+        // Program.cs *also* had bare `builder.Services.AddSingleton<FileMembershipProvider>()`/
+        // `<FileRoleProvider>()` calls left over from fas 2/3, registered *after* Bootstrapper's.
+        // Since DI resolves the last registration for a type, those shadowed the correctly
+        // configured ones, silently falling back to each class's now-removed parameterless
+        // constructor - which read members.json from AppDomain.CurrentDomain.BaseDirectory, not
+        // DataPath. This resolves the actual DI-wired instance and proves it reads from the
+        // configured DataPath, not that stale location.
+        [TestMethod]
+        public void FileMembershipProvider_ResolvedFromDI_ReadsAccountsFromConfiguredDataPath()
+        {
+            var dataPath = Path.Combine(Path.GetTempPath(), "chillin-isolated-membership-" + System.Guid.NewGuid());
+            Directory.CreateDirectory(dataPath);
+
+            var hasher = new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+            var account = new MemberAccount { Login = "diagnostic-user", Roles = new List<string> { "Desk" } };
+            account.PasswordHash = hasher.HashPassword(account, "correct-password");
+            File.WriteAllText(Path.Combine(dataPath, "members.json"), JsonConvert.SerializeObject(new List<MemberAccount> { account }));
+
+            using var factory = CreateFactory(new Dictionary<string, string> { ["Chillin:DataPath"] = dataPath });
+            var provider = factory.Services.GetRequiredService<FileMembershipProvider>();
+
+            Assert.IsTrue(provider.ValidateUser("diagnostic-user", "correct-password"));
         }
     }
 }

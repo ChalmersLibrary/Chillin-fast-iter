@@ -12,8 +12,6 @@ namespace Chalmers.ILL.Members
     {
         private readonly Func<List<MemberAccount>> _loadAccounts;
 
-        public FileRoleProvider() : this(MemberFileStore.Load) { }
-
         public FileRoleProvider(Func<List<MemberAccount>> loadAccounts)
         {
             _loadAccounts = loadAccounts;

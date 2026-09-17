@@ -1,5 +1,4 @@
 using Chalmers.ILL;
-using Chalmers.ILL.Members;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.SignalR;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -41,9 +40,6 @@ builder.WebHost.ConfigureKestrel(options =>
 Bootstrapper.RegisterTypes(builder.Services);
 
 builder.Services.AddHttpContextAccessor();
-
-builder.Services.AddSingleton<FileMembershipProvider>();
-builder.Services.AddSingleton<FileRoleProvider>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -101,7 +97,7 @@ var forwardedHeadersOptions = new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 };
-forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownIPNetworks.Clear();
 forwardedHeadersOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(forwardedHeadersOptions);
 

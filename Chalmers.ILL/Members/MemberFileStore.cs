@@ -17,8 +17,6 @@ namespace Chalmers.ILL.Members
         // enough because the app is deployed as a single instance (see Fastställda designbeslut).
         private static readonly object _lock = new object();
 
-        public static List<MemberAccount> Load() => Load(ResolvePath());
-
         public static List<MemberAccount> Load(string path)
         {
             if (!File.Exists(path))
@@ -38,8 +36,6 @@ namespace Chalmers.ILL.Members
                 }
             }
         }
-
-        public static void Save(List<MemberAccount> accounts) => Save(accounts, ResolvePath());
 
         public static void Save(List<MemberAccount> accounts, string path)
         {
@@ -67,13 +63,5 @@ namespace Chalmers.ILL.Members
                 }
             }
         }
-
-        // Was HttpRuntime.AppDomainAppPath with AppDomain.CurrentDomain.BaseDirectory as
-        // fallback (fas 2) - System.Web is gone, and this static class has no DI access to
-        // IWebHostEnvironment.ContentRootPath, so the fallback (already equivalent for a
-        // single-deployment ASP.NET Core app, unlike classic System.Web's separate bin/content
-        // root split) is now the only path.
-        private static string ResolvePath() =>
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "members.json");
     }
 }

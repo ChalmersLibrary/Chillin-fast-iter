@@ -1709,7 +1709,7 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Se även `Extensions/DateTimeExtensions.cs:13`, som formaterar med `CultureInfo.CurrentCulture`;
   formatsträngen är explicit så risken är liten, men beteendet skiljer sig om ingen locale är satt.
 
-- [ ] **Gör sökvägarna till `members.json` och `chillinPrevalues.json` konfigurerbara**
+- [x] **Gör sökvägarna till `members.json` och `chillinPrevalues.json` konfigurerbara**
   Efter fas 2 läses båda relativt `IWebHostEnvironment.ContentRootPath`, dvs. från `wwwroot` — och
   det duger inte i drift av två skäl: deployment skriver över katalogen, och vid Run-From-Package är
   den dessutom skrivskyddad, vilket skulle slå ut kontoadministrationssidan
@@ -1727,6 +1727,43 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Linux lokalt och Windows i Azure.
 
   Låsningen och den atomiska skrivningen från fas 0a behövs fortfarande.
+
+  **Redan löst, med en väsentlig skillnad mot texten ovan.** Fas 6/isolerat läge steg A:s
+  `Chillin:DataPath`-beslut (se "Datarot") gör exakt detta jobb — en enda App Setting, `$HOME/data`
+  som Azure-default, Kudu-åtkomlig, utanför `wwwroot` — men med **en** gemensam nyckel för hela
+  dataroten istället för separata `Chillin:MembersFilePath`/`PrevaluesFilePath`. Det beslutet fattades
+  redan då och är avsiktligt enklare; den här punkten skrevs innan det beslutet fanns. Ingen ny kod
+  behövdes, bara ikryssning — **men** genomgången avslöjade tre verkliga fel på vägen, alla fixade
+  2026-09-16:
+  - **Dött, felaktigt sökvägsfall.** `MemberFileStore`/`ChillinOrderConfiguration`s parameterlösa
+    konstruktorer (och `MemberFileStore.Load()`/`Save()` utan path-argument) föll tillbaka på den
+    gamla `AppDomain.CurrentDomain.BaseDirectory`-sökvägen från fas 2, aldrig uppdaterad till
+    `DataPath`. Bekräftat oanropade från någon `new`-sats i hela kodbasen — borttagna.
+  - **Skarp DI-skuggningsbugg, upptäckt när ovanstående togs bort.** `Program.cs` hade
+    `builder.Services.AddSingleton<FileMembershipProvider>()`/`<FileRoleProvider>()` kvar sedan
+    fas 2/3, registrerade **efter** `Bootstrapper.RegisterTypes` — som sedan fas 6 registrerar samma
+    typer korrekt med en `membersPath`-bunden factory. DI löser sista registreringen för en typ, så
+    de bara-typ-registreringarna **skuggade** de korrekta och föll tillbaka på just den döda
+    konstruktorn ovan — tyst, inget byggfel, inget testfel. Den faktiska produktionsappen har alltså
+    sedan fas 6 läst/skrivit `members.json` från fel plats (`AppDomain.CurrentDomain.BaseDirectory`
+    i stället för `DataPath`). Fixat genom att ta bort de två raderna i `Program.cs`.
+  - **Testinfrastrukturen dolde detta helt.** `IsolatedModeSmokeTest.CreateFactory` satte
+    `Chillin:Isolated`/`Chillin:DataPath` via `WithWebHostBuilder(...).ConfigureAppConfiguration(...)`
+    — men `Bootstrapper.RegisterTypes` läser `IChillinConfiguration` **innan** `builder.Build()`, och
+    för en minimal-hosting `Program.cs` splitsas `ConfigureAppConfiguration`-anpassningar in som en
+    del av just `Build()`, alltså för sent för den tidiga läsningen. Bekräftat med ett temporärt
+    undantag: `config.Isolated` var `false` och `config.DataPath` var `$HOME/data` inne i
+    `Bootstrapper.RegisterTypes`, trots att testet satte `Isolated=true` och en unik `DataPath`. Alla
+    befintliga `IsolatedModeSmokeTest`-tester har alltså körts mot **`RegisterLiveSeams`** hela tiden,
+    inte mot fejkarna — omärkt eftersom NEST/FOLIO-klienterna inte kraschar bara av att konstrueras.
+    Fixat genom att sätta miljövariabler (`Chillin__Isolated` osv., samma konvention som riktiga
+    App Settings i Azure) **innan** `WebApplicationFactory` startar värden, i stället för
+    `ConfigureAppConfiguration` — miljövariabler är en av `WebApplication.CreateBuilder(args)`s
+    ursprungliga konfigurationskällor och syns alltså redan vid den tidiga läsningen.
+  Nytt regressionstest: `FileMembershipProvider_ResolvedFromDI_ReadsAccountsFromConfiguredDataPath`,
+  som skriver ett riktigt `members.json` under en konfigurerad `DataPath` och validerar inloggning
+  genom den faktiska DI-upplösta instansen. Verifierat mot samtliga tre återinförda buggar ovan
+  (var för sig) att testet fallerar utan respektive fix. 195/195 gröna efter.
 
 - [ ] **Lägg upp ett bootstrap-SuperAdmin-konto i `members.json` innan första driftsättning**
   Kontohantering sker via `MemberAdminSurfaceController`/`MemberAdminService` (inställningssidan,
