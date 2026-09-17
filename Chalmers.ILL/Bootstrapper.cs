@@ -150,9 +150,10 @@ namespace Chalmers.ILL
         {
             services.AddTransient<IMailWebApi, FileMailWebApi>();
             services.AddTransient<IMediaItemManager, FileMediaItemManager>();
-            // Not steg B's real search replacement - see NullOrderItemSearcher. Docker-compose
-            // Elasticsearch is still the developer path for the order list itself.
-            services.AddTransient<IOrderItemSearcher, NullOrderItemSearcher>();
+            // Steg B: singleton, not transient like the other seams here - it holds the whole
+            // order set in memory (see InMemoryOrderItemSearcher), a new instance per request
+            // would reload from disk every time and never see another instance's writes.
+            services.AddSingleton<IOrderItemSearcher, InMemoryOrderItemSearcher>();
             services.AddTransient<ITemplateService, FileTemplateService>();
             services.AddTransient<IChillinTextRepository, FileChillinTextRepository>();
 
@@ -184,7 +185,7 @@ namespace Chalmers.ILL
                     "Inga riktiga integrationer används. Fejkade sömmar:\n" +
                     " - IMailWebApi -> Isolated.FileMailWebApi\n" +
                     " - IMediaItemManager -> Isolated.FileMediaItemManager\n" +
-                    " - IOrderItemSearcher -> Isolated.NullOrderItemSearcher (tom - orderlistan kräver riktig Elasticsearch)\n" +
+                    " - IOrderItemSearcher -> Isolated.InMemoryOrderItemSearcher (linjär sökning i minnet, se TODO)\n" +
                     " - ITemplateService -> Isolated.FileTemplateService\n" +
                     " - IChillinTextRepository -> Isolated.FileChillinTextRepository\n" +
                     " - IPatronDataProvider/IAffiliationDataProvider/IPersonDataProvider -> Isolated.FilePatronDataProvider\n" +

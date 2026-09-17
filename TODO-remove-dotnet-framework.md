@@ -2013,7 +2013,7 @@ och `Always On`.
     tokeniseras bort (gemener, dela på icke-alfanumeriska tecken), annars matchar `status:Ny` inte
     `"01:Ny"`.
 
-- [ ] **Bygg den minimala sökersättaren**
+- [x] **Bygg den minimala sökersättaren**
   `IOrderItemSearcher` mot fas 7:s orderfiler, i minnet: läs in alla ordrar vid uppstart och håll
   listan uppdaterad via `Added`/`Modified`/`Deleted`. Vid testserverns datamängd är linjär
   genomsökning gott och väl snabb nog, och det tar bort hela problemet med ett index i otakt.
@@ -2040,6 +2040,66 @@ och `Always On`.
   **Avgränsning som måste skrivas in i fas 11:** en egen utvärderare avviker från ES i kantfall,
   särskilt i sökrutan. Testservern kan därför **inte** användas för att verifiera sökbeteende — den
   verifierar att appen fungerar. Sökningen ska provas mot riktig Elasticsearch före driftsättning.
+
+  **Genomfört 2026-09-17**, efter avstämning med användaren om default-fälten för sökrutans fria
+  läge (`AskUserQuestion` i sessionen — svaret blev "alla textfält på `OrderItemModel`", dvs. det
+  bredare av de två alternativen, inte den avgränsade `reference`+patron-listan som föreslogs).
+
+  `Isolated/InMemoryOrderItemSearcher` (registrerad som **singleton**, till skillnad från övriga
+  isolerade sömmar — den håller hela ordermängden i minnet och en ny instans per request hade
+  aldrig sett en annan instans skrivningar). Läser `DataPath/orders/**/*.json` vid konstruktion,
+  håller sedan indexet i en `ConcurrentDictionary<int, OrderItemDocument>` uppdaterad via
+  `Added`/`Modified`/`Deleted`. Ersätter `Isolated/NullOrderItemSearcher` (borttagen — orsakade
+  bara en tom orderlista, aldrig steg B:s mål).
+
+  Frågemotorn ligger i `Isolated/Search/` (medvetet en egen liten namnrymd, inte fyra klasser
+  direkt i `Isolated/`):
+  - `OrderItemQueryParser.cs` — en handskriven recursive-descent-parser (inte ett generellt
+    Lucene-bibliotek) begränsad till exakt frågekravlistans grammatik: `fält:värde`, `fält:"fras"`,
+    `fält:(a OR b)` **och** den faktiska upprepade formen `fält:a OR fält:b` (statistiksidans JS
+    genererar den senare, inte NEST-genvägen — båda stöds, då normal parsning av upprepade
+    `fält:`-klausuler ger samma sak på köpet), `fält:[a TO b]` med `*` som öppen gräns i båda
+    ändar, `AND`/`OR`/`NOT`, `-term`, **negerad parentesgrupp** (`-(...)`, svårare än `-term` och
+    separat testad — `BulkDataManager`s faktiska fråga), `_exists_`/`!_exists_`, `*` = allt, samt
+    fri text utan fältprefix (både ett löst ord och en citerad fras). Ogiltig syntax kastar inte —
+    en trasig sökruteinmatning ska ge få/inga träffar, inte ett serverfel.
+  - `OrderItemTextTokenizer.cs` — gemener + dela på `\P{L}\P{Nd}` (Unicode bokstäver/siffror, så
+    å/ä/ö räknas som bokstäver utan specialfall), plus en "tokens i följd"-matchning för fraser.
+    Exakt samma tokenisering används för både frågevärden och dokumentfältens innehåll, vilket är
+    varför `status:Beställd`, `status:03\:Beställd` och `status:"05:Levererad"` alla matchar en
+    order med `Status == "03:Beställd"` — verifierat med alla tre formerna som separata testfall.
+  - `OrderItemDocument.cs` — serialiserar varje `OrderItemModel` en gång med samma
+    `CamelCasePropertyNamesContractResolver` som `Chalmers.ILL.Services.JsonService` redan
+    använder för FOLIO, till en `JObject` för fältuppslag (`sierraInfo.record_id` blir rätt
+    automatiskt eftersom `record_id` redan är snake_case och inte camelCasas ytterligare).
+    **Dokumenterad avgränsning:** `_exists_`/`!_exists_` läses av samma omserialiserade `JObject`
+    (nyckel finns och är inte `null`) — korrekt för allt den här sökaren någonsin ser (färskt
+    seedad test-/isolerad data har alltid det aktuella schemat, så varje fält finns alltid), men
+    **inte** en trogen kopia av ES:s riktiga "fanns i det indexerade dokumentet"-semantik för ett
+    hypotetiskt äldre schema utan de nyare `bool`-fälten. Exakt den sortens kantfallsavvikelse fas
+    11-noteringen ovan redan varnar för.
+  - `OrderItemQueryNodes.cs` — AST-noderna (`And`/`Or`/`Not`/`FieldValue`/`FreeText`/`Exists`/
+    `Range`/`MatchAll`), var och en med sin egen `Matches(OrderItemDocument)`.
+
+  Default-fälten för fritextläget (`OrderItemDocument.DefaultTextFields`) räknas ut via reflektion
+  över `OrderItemModel`s `string`-properties (exkl. de två `[JsonIgnore]`-beräknade) i stället för
+  en hårdkodad lista — håller sig korrekt om modellen ändras, matchar användarens "alla textfält"-
+  beslut exakt.
+
+  `Search(query, size, fields)`s `fields`-parameter (en Source-projektion, meningslös för en
+  in-minnes-skanning) ignoreras medvetet — anroparen läser ändå bara ett par properties av den
+  returnerade modellen. Samtliga tre `Search`-overloads sorterar `CreateDate` fallande (inte bara
+  fields-varianten som TODO-texten ursprungligen bad om) — ett medvetet, dokumenterat val: ES:s
+  relevans-scoring för de två andra overloaderna är svår att replikera meningsfullt och knappast
+  vad en "minimal" ersättare bör försöka göra. `AggregatedProviders()` återanvänder parsern för
+  exakt samma uteslutningsfilter som `ElasticSearchOrderItemSearcher.cs:86` innan gruppering.
+
+  **Tabelldriven testsvit:** `Chalmers.ILL.Tests/Isolated/InMemoryOrderItemSearcherTest.cs`, 21
+  tester — varje form i frågekravlistan (inklusive de tre analysatorberoende varianterna av samma
+  fråga, den negerade parentesgruppen, båda datumformaten, öppna intervallgränser,
+  `_exists_`/`!_exists_`, fri text som löst ord och som citerad fras, `AggregatedProviders`s
+  TIB/Libris/Subito-prependering), plus `Added`/`Modified`/`Deleted`-synk och inläsning från disk
+  vid konstruktion. 216/216 gröna totalt efter (var 195 innan denna punkt).
 
 - [ ] **Sätt upp den isolerade App Service-instansen**
   Egen webbapp på Linux-planen. Samma byggartefakt som produktionsappen — skillnaden ska vara
