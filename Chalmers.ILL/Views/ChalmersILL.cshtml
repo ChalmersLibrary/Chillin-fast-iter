@@ -9,7 +9,13 @@
     var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == Config.LiveServer);
     if (isNotLocalhost && isNotTestServer && isNotSecureLiveServer)
     {
-        Response.Redirect("https://" + Config.LiveServer, true);
+        // Fas 10: Response.Redirect(url, true)'s second parameter meant endResponse (abort the
+        // thread) under System.Web - here it means permanent (301), and rendering carries on
+        // regardless. Explicit `return;` is what actually stops the rest of the page from
+        // rendering after the redirect headers are set; the redirect itself stays temporary (302)
+        // since which server is "live" can change (parallel run during fas 11, new hostname, ...).
+        Response.Redirect("https://" + Config.LiveServer);
+        return;
     }
 }
 

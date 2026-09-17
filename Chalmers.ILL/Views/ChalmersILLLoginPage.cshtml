@@ -7,7 +7,10 @@
     var isNotSecureLiveServer = !(Request.IsHttps && Request.Host.Host == Config.LiveServer);
     if (isNotLocalhost && isNotTestServer && isNotSecureLiveServer)
     {
-        Response.Redirect("https://" + Config.LiveServer, true);
+        // Fas 10: see ChalmersILL.cshtml for why this needs an explicit `return;` and a temporary
+        // (302) redirect instead of the old Response.Redirect(url, true).
+        Response.Redirect("https://" + Config.LiveServer);
+        return;
     }
 }
 <!doctype html>

@@ -1780,7 +1780,7 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Ta bort `<ExcludeFilesFromDeployment>Local.config</ExcludeFilesFromDeployment>` ur de tre
   konfigurationerna i csproj (fas 1) — mekanismen finns inte kvar.
 
-- [ ] **⚠️ Vyerna redirectar till produktion om värdnamnet är okänt — upptäckt 2026-09-16**
+- [x] **⚠️ Vyerna redirectar till produktion om värdnamnet är okänt — upptäckt 2026-09-16**
   `Views/ChalmersILL.cshtml:7-15` och `Views/ChalmersILLLoginPage.cshtml:5-13` kör vid varje
   sidladdning:
   ```csharp
@@ -1800,6 +1800,17 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   inte exekveringen — andra argumentet är `permanent`, inte `endResponse`. Vyn fortsätter alltså
   renderas efter redirecten. Fas 2 noterade att redirect från vy måste flytta till controllern; för
   just de här två gjordes det inte.
+
+  **Åtgärdat 2026-09-16, avgränsat till bieffekten.** Själva hostname-matchningen (`testServer`/
+  `liveServer`) är redan konfigurerbar sedan fas 6 och kräver bara att rätt värden fylls i vid
+  driftsättningen (se punkten om App Service-planen) — inget att koda här. Det som **var** en kodbugg
+  är fixat i båda vyerna: `Response.Redirect(url, true)` ersatt med `Response.Redirect(url)` (302 i
+  stället för 301 — vilken server som är "live" kan ändras under fas 11:s parallelldrift eller vid
+  nytt värdnamn, ett 301 skulle kunna cachas av webbläsaren) **plus** ett explicit `return;` direkt
+  efter, så att sidan faktiskt slutar rendera i stället för att fortsätta bygga hela HTML-svaret bakom
+  redirect-headern. Regressionstest tillagt: `IsolatedModeSmokeTest.LoginPage_UnrecognisedHost_RedirectsToLiveServerAndStopsRendering`
+  — verifierade genom att tillfälligt återställa den gamla raden att testet då slår om till 301 och en
+  fullt renderad body, dvs. det fångar bugg exakt som den beskrivs ovan.
 
 - [ ] **Dokumentera enkelinstans som uttrycklig förutsättning**
   Ingen SignalR-backplane behövs — beslutat, appen körs på en instans. Men beroendet är osynligt i
