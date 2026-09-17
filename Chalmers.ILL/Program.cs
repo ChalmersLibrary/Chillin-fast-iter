@@ -1,6 +1,9 @@
 using Chalmers.ILL;
+using Chalmers.ILL.Configuration;
+using Chalmers.ILL.Isolated;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.SignalR;
+using Chalmers.ILL.UmbracoApi;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -35,6 +38,18 @@ builder.WebHost.ConfigureKestrel(options =>
     // would silently break uploads of larger attachments (fas 2).
     options.Limits.MaxRequestBodySize = 1024L * 1024 * 1024;
 });
+
+// Fas 10/brytpunkten, "Ordna testdata för utvecklingsmiljön": chillinPrevalues.json and
+// members.json must exist before Bootstrapper.RegisterTypes constructs ChillinOrderConfiguration
+// below - it reads the file once in its constructor with no reload, so seeding it any later would
+// leave the app running with the empty prevalue lists it already loaded. Isolated is read directly
+// off configuration here (not via DI - nothing is registered yet) with the same resolution
+// DefaultChillinConfiguration uses.
+var earlyChillinConfig = new DefaultChillinConfiguration(builder.Configuration, builder.Environment);
+if (earlyChillinConfig.Isolated)
+{
+    DevDataSeeder.SeedConfigFilesIfMissing(earlyChillinConfig.DataPath);
+}
 
 Bootstrapper.RegisterTypes(builder.Services);
 
@@ -72,6 +87,17 @@ var app = builder.Build();
 if (app.Services.GetRequiredService<Chalmers.ILL.OrderItems.IOrderItemManager>() is FileOrderItemManager fileOrderItemManager)
 {
     fileOrderItemManager.SetNotifier(app.Services.GetRequiredService<Chalmers.ILL.SignalR.INotifier>());
+}
+
+// Second half of the testdata seeding started above: order creation needs the real, DI-built
+// IOrderItemManager/IChillinOrderConfiguration (it goes through the same SetStatus/SetType calls
+// every controller uses), which only exist once the app is built.
+if (earlyChillinConfig.Isolated)
+{
+    DevDataSeeder.SeedOrdersIfMissing(
+        earlyChillinConfig.DataPath,
+        app.Services.GetRequiredService<IChillinOrderConfiguration>(),
+        app.Services.GetRequiredService<IOrderItemManager>());
 }
 
 if (app.Environment.IsDevelopment())

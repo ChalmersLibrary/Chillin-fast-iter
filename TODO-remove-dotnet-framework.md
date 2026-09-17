@@ -820,7 +820,7 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
   - **Medvetet inte gjort här** (separata TODO-punkter): testdata-punkten nedan och "använd
     brytpunkten löpande"-punkten är egna, ofristående uppgifter.
 
-- [ ] **⚠️ Ordna testdata för utvecklingsmiljön — saknas helt i planen i övrigt**
+- [x] **⚠️ Ordna testdata för utvecklingsmiljön — saknas helt i planen i övrigt**
   Ingen annan punkt i den här listan säger var *innehållet* ska komma ifrån, och utan det är
   webbläsartestning nästan värdelös: en tom orderlista visar inte om orderhanteringen fungerar, och
   flera av de fel som Umbraco-borttagningen redan orsakat (null `Type`, tom statusdropdown,
@@ -864,6 +864,45 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
 
   Detta bör lösas i samband med brytpunkten, inte senare — det är förutsättningen för att den
   löpande webbläsarkontrollen genom fas 3–8 ska säga något.
+
+  **Genomfört 2026-09-17.** `Chalmers.ILL/Isolated/DevDataSeeder.cs`, anropad från `Program.cs` bara
+  när `Chillin:Isolated=true` — kan alltså aldrig seeda en skarp `DataPath`. Tre delar, var och en
+  bara när sitt mål saknas (aldrig överskrivning, precis som specificerat):
+  - **`chillinPrevalues.json`**: `OrderStatus` (alla 17, `01:Ny`–`17:FOLIO`), `OrderType`
+    (`Bok`/`Artikel`/`Inköpsförslag`) och `DeliveryLibrary` (de tre `LIBRARY_*_UMBRACO_STRING`) är
+    **inte påhittade** — varje värde är extraherat ur ställen i appkoden som faktiskt grenar på den
+    exakta strängen (`SetStatus`/`SetType`/`SetDeliveryLibrary`-anropen, `OrderItemModel`s
+    bibliotekskonstanter), så seedningen kan aldrig råka öva en kodväg som inte finns i drift.
+    `CancellationReason`/`PurchasedMaterial` har däremot **inget** sådant ställe någonstans i
+    kodbasen (verifierat med sökning) — inget grenar på deras text, de är rena etiketter — så de
+    fyra/två värdena där är trovärdiga men uttryckligen **inte** produktionens riktiga lista;
+    dokumenterat i klassens kommentar. Riktiga värden för dem kräver fortfarande produktionsåtkomst,
+    samma begränsning som de 19 saknade appSettings-nycklarna i fas 6.
+  - **`members.json`**: tre konton (`desk`/`admin`/`superadmin`) som tillsammans täcker alla tre
+    roller (`Desk`, `Administrator`, `SuperAdmin`), hashade med samma `PasswordHasher<T>`/IdentityV2
+    som `FileMembershipProvider` faktiskt verifierar mot.
+  - **Orderfiler**: en order per status (alla 17), roterande genom typ och leveransbibliotek, med
+    svensk å/ä/ö i patronnamn/titlar (inklusive en titel med både kolon och frågetecken) för att ge
+    mojibake-regressionen något att faktiskt visa om den återkommer. Skapas **genom applikationens
+    egna `IOrderItemManager`-anrop** (`CreateOrderItemInDbFromOrderItemSeedModel` +
+    `SetStatus`/`SetType`/`SetCancellationReason`/`SetPurchasedMaterial`/`SetFollowUpDate`, samma
+    batchmönster som riktiga controllers använder) — inte handskrivna JSON-filer — så en seedad order
+    kan aldrig drifta från vad ett riktigt sparande producerar.
+  - Ordningen i `Program.cs` är medvetet uppdelad i två steg: `chillinPrevalues.json`/`members.json`
+    skrivs **innan** `Bootstrapper.RegisterTypes` (som konstruerar `ChillinOrderConfiguration` och
+    läser filen en gång, utan omladdning), orderfilerna skapas **efter** `builder.Build()` (kräver
+    den riktiga DI-byggda `IOrderItemManager`).
+  - **Sidofynd under verifieringen:** att köra appen mot en helt ny `DataPath` för första gången
+    (vilket ingen gjort tidigare, eftersom det inte fanns någon seedning) avslöjade en riktig bugg i
+    `OrderFileReader` — se separat commit precis före den här punkten. Ordlistan (`?query=*`)
+    kraschade med `NullReferenceException` innan den fixen fanns. Verifierat manuellt med `dotnet
+    run` mot en tom scratch-`DataPath`: `chillinPrevalues.json`/`members.json`/17 orderfiler skapas,
+    inloggning som `superadmin` fungerar, och `/ChalmersILLOrderListPage?query=*` renderar alla 17
+    med rätt typ/status/leveransbibliotek/å-ä-ö. 225/225 gröna (`dotnet test`).
+  - **Inte gjort:** ingen egen browsersession kunde köras i den här sandlådan (samma
+    Puppeteer/DevTools-begränsning som noteras i fas 5) — verifieringen ovan är HTTP/curl-baserad,
+    inte en riktig skärmdump. Den löpande webbläsarkontrollen som denna punkt är tänkt att möjliggöra
+    (näst punkt nedan) återstår alltså fortfarande att faktiskt göra.
 
 - [ ] **Använd brytpunkten löpande genom fas 3–8, inte bara vid fas 11**
   Ta en skärmdump av inloggningssidan, startsidan, orderlistan och en öppnad order **innan** fas 3
