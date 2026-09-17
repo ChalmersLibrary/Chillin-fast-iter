@@ -1779,7 +1779,7 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   `bower_components/` (fas 5). Uppdatera de hårdkodade absoluta sökvägarna i vyerna — det finns noll
   `Url.Content`/`Url.Action`-anrop, alla länkar är strängar.
 
-- [ ] **Rensa Windows-antaganden ur sökvägshanteringen**
+- [x] **Rensa Windows-antaganden ur sökvägshanteringen**
   Linux både i utveckling och drift, så fel här upptäcks nu i devcontainern i stället för först i
   Azure. Gå igenom:
   - **Skiftlägeskänslighet.** Särskilt mappnamnet `Config` mot `config`, som Web.config skriver som
@@ -1789,6 +1789,14 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
 
   Verifierat vid inventeringen: inga hårdkodade enhetsbeteckningar (`C:\`) finns kvar i C#-koden
   utöver `AzureStorageEmulatorManager.cs`, som ändå tas bort i fas 0b.
+
+  **Redan löst.** Omverifierat 2026-09-16, efter fas 2/6/0b: `Web.config` finns inte längre i
+  repot alls (försvann med fas 2/6, se Fas 10-inledningens notering om att den inte behövs på
+  Linux-planen). `AzureStorageEmulatorManager.cs` är borttagen (fas 0b). Sökning efter hårdkodade
+  `\`-sökvägar i C#-kod gav bara två träffar, båda oskyldiga (en regex-escape och en frågesträngs
+  `\?`, ingen filsökväg). `Program.cs`s log4net-konfiguration och `IChillinConfiguration.DataPath`
+  använder `Path.Combine` och läser hemmappen via `HOME`-miljövariabeln (fas 6, isolerat läge
+  steg A) — redan skrivet plattformsoberoende. Ingen kodändring behövdes, bara ikryssning.
 
 - [ ] **Ersätt HTTPS-redirecten med App Services `HTTPS Only`-inställning**
   IIS-rewrite-regeln försvinner med `Web.config`. På App Service finns HTTPS-omdirigering som en
