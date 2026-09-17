@@ -2284,12 +2284,35 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
 
 ## Städning (kan göras oberoende, oavsett ordning)
 
-- [ ] Ta bort `Chalmers.ILL.csproj.user` och `desktop.ini` ur projektmappen
-- [ ] Ta bort `TestResults/` ur repot om den är spårad
-- [ ] Överväg om `Migration/hammer-api-method.pl` och `scripts/Remove-DeadUmbracoBrowserAdapters.ps1`
+- [x] Ta bort `Chalmers.ILL.csproj.user` och `desktop.ini` ur projektmappen
+
+  **Redan gjort.** Verifierat 2026-09-17: ingen av filerna finns någonstans i arbetskatalogen
+  (varken spårade eller ospårade). Ingen åtgärd behövdes.
+
+- [x] Ta bort `TestResults/` ur repot om den är spårad
+
+  **Redan gjort.** Verifierat 2026-09-17: `git ls-files` ger noll träffar på `TestResults`. Ingen
+  åtgärd behövdes.
+
+- [x] Överväg om `Migration/hammer-api-method.pl` och `scripts/Remove-DeadUmbracoBrowserAdapters.ps1`
   fortfarande fyller någon funktion, eller om de är engångsverktyg som kan arkiveras
-- [ ] Uppdatera [CLAUDE.md](CLAUDE.md)s Arkitekturnoter-sektion när fas 2, 6 och 7 är klara — de
+
+  **Avgjort 2026-09-17.** `Remove-DeadUmbracoBrowserAdapters.ps1` skannar efter `App_Browsers/*.browser`-
+  filer som registrerar ASP.NET-control-adapters mot borttagna Umbraco-typer — en `System.Web`/IIS-
+  mekanism som inte finns i ASP.NET Core överhuvudtaget, och `App_Browsers/` själv togs redan bort i
+  fas 0b. Ett PowerShell-only engångsverktyg för ett problem som inte längre kan uppstå på den här
+  hostingmodellen. **Borttaget.** `hammer-api-method.pl` är däremot generellt (POST:ar rader ur en
+  fil mot valfri URL/parameter, t.ex. för att batch-anropa en node-id-baserad endpoint som
+  `RebuildSearchIndex` eller en anonymiseringsrutin) och Perl körs lika bra på Linux som Windows —
+  **behålls**.
+
+- [x] Uppdatera [CLAUDE.md](CLAUDE.md)s Arkitekturnoter-sektion när fas 2, 6 och 7 är klara — de
   beskriver läget efter Umbraco-borttagningen och blir inaktuella
+
+  **Genomfört 2026-09-17.** Sektionen beskrev tidigare bara läget direkt efter Umbraco-borttagningen
+  (plus en enda fas 7-mening som redan hade smugit sig in). Utökad med hosting (fas 2: ASP.NET Core/
+  Kestrel, ingen `System.Web`), DI (fas 6: `IServiceCollection`, inte Unity), konfiguration (fas 6:
+  `IChillinConfiguration`/`appsettings.json`, inte `ConfigurationManager`) och isolerat läge (fas 6/10).
 
 - [x] **Fyra latenta defekter hittade 2026-09-16, alla verifierade i koden**
   Ingen är brådskande — de rör tomma index respektive kosmetik — men de ska med före driftsättning,

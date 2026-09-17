@@ -80,18 +80,32 @@ Alla tester ska vara gröna innan arbetet rapporteras klart.
 
 ## Arkitekturnoter
 
-Följande gäller läget efter Umbraco-borttagningen, dvs. utgångspunkten för .NET Framework-borttagningen:
+Läget efter Umbraco-borttagningen och efter fas 2/6/7 av .NET Framework-borttagningen (dvs. det
+aktuella läget på grenen, inte bara startpunkten för det arbete som återstår):
 
-- `IUmbracoWrapper`/`UmbracoWrapper` är borttagna. Inga klasser använder längre detta interface.
-- `ChillinOrderConfiguration`/`IChillinOrderConfiguration` ligger kvar i namnrymden `Chalmers.ILL.UmbracoApi`
-  men är **inte** Umbraco-typer — de är appkonfiguration. `Bootstrapper.cs` importerar fortfarande
-  `using Chalmers.ILL.UmbracoApi` av den anledningen.
-- Den primära `IOrderItemManager` är sedan fas 7 `FileOrderItemManager` (`Chalmers.ILL/OrderItems/`) —
-  en JSON-fil per order under `IChillinConfiguration.DataPath/orders/`, inte EF6/SQL Server. Databasen
-  är borttagen helt (inget `DbContext`, inga migrationer). Skriv inte ny kod som förutsätter en databas.
+- **Hosting (fas 2):** ASP.NET Core minimal hosting, `Program.cs`, Kestrel — inget `System.Web`, IIS
+  eller `Global.asax`/OWIN kvar. Controllers ärver `Microsoft.AspNetCore.Mvc.Controller`, inte
+  `System.Web.Mvc.Controller`. `HttpContext.Current` är borta; kontext går via
+  `Microsoft.AspNetCore.Http.HttpRequest`/`HttpResponse` (t.ex. `IMemberInfoManager`s signaturer).
+- **DI (fas 6):** `Microsoft.Extensions.DependencyInjection`/`IServiceCollection` via
+  `Bootstrapper.RegisterTypes`, inte Unity. `IUmbracoWrapper`/`UmbracoWrapper` är borttagna helt.
+- **Konfiguration (fas 6):** `IChillinConfiguration` (`DefaultChillinConfiguration`, backad av
+  `appsettings.json`/`appsettings.{Environment}.json`), inte `ConfigurationManager.AppSettings`/
+  `App.config`/`Web.config`. `ChillinOrderConfiguration`/`IChillinOrderConfiguration` ligger kvar i
+  namnrymden `Chalmers.ILL.UmbracoApi` men är **inte** Umbraco-typer — de är appkonfiguration
+  (prevalues). `Bootstrapper.cs` importerar fortfarande `using Chalmers.ILL.UmbracoApi` av den
+  anledningen.
+- **Lagring (fas 7):** Den primära `IOrderItemManager` är `FileOrderItemManager`
+  (`Chalmers.ILL/OrderItems/`) — en JSON-fil per order under `IChillinConfiguration.DataPath/orders/`,
+  inte EF6/SQL Server. Databasen är borttagen helt (inget `DbContext`, inga migrationer). Skriv inte
+  ny kod som förutsätter en databas.
 - Datamodellen är redan ett dokumentaggregat: varje läsning hämtar hela ordern med `LogItemsList`,
   `AttachmentList` och `SierraInfo`. All sökning, statistik och bulkdata går via `IOrderItemSearcher`
-  (Elasticsearch), aldrig via `DbContext`.
+  (Elasticsearch i drift, `Isolated.InMemoryOrderItemSearcher` i isolerat läge), aldrig via `DbContext`.
+- **Isolerat läge (fas 6/10):** `Chillin:Isolated=true` slår om ett antal DI-registreringar i
+  `Bootstrapper.cs` till filbaserade/i-minnes-fejkar (sökning, medlemslagring, mall- och
+  chillin-text-lagring m.fl.) för en avskuren testserver utan riktiga integrationer. Se
+  `IsolationGuard` och "Fastställda designbeslut" ovan.
 - `INotifier.ReportNewOrderItemUpdate` har bara `OrderItemModel`-overloaden kvar; `IContent`-overloaden
   är borttagen.
 
