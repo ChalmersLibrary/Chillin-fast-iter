@@ -22,6 +22,16 @@ namespace Chalmers.ILL.OrderItems
 
             foreach (var file in Directory.EnumerateFiles(ordersDirectory, "*.json", SearchOption.AllDirectories))
             {
+                // Only {NodeId}.json files (NodeIdGenerator's own naming convention) are actual
+                // order documents. orderid-index.json sits directly under ordersDirectory and also
+                // matches "*.json" - deserializing it as an OrderItemModel silently produces a
+                // bogus document (NodeId 0, every string property null) instead of throwing, which
+                // corrupts the search index with one fake order per real DataPath. Only visible
+                // once a real orders/ directory with an actual orderid-index.json exists - see
+                // TODO-remove-dotnet-framework.md's testdata-for-dev-environment point.
+                if (!int.TryParse(Path.GetFileNameWithoutExtension(file), out _))
+                    continue;
+
                 OrderItemModel item = null;
                 try
                 {

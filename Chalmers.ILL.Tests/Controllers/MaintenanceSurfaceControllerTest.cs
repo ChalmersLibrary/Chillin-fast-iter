@@ -91,6 +91,34 @@ namespace Chalmers.ILL.Tests.Controllers
         }
 
         [TestMethod]
+        public void RebuildSearchIndex_IgnoresOrderIdIndexAndNodeIdCounterFiles()
+        {
+            // orderid-index.json (OrderIdIndex) and next-node-id.txt (NodeIdGenerator) both live
+            // directly under orders/ next to the real {NodeId}.json files. Before this was fixed,
+            // OrderFileReader's "*.json" scan happily deserialized orderid-index.json as an
+            // OrderItemModel too - producing a bogus all-null/zero "order" that later crashed
+            // ChalmersILLOrderListPage.cshtml's sort (GetSortOrderFromOrderItemSearchResult calling
+            // .Split(':') on a null Status). Only ever visible once a real orders/ directory
+            // existed - see TODO-remove-dotnet-framework.md's testdata-for-dev-environment point.
+            var dataPath = Path.Combine(Path.GetTempPath(), "chillin-rebuild-" + Guid.NewGuid());
+            var ordersDirectory = Path.Combine(dataPath, "orders");
+            Directory.CreateDirectory(ordersDirectory);
+            File.WriteAllText(Path.Combine(ordersDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1, Status = "01:Ny" }));
+            File.WriteAllText(Path.Combine(ordersDirectory, "orderid-index.json"), JsonConvert.SerializeObject(new Dictionary<string, int> { ["cthb-abc-1"] = 1 }));
+            File.WriteAllText(Path.Combine(ordersDirectory, "next-node-id.txt"), "2");
+            var searcher = new RecordingOrderItemSearcher();
+            var controller = NewController(new StubOrderItemManager(), new StubMediaItemManager(new List<MediaItemIdAndOrderItemId>()), dataPath, searcher);
+
+            var result = controller.RebuildSearchIndex() as JsonResult;
+            var response = result?.Value as ResultResponse;
+
+            Assert.IsNotNull(response);
+            Assert.IsTrue(response.Success);
+            Assert.AreEqual("Reindexed 1 orders.", response.Message);
+            CollectionAssert.AreEquivalent(new List<int> { 1 }, searcher.AddedItems.Select(o => o.NodeId).ToList());
+        }
+
+        [TestMethod]
         public void RebuildSearchIndex_SearcherThrows_ReturnsFailureWithoutThrowing()
         {
             var dataPath = Path.Combine(Path.GetTempPath(), "chillin-rebuild-" + Guid.NewGuid());
