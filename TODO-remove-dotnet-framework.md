@@ -989,6 +989,20 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
     inte en riktig skärmdump. Den löpande webbläsarkontrollen som denna punkt är tänkt att möjliggöra
     (näst punkt nedan) återstår alltså fortfarande att faktiskt göra.
 
+  **Ytterligare omarbetat 2026-09-18.** Föregående punkts Live/isolerat-uppdelning
+  (`Isolated.HardcodedChillinOrderConfiguration` kontra fil) ströks samma dag den lades till —
+  förvirrande att ha `chillinPrevalues.json`/`chillinPrevalues.example.json` i `Config/` där bara
+  den ena var git-trackad, så filen togs bort helt istället. `UmbracoApi/ChillinOrderConfiguration.cs`
+  är nu den enda implementationen, oavsett `config.Isolated`. **Lars fyllde i de riktiga
+  produktionsvärdena samma dag** — `OrderStatus`/`OrderType`/`DeliveryLibrary` har nu de faktiska
+  historiska Umbraco-prevalue-ID:na (en delad ID-sekvens 5–31 över alla fem listor, precis det
+  mönster Umbracos egna prevalue-tabeller gav), och `CancellationReason`/`PurchasedMaterial` har de
+  riktiga (korta) produktionslistorna — inga platshållare kvar. `DevDataSeeder`s testorder för
+  `06:Annullerad`/`08:Inköpt` pekade på de gamla platshållarnamnen (`"Titeln redan tillgänglig"`,
+  `"Ny bok"`) som inte längre finns i listan — `GetIdByValue` gav då -1 och fälten löste ut till
+  `""` istället för ett värde. Rättat till de riktiga värdena (`"Finns Z"`, `"Bok"`). 228/228 gröna;
+  verifierat manuellt att båda fälten nu resolvar korrekt i en seedad order.
+
 - [ ] **Använd brytpunkten löpande genom fas 3–8, inte bara vid fas 11**
   Ta en skärmdump av inloggningssidan, startsidan, orderlistan och en öppnad order **innan** fas 3
   påbörjas, och jämför efter varje efterföljande fas. Det är den billigaste tänkbara spärren mot
