@@ -24,11 +24,16 @@ checked off.
    Testrutiner section).
 3. To run the app locally without any real Elasticsearch/mail/patron integrations, start it in
    **isolated mode**: set `Chillin__Isolated=true` and `Chillin__DataPath=<a local directory>` as
-   environment variables, then `dotnet run --project Chalmers.ILL`. A `members.json` (see
+   environment variables, then `dotnet run --project Chalmers.ILL`. Order status/type/delivery
+   library dropdowns, mail templates and a handful of test orders in every status are all seeded
+   automatically on first run (`Chalmers.ILL/Isolated/DevDataSeeder.cs`) - no `chillinPrevalues.json`
+   needed in isolated mode, that's only a Live-mode file.
+   The one thing that *isn't* seeded is a login account, since there's no chicken-and-egg way to
+   create the first one through the UI: add a `members.json` under that data path yourself (see
    `Chalmers.ILL/Config/members.example.json` for the format - password hashes are generated with
-   `Microsoft.AspNetCore.Identity.PasswordHasher<T>` in `IdentityV2` compatibility mode) and a
-   `chillinPrevalues.json` (see `Chalmers.ILL/Config/chillinPrevalues.example.json`) under that data
-   path are needed to log in and classify orders.
+   `Microsoft.AspNetCore.Identity.PasswordHasher<T>` in `IdentityV2` compatibility mode). Once
+   logged in as a `SuperAdmin`, further accounts can be created from the settings page instead of
+   editing the file by hand.
 4. Full/live mode is configured through `appsettings.json`/`appsettings.{Environment}.json` rather
    than a checked-in file with real secrets - see `IChillinConfiguration` and the "Fastställda
    designbeslut" table in [TODO-remove-dotnet-framework.md](TODO-remove-dotnet-framework.md).

@@ -39,9 +39,18 @@ namespace Chalmers.ILL.Tests.Controllers
         // what WebApplication.CreateBuilder(args) composes immediately - so setting them (which is
         // also literally how App Settings reach the app in Azure) is what actually threads
         // overrides through to that early read.
-        private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null)
+        // members.json isn't seeded by the app itself (DevDataSeeder deliberately doesn't - see its
+        // class comment: creating the first account is a one-time manual step, not something to
+        // regenerate on every fresh DataPath). Tests that need to log in ask for one here instead,
+        // which is the test-only equivalent of that manual step.
+        private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null, bool seedSuperAdminAccount = false)
         {
             var dataPath = Path.Combine(Path.GetTempPath(), "chillin-isolated-smoke-" + Guid.NewGuid());
+
+            if (seedSuperAdminAccount)
+            {
+                SeedSuperAdminAccount(dataPath);
+            }
 
             var config = new Dictionary<string, string>
             {
@@ -74,6 +83,22 @@ namespace Chalmers.ILL.Tests.Controllers
                 foreach (var kvp in previousValues)
                     Environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
             }
+        }
+
+        // Same PasswordHasher<T>/IdentityV2-compatibility setup as FileMembershipProvider itself
+        // (and as FileMembershipProvider_ResolvedFromDI_ReadsAccountsFromConfiguredDataPath below).
+        private static void SeedSuperAdminAccount(string dataPath)
+        {
+            Directory.CreateDirectory(dataPath);
+
+            var hasher = new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+            var account = new MemberAccount { Login = "superadmin", Roles = new List<string> { "Desk", "Administrator", "SuperAdmin" } };
+            account.PasswordHash = hasher.HashPassword(account, "chillin-dev-superadmin");
+
+            MemberFileStore.Save(new List<MemberAccount> { account }, Path.Combine(dataPath, "members.json"));
         }
 
         [TestMethod]
@@ -112,7 +137,7 @@ namespace Chalmers.ILL.Tests.Controllers
         [TestMethod]
         public async Task RenderOrderItem_SeededOrderWithLogItems_RendersWithoutThrowing()
         {
-            using var factory = CreateFactory();
+            using var factory = CreateFactory(seedSuperAdminAccount: true);
             using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
             await LoginAsSuperAdminAsync(client);
 
@@ -134,7 +159,7 @@ namespace Chalmers.ILL.Tests.Controllers
         [TestMethod]
         public async Task RenderEditTemplatesAction_NoTemplatesYet_RendersWithoutThrowing()
         {
-            using var factory = CreateFactory();
+            using var factory = CreateFactory(seedSuperAdminAccount: true);
             using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
             await LoginAsSuperAdminAsync(client);
 
@@ -155,7 +180,7 @@ namespace Chalmers.ILL.Tests.Controllers
         [TestMethod]
         public async Task RenderReceiveBookAction_NoStandardTitleTextConfigured_RendersWithoutThrowing()
         {
-            using var factory = CreateFactory();
+            using var factory = CreateFactory(seedSuperAdminAccount: true);
             using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
             await LoginAsSuperAdminAsync(client);
 
@@ -182,7 +207,7 @@ namespace Chalmers.ILL.Tests.Controllers
                 })
             };
             var loginResponse = await client.SendAsync(loginRequest);
-            Assert.AreEqual(HttpStatusCode.Found, loginResponse.StatusCode, "Seeded superadmin login failed - DevDataSeeder's members.json seeding may be broken.");
+            Assert.AreEqual(HttpStatusCode.Found, loginResponse.StatusCode, "Seeded superadmin login failed - SeedSuperAdminAccount may be broken.");
         }
 
         // Fas 10, "Vyerna redirectar till produktion om värdnamnet är okänt": with an unrecognised

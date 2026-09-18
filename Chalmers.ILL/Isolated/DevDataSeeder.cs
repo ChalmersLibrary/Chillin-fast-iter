@@ -1,45 +1,33 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using Chalmers.ILL.Members;
 using Chalmers.ILL.Models;
 using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.UmbracoApi;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Chalmers.ILL.Isolated
 {
     // Fas 10/brytpunkten, "Ordna testdata för utvecklingsmiljön" (TODO-remove-dotnet-framework.md).
-    // Without content under DataPath the order list is empty and the status/type dropdowns have
-    // nothing in them - exactly the state that hid several of the Umbraco-removal's worst
-    // regressions (null Type, empty status dropdown, wrong status-prefix handling) until someone
-    // happened to open the app with real data loaded. Only ever called when Chillin:Isolated=true
-    // (Program.cs) - this must never seed a live DataPath. Never overwrites: each piece is created
-    // only when its target file/directory is missing, so a developer's own local data, or a
-    // persistent isolated-server dataset, is never touched. "Reset" = delete DataPath and restart.
+    // Without content under DataPath the order list is empty and several core actions can't even
+    // render - exactly the state that hid several of the Umbraco-removal's worst regressions
+    // (null Type, empty status dropdown, wrong status-prefix handling) until someone happened to
+    // open the app with real data loaded. Only ever called when Chillin:Isolated=true (Program.cs)
+    // - this must never touch a live DataPath. Never overwrites: each piece is created only when
+    // its target file/directory is missing, so a developer's own local data, or a persistent
+    // isolated-server dataset, is never touched. "Reset" = delete DataPath and restart.
+    //
+    // chillinPrevalues.json and members.json are deliberately NOT seeded here, unlike an earlier
+    // version of this class:
+    // - chillinPrevalues.json is meant to be a real, manually-uploaded Umbraco prevalue export
+    //   (see "Fastställda designbeslut" i TODO-remove-dotnet-framework.md) - an isolated instance
+    //   never has one and doesn't need the real IDs, so IChillinOrderConfiguration is hardcoded in
+    //   code instead for isolated mode (Isolated.HardcodedChillinOrderConfiguration) rather than
+    //   round-tripped through a seeded file.
+    // - members.json needs a real account to actually log in with, and there's no chicken-and-egg
+    //   way to create the first one through the UI - creating it is a one-time manual step (see
+    //   README.md), not something to regenerate on every fresh DataPath.
     public static class DevDataSeeder
     {
-        // chillinPrevalues.json's OrderStatus/OrderType/DeliveryLibrary values below are not
-        // invented: every one is a literal string the application logic itself branches on
-        // (SetStatus/SetType/SetDeliveryLibrary call sites, OrderItemModel's LIBRARY_*_STRING
-        // constants), so seeding with anything else would silently exercise a code path that
-        // never occurs in production. CancellationReason/PurchasedMaterial have no such
-        // constraint - nothing in the codebase branches on their text, they are pure display
-        // labels - so those two lists are plausible placeholders, not extracted values.
-        public static void SeedConfigFilesIfMissing(string dataPath)
-        {
-            // A brand new DataPath (a fresh devcontainer, or - as in IsolatedModeSmokeTest - a
-            // scratch directory created per test run) doesn't exist as a directory yet; nothing
-            // else has had a reason to create it this early in startup.
-            Directory.CreateDirectory(dataPath);
-
-            SeedPrevaluesIfMissing(dataPath);
-            SeedMembersIfMissing(dataPath);
-            SeedSystemTemplatesIfMissing(dataPath);
-        }
-
         // Found by exercising every order-action endpoint against a seeded order (fas 10,
         // "Använd brytpunkten löpande"): ClaimBookMailTemplate, SignatureTemplate,
         // ReturnDateChangedMailTemplate and BookAvailableMailTemplate all threw
@@ -69,7 +57,7 @@ namespace Chalmers.ILL.Isolated
             "ReturnDateChangedMailTemplate",
         };
 
-        private static void SeedSystemTemplatesIfMissing(string dataPath)
+        public static void SeedSystemTemplatesIfMissing(string dataPath)
         {
             // Written directly as Isolated.FileTemplateService's own one-file-per-template format
             // (DataPath/templates/{Id}.json) rather than through ITemplateService.CreateTemplate -
@@ -101,106 +89,11 @@ namespace Chalmers.ILL.Isolated
             }
         }
 
-        private static void SeedPrevaluesIfMissing(string dataPath)
-        {
-            var path = Path.Combine(dataPath, "chillinPrevalues.json");
-            if (File.Exists(path))
-                return;
-
-            var lists = new Dictionary<string, List<DropdownOption>>
-            {
-                ["OrderStatus"] = new List<DropdownOption>
-                {
-                    new DropdownOption { Id = 1, Order = 1, Value = "01:Ny" },
-                    new DropdownOption { Id = 2, Order = 2, Value = "02:Åtgärda" },
-                    new DropdownOption { Id = 3, Order = 3, Value = "03:Beställd" },
-                    new DropdownOption { Id = 4, Order = 4, Value = "04:Väntar" },
-                    new DropdownOption { Id = 5, Order = 5, Value = "05:Levererad" },
-                    new DropdownOption { Id = 6, Order = 6, Value = "06:Annullerad" },
-                    new DropdownOption { Id = 7, Order = 7, Value = "07:Överförd" },
-                    new DropdownOption { Id = 8, Order = 8, Value = "08:Inköpt" },
-                    new DropdownOption { Id = 9, Order = 9, Value = "09:Mottagen" },
-                    new DropdownOption { Id = 10, Order = 10, Value = "10:Återsänd" },
-                    new DropdownOption { Id = 11, Order = 11, Value = "11:Utlånad" },
-                    new DropdownOption { Id = 12, Order = 12, Value = "12:Krävd" },
-                    new DropdownOption { Id = 13, Order = 13, Value = "13:Transport" },
-                    new DropdownOption { Id = 14, Order = 14, Value = "14:Infodisk" },
-                    new DropdownOption { Id = 15, Order = 15, Value = "15:Förlorad?" },
-                    new DropdownOption { Id = 16, Order = 16, Value = "16:Förlorad" },
-                    new DropdownOption { Id = 17, Order = 17, Value = "17:FOLIO" },
-                },
-                ["OrderType"] = new List<DropdownOption>
-                {
-                    new DropdownOption { Id = 101, Order = 1, Value = "Bok" },
-                    new DropdownOption { Id = 102, Order = 2, Value = "Artikel" },
-                    new DropdownOption { Id = 103, Order = 3, Value = "Inköpsförslag" },
-                },
-                ["DeliveryLibrary"] = new List<DropdownOption>
-                {
-                    new DropdownOption { Id = 201, Order = 1, Value = OrderItemModel.LIBRARY_Z_UMBRACO_STRING },
-                    new DropdownOption { Id = 202, Order = 2, Value = OrderItemModel.LIBRARY_ZL_UMBRACO_STRING },
-                    new DropdownOption { Id = 203, Order = 3, Value = OrderItemModel.LIBRARY_ZA_UMBRACO_STRING },
-                },
-                // Placeholder labels - see the class-level comment. Real production values need to
-                // come from the live prevalue table (same caveat as the 19 missing appSettings keys
-                // documented in fas 6).
-                ["CancellationReason"] = new List<DropdownOption>
-                {
-                    new DropdownOption { Id = 301, Order = 1, Value = "Titeln redan tillgänglig" },
-                    new DropdownOption { Id = 302, Order = 2, Value = "Återkallad av låntagaren" },
-                    new DropdownOption { Id = 303, Order = 3, Value = "Går ej att anskaffa" },
-                    new DropdownOption { Id = 304, Order = 4, Value = "Dubblettbeställning" },
-                },
-                ["PurchasedMaterial"] = new List<DropdownOption>
-                {
-                    new DropdownOption { Id = 401, Order = 1, Value = "Ny bok" },
-                    new DropdownOption { Id = 402, Order = 2, Value = "Artikel/kopia" },
-                },
-            };
-
-            WriteNewFileAtomically(path, JsonConvert.SerializeObject(lists, Formatting.Indented));
-        }
-
-        private static void SeedMembersIfMissing(string dataPath)
-        {
-            var path = Path.Combine(dataPath, "members.json");
-            if (File.Exists(path))
-                return;
-
-            // Same PasswordHasher<T>/IdentityV2-compatibility setup as FileMembershipProvider -
-            // duplicated rather than shared because that hasher is private to the provider and
-            // this only ever needs to hash three throwaway dev passwords once.
-            var hasher = new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
-            {
-                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
-            }));
-
-            MemberAccount Account(string login, string password, params string[] roles)
-            {
-                var account = new MemberAccount { Login = login, Roles = new List<string>(roles) };
-                account.PasswordHash = hasher.HashPassword(account, password);
-                return account;
-            }
-
-            // One account per role so all three server-side authorization paths (the global
-            // [Authorize], the "Desk" redirect in LoginSurfaceController, and
-            // [Authorize(Roles="SuperAdmin")] on MemberAdminSurfaceController) can be exercised
-            // without hand-editing members.json first. Dev-only passwords, not meant to be secret.
-            var accounts = new List<MemberAccount>
-            {
-                Account("desk", "chillin-dev-desk", "Desk"),
-                Account("admin", "chillin-dev-admin", "Desk", "Administrator"),
-                Account("superadmin", "chillin-dev-superadmin", "Desk", "Administrator", "SuperAdmin"),
-            };
-
-            MemberFileStore.Save(accounts, path);
-        }
-
         // Deliberately not the same atomic-replace helper as MemberFileStore.Save: this path only
-        // ever creates a brand new file (guarded by the File.Exists check above, single instance,
-        // startup-time only), so there is no concurrent writer to race - but the write is still
-        // staged through a temp file so a crash mid-write can't leave a truncated
-        // chillinPrevalues.json behind for the next start to trip over.
+        // ever creates a brand new file (guarded by the Directory.Exists check above, single
+        // instance, startup-time only), so there is no concurrent writer to race - but the write
+        // is still staged through a temp file so a crash mid-write can't leave a truncated
+        // template file behind for the next start to trip over.
         private static void WriteNewFileAtomically(string path, string content)
         {
             var tempPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";

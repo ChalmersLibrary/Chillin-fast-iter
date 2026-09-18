@@ -39,18 +39,6 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 1024L * 1024 * 1024;
 });
 
-// Fas 10/brytpunkten, "Ordna testdata för utvecklingsmiljön": chillinPrevalues.json and
-// members.json must exist before Bootstrapper.RegisterTypes constructs ChillinOrderConfiguration
-// below - it reads the file once in its constructor with no reload, so seeding it any later would
-// leave the app running with the empty prevalue lists it already loaded. Isolated is read directly
-// off configuration here (not via DI - nothing is registered yet) with the same resolution
-// DefaultChillinConfiguration uses.
-var earlyChillinConfig = new DefaultChillinConfiguration(builder.Configuration, builder.Environment);
-if (earlyChillinConfig.Isolated)
-{
-    DevDataSeeder.SeedConfigFilesIfMissing(earlyChillinConfig.DataPath);
-}
-
 Bootstrapper.RegisterTypes(builder.Services);
 
 builder.Services.AddHttpContextAccessor();
@@ -89,13 +77,21 @@ if (app.Services.GetRequiredService<Chalmers.ILL.OrderItems.IOrderItemManager>()
     fileOrderItemManager.SetNotifier(app.Services.GetRequiredService<Chalmers.ILL.SignalR.INotifier>());
 }
 
-// Second half of the testdata seeding started above: order creation needs the real, DI-built
-// IOrderItemManager/IChillinOrderConfiguration (it goes through the same SetStatus/SetType calls
-// every controller uses), which only exist once the app is built.
-if (earlyChillinConfig.Isolated)
+// Fas 10, "Ordna testdata för utvecklingsmiljön": isolated mode only (local devcontainer or the
+// isolated test server) - never a live DataPath. Both pieces read fresh from disk on every call
+// (Isolated.FileTemplateService/InMemoryOrderItemSearcher), so there's no ordering requirement
+// against Bootstrapper.RegisterTypes the way chillinPrevalues.json used to have - this can live
+// entirely after the app is built and use the real, DI-resolved services. Order creation goes
+// through the same SetStatus/SetType calls every controller uses, so a seeded order can never
+// drift from what a real save produces. members.json is deliberately NOT seeded here - creating
+// a first account (there is no chicken-and-egg way to do it through the UI) is a one-time manual
+// step, not something to redo on every fresh DataPath; see README.md.
+var chillinConfig = app.Services.GetRequiredService<IChillinConfiguration>();
+if (chillinConfig.Isolated)
 {
+    DevDataSeeder.SeedSystemTemplatesIfMissing(chillinConfig.DataPath);
     DevDataSeeder.SeedOrdersIfMissing(
-        earlyChillinConfig.DataPath,
+        chillinConfig.DataPath,
         app.Services.GetRequiredService<IChillinOrderConfiguration>(),
         app.Services.GetRequiredService<IOrderItemManager>());
 }

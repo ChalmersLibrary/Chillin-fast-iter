@@ -14,10 +14,19 @@ namespace Chalmers.ILL.UmbracoApi
 
         // Was AppDomain.CurrentDomain.BaseDirectory unconditionally - now takes the directory to
         // read chillinPrevalues.json from, so Bootstrapper can point it at IChillinConfiguration's
-        // DataPath (fas 6, isolerat läge steg A, "Datarot").
-        public ChillinOrderConfiguration(string configDirectory)
+        // DataPath (fas 6, isolerat läge steg A, "Datarot"). Live mode only - isolated mode uses
+        // Isolated.HardcodedChillinOrderConfiguration (below) instead, via the protected
+        // constructor: chillinPrevalues.json is meant to be the real, manually-uploaded Umbraco
+        // prevalue export (see "Fastställda designbeslut" i TODO-remove-dotnet-framework.md), and
+        // an isolated instance - local devcontainer or the isolated test server - has no such
+        // file and no real IDs to preserve, so it doesn't need one either.
+        public ChillinOrderConfiguration(string configDirectory) : this(LoadLists(configDirectory))
         {
-            _lists = LoadLists(configDirectory);
+        }
+
+        protected ChillinOrderConfiguration(Dictionary<string, List<DropdownOption>> lists)
+        {
+            _lists = lists;
             _idToValue = _lists.Values
                 .SelectMany(l => l)
                 .GroupBy(o => o.Id)

@@ -949,6 +949,41 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
       `LoginAsSuperAdminAsync`-hjälpmetod infördes för att slippa duplicera inloggningsflödet en
       fjärde gång. 228/228 gröna. Samtliga ~25 `Render*Action`-endpoints (inklusive alla sju
       leveranstypspartials) verifierade manuellt att ge 200 mot en seedad order efter fixarna.
+
+  **Omarbetat 2026-09-17, samma dag, efter avstämning med användaren.** De två punkterna ovan om
+  `chillinPrevalues.json` respektive `members.json` beskriver inte längre hur det fungerar:
+  - **`chillinPrevalues.json` skrivs inte längre som fil.** `chillinPrevalues.json` är tänkt att
+    vara en riktig, manuellt uppladdad Umbraco-prevalue-export (se "Fastställda designbeslut")
+    — en isolerad instans (lokal devcontainer *eller* den isolerade testservern) har aldrig en
+    sådan och behöver inte de riktiga ID:na, så att skriva och läsa tillbaka en seedad fil var ett
+    onödigt mellansteg. `IChillinOrderConfiguration` är nu en riktig isolerad-läge-söm precis som
+    de andra (`ITemplateService`, `IOrderItemSearcher`, m.fl.): `ChillinOrderConfiguration` fick en
+    `protected`-konstruktor som tar listorna direkt istället för en katalog, och
+    `Isolated.HardcodedChillinOrderConfiguration : ChillinOrderConfiguration` returnerar exakt
+    samma hårdkodade listor som tidigare skrevs till fil, rakt av. `Bootstrapper.cs` väljer mellan
+    de två baserat på `config.Isolated`, tillagd i `IsolationGuard.SeamInterfaces` och
+    isoleringsbannern för samma "krascha hellre än att köra fel"-garanti som övriga sömmar har.
+    Detta tar också bort hela ordningsberoendet i `Program.cs` (`ChillinOrderConfiguration` läste
+    filen en gång i sin konstruktor utan omladdning, vilket tvingade seedningen att ske innan
+    `Bootstrapper.RegisterTypes`) — all seedning ligger nu efter `builder.Build()`.
+  - **`members.json` seedas inte längre alls.** Att skapa det första kontot går inte att göra
+    genom gränssnittet (`MemberAdminSurfaceController` kräver redan en inloggad `SuperAdmin`), så
+    det är ett engångsmoment, inte något som ska genereras om på varje ny `DataPath` — och för den
+    isolerade testservern specifikt är kontona precis den sortens sak som redan är tänkt att laddas
+    upp manuellt (se "Isolerad testserver"), inte auto-genereras. `DevDataSeeder.SeedMembersIfMissing`
+    borttagen helt. `README.md` uppdaterad med det manuella steget.
+    `Chalmers.ILL.Tests/Controllers/IsolatedModeSmokeTest.cs`s tre view-renderingstester (som
+    behöver en riktig inloggning) seedar nu sitt eget testkonto direkt
+    (`SeedSuperAdminAccount`/`CreateFactory(seedSuperAdminAccount: true)`) istället för att förlita
+    sig på appens egen seedning — samma sak `MemberAdminService`/en riktig operatör skulle göra,
+    bara i testkoden.
+  - Orderfils- och mallseedningen (`SeedOrdersIfMissing`/`SeedSystemTemplatesIfMissing`) är
+    oförändrad i sak — det är fortfarande genuin testdata som är rimlig att ha på både en
+    devcontainer och den isolerade testservern, till skillnad från de två filerna ovan.
+    228/228 gröna efter omarbetningen; samma manuella verifiering som tidigare (tom scratch-
+    `DataPath`, `dotnet run`) upprepad: mallar/orderfiler skapas, `chillinPrevalues.json`/
+    `members.json` skapas **inte**, och en seedad orders `Status`/`Type`/`DeliveryLibrary` löser
+    ut korrekt via den hårdkodade konfigurationen.
   - **Inte gjort:** ingen egen browsersession kunde köras i den här sandlådan (samma
     Puppeteer/DevTools-begränsning som noteras i fas 5) — verifieringen ovan är HTTP/curl-baserad,
     inte en riktig skärmdump. Den löpande webbläsarkontrollen som denna punkt är tänkt att möjliggöra
