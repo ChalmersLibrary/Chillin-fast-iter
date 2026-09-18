@@ -70,13 +70,10 @@ namespace Chalmers.ILL
             var folioConnection = interim.GetRequiredService<IFolioConnection>();
 
             // members.json lives under DataPath now (fas 6, isolerat läge steg A, "Datarot") - not
-            // next to the deployed binaries. chillinPrevalues.json only exists in Live mode -
-            // isolated mode (local devcontainer or the isolated test server) uses a hardcoded seam
-            // instead (fas 10), since there's no real, manually-uploaded prevalue export to read
-            // and no real order data whose StatusId/TypeId needs those exact IDs preserved.
-            IChillinOrderConfiguration orderConfig = config.Isolated
-                ? new Isolated.HardcodedChillinOrderConfiguration()
-                : new ChillinOrderConfiguration(config.DataPath);
+            // next to the deployed binaries. ChillinOrderConfiguration itself is hardcoded (fas 10,
+            // avstämt 2026-09-18) - same values for Live and isolated, no DataPath, not a
+            // Live/Isolated seam at all anymore.
+            IChillinOrderConfiguration orderConfig = new ChillinOrderConfiguration();
             services.AddSingleton(orderConfig);
 
             var membersPath = Path.Combine(config.DataPath, "members.json");
@@ -196,7 +193,6 @@ namespace Chalmers.ILL
                     " - IPatronDataProvider/IAffiliationDataProvider/IPersonDataProvider -> Isolated.FilePatronDataProvider\n" +
                     " - IFolioConnection -> Isolated.FakeFolioConnection\n" +
                     " - IFolio*Service/IFolioRepository -> Isolated.FakeFolio\n" +
-                    " - IChillinOrderConfiguration -> Isolated.HardcodedChillinOrderConfiguration\n" +
                     "############################################################");
             }
             else

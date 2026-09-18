@@ -25,9 +25,9 @@ checked off.
 3. To run the app locally without any real Elasticsearch/mail/patron integrations, start it in
    **isolated mode**: set `Chillin__Isolated=true` and `Chillin__DataPath=<a local directory>` as
    environment variables, then `dotnet run --project Chalmers.ILL`. Order status/type/delivery
-   library dropdowns, mail templates and a handful of test orders in every status are all seeded
-   automatically on first run (`Chalmers.ILL/Isolated/DevDataSeeder.cs`) - no `chillinPrevalues.json`
-   needed in isolated mode, that's only a Live-mode file.
+   library dropdowns and mail templates are hardcoded/seeded and need no setup; a handful of test
+   orders in every status are seeded automatically on first run
+   (`Chalmers.ILL/Isolated/DevDataSeeder.cs`).
    The one thing that *isn't* seeded is a login account, since there's no chicken-and-egg way to
    create the first one through the UI: add a `members.json` under that data path yourself (see
    `Chalmers.ILL/Config/members.example.json` for the format - password hashes are generated with

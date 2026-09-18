@@ -9,7 +9,6 @@ using Chalmers.ILL.Patron;
 using Chalmers.ILL.Repositories;
 using Chalmers.ILL.Services;
 using Chalmers.ILL.Templates;
-using Chalmers.ILL.UmbracoApi;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Chalmers.ILL.Isolated
@@ -39,7 +38,6 @@ namespace Chalmers.ILL.Isolated
             typeof(IFolioHoldingService),
             typeof(IFolioCirculationService),
             typeof(IFolioUserService),
-            typeof(IChillinOrderConfiguration),
         };
 
         // "A real secret was cloned from production" detector, not "any value at all" - appsettings.json

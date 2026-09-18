@@ -26,8 +26,8 @@ namespace Chalmers.ILL.Configuration
         bool Isolated { get; }
 
         // Root directory for all on-disk state under isolated mode (and, from fas 7 onward, order
-        // files in Live mode too): members.json, chillinPrevalues.json, media, mail outbox/inbox,
-        // templates, chillin_text.json. Resolved, never null - see DefaultChillinConfiguration.
+        // files in Live mode too): members.json, media, mail outbox/inbox, templates,
+        // chillin_text.json. Resolved, never null - see DefaultChillinConfiguration.
         string DataPath { get; }
 
         // Hosts / network

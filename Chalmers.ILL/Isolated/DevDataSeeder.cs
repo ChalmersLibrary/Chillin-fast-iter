@@ -18,11 +18,9 @@ namespace Chalmers.ILL.Isolated
     //
     // chillinPrevalues.json and members.json are deliberately NOT seeded here, unlike an earlier
     // version of this class:
-    // - chillinPrevalues.json is meant to be a real, manually-uploaded Umbraco prevalue export
-    //   (see "Fastställda designbeslut" i TODO-remove-dotnet-framework.md) - an isolated instance
-    //   never has one and doesn't need the real IDs, so IChillinOrderConfiguration is hardcoded in
-    //   code instead for isolated mode (Isolated.HardcodedChillinOrderConfiguration) rather than
-    //   round-tripped through a seeded file.
+    // - chillinPrevalues.json doesn't exist at all any more (avstämt 2026-09-18) -
+    //   IChillinOrderConfiguration (UmbracoApi/ChillinOrderConfiguration.cs) is hardcoded directly
+    //   in code instead, the same values for Live and isolated, so there's nothing left to seed.
     // - members.json needs a real account to actually log in with, and there's no chicken-and-egg
     //   way to create the first one through the UI - creating it is a one-time manual step (see
     //   README.md), not something to regenerate on every fresh DataPath.

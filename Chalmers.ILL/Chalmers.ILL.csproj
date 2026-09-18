@@ -9,9 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- members.json/chillinPrevalues.json themselves are no longer read from here (fas 6,
-         isolerat läge steg A, "Datarot") - IChillinConfiguration.DataPath is now the only source of
-         truth for where they live. The .example.json templates stay for reference. -->
+    <!-- members.json itself is no longer read from here (fas 6, isolerat läge steg A, "Datarot")
+         - IChillinConfiguration.DataPath is now the only source of truth for where it lives. The
+         .example.json template stays for reference. chillinPrevalues.json doesn't exist any more
+         at all (fas 10, avstämt 2026-09-18) - hardcoded in UmbracoApi/ChillinOrderConfiguration.cs
+         instead. -->
     <Content Update="Config\members.example.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

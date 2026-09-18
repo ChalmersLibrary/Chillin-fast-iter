@@ -11,7 +11,8 @@ namespace Chalmers.ILL.UmbracoApi
         List<DropdownOption> GetAvailableCancellationReasons();
         List<DropdownOption> GetAvailablePurchasedMaterials();
 
-        // Maps integer prevalue ID (stored in DB) to the string value, e.g. 1042 -> "01:Ny"
+        // Maps integer prevalue ID (persisted on each order, e.g. OrderItemModel.StatusId) to the
+        // string value, e.g. 1042 -> "01:Ny"
         string GetValueById(int id);
 
         // Maps a list + string value to the integer prevalue ID, e.g. "OrderStatus"/"01:Ny" -> 1042

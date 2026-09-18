@@ -50,7 +50,7 @@ Dessa är avstämda med användaren 2026-09-09/10 och ska inte omprövas utan ny
 | Driftmiljö | **Azure App Service för Linux** (webbapp, inte container). Byte från dagens Windows-plan — valt för dev/drift-paritet, se fas 10. Kräver ny App Service-plan; kod­arbetet är identiskt oavsett. |
 | Utvecklingsmiljö | **Linux**, direkt och i devcontainer. Samma OS som drift, vilket är hela poängen. |
 | Skalning | **Enkelinstans.** Liten app. Ingen SignalR-backplane behövs, inga utskalningsproblem för filbaserad lagring. Dokumenteras som förutsättning så att en framtida utskalning inte tyst bryter funktionalitet. |
-| Konfigurationsfiler | `members.json` och `chillinPrevalues.json` läggs upp **manuellt utanför `wwwroot`**, i en katalog som är åtkomlig via Kudu (t.ex. under hemmappen). Sökvägarna görs konfigurerbara. Se fas 10. |
+| Konfigurationsfiler | `members.json` läggs upp **manuellt utanför `wwwroot`**, i en katalog som är åtkomlig via Kudu (t.ex. under hemmappen). Sökvägen görs konfigurerbar. Se fas 10. `chillinPrevalues.json` finns inte längre — värdena är hårdkodade i `UmbracoApi/ChillinOrderConfiguration.cs` istället, samma för Live och isolerat läge. *(Ersätter tidigare beslut om att chillinPrevalues.json också laddas upp manuellt; föll när det stod klart att värdena redan är hårdkodade i appkoden — en fil vore bara en indirektion. 2026-09-18.)* |
 | Mail | **Graph-vägen är den som körs i drift.** EWS (`ExchangeMailWebApi.cs`, `EWS-Api-2.0`) tas bort helt, inte migreras. |
 | DbContext-livstid | **Frågan bortfaller** med lagringsbytet ovan. Dagens `Dictionary<threadId, DbContext>` utan låsning försvinner tillsammans med EF6 i stället för att byggas om till scoped DI. |
 | Loggning | **log4net behålls**, `Microsoft.Extensions.Logging` väljs bort. Loggfiler på disk, minimal Azure-integration, ingen Application Insights. M.E.L. har ingen inbyggd filprovider, så ett byte hade krävt Serilog/NLog som nytt beroende. Se fas 6. *(2026-09-16)* |
@@ -2475,7 +2475,6 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
 - [ ] `Config/members.json` skapad på servern med samtliga konton. Umbracos gamla lösenordshashar kan
   inte migreras, så alla ~20 konton behöver nya lösenord (se [TODO-remove-umbraco.md](TODO-remove-umbraco.md)).
   Filen är gitignorad och kopieras inte av bygget förrän `<Content Include>` lagts till (fas 1).
-- [ ] `Config/chillinPrevalues.json` på plats med `"NN:Etikett"`-formatet intakt.
 - [ ] Hemligheter flyttade från `Local.config`-mekanismen till miljövariabler/secrets (fas 6).
 
 ---
