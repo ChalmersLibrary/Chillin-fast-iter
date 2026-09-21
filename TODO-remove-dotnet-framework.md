@@ -2049,8 +2049,21 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Verifierat med en riktig körning i isolerat läge: `GET /Scripts/chalmers.ill.js`,
   `/Css/chalmers.ill.main.css` och `/images/cth_logo.png` gav alla 200, ingen längre
   "WebRootPath was not found"-varning i loggen vid uppstart.
+
+  **⚠️ Den verifieringen testade fel URL:er - upptäckt och fixat 2026-09-21.** Vyerna länkar
+  faktiskt `/css/...` och `/scripts/...` (gemener) - `chalmers.ill.main.css`/`.print.css` och
+  `chalmers.ill.js` laddades alltså **aldrig** i en riktig webbläsare på Linux (404, tyst - inga
+  synliga fel förutom en trasig sida), bara i `curl`-kontrollen ovan som av misstag testade
+  `/Css/...` (stor bokstav, matchande det gamla katalognamnet i stället för vad vyerna faktiskt
+  begär). Hela huvudstilmallen och hela klient-JS-logiken (orderhantering, SignalR-wiring, alla
+  ~44 anrop) skulle ha saknats i drift. Hittat genom en riktig Puppeteer-körning (första gången
+  sedan brytpunkten Chromium faktiskt gick att använda i den här sandboxen, se
+  [[chillin-puppeteer-sandbox-limitation]]) - exakt den klass av bugg fas 11 finns för att fånga.
+  Fixat med `git mv Css css` / `git mv Scripts scripts`, historik bevarad, inga vyändringar
+  (vyerna hade redan rätt gemena sökvägar hela tiden). Omverifierat: `GET /css/chalmers.ill.main.css`
+  och `/scripts/chalmers.ill.js` ger nu 200, `/Css/...`/`/Scripts/...` ger (korrekt) 404.
   **`bower_components/`-ersättningen genomförd 2026-09-21** (se fas 5:s punkt ovan för detaljer) —
-  landade under `wwwroot/lib/`, samma mönster som `Scripts`/`Css`/`images`.
+  landade under `wwwroot/lib/`, redan gemen från början så samma fälla slog inte till där.
 
 - [x] **Rensa Windows-antaganden ur sökvägshanteringen**
   Linux både i utveckling och drift, så fel här upptäcks nu i devcontainern i stället för först i
@@ -2452,12 +2465,40 @@ Den gamla Windows-appen kan stå kvar orörd som återställningsväg tills dom�
 i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overifierade och måste med här:
 
 - [ ] De 12 vyer som bytte från `/umbraco/surface/{Controller}/{Action}` till `/{Controller}/{Action}`
+  **Delvis verifierat 2026-09-21** (Puppeteer fungerar i devcontainern igen, se
+  [[chillin-puppeteer-sandbox-limitation]]): `LoginSurface/HandleLogin` (via
+  `/umbraco/surface/...`-aliaset, formulärets faktiska `action`), `ChalmersILLOrderListPage`
+  (`/bestaellningar`) och `ChalmersILLDiskPage` (`/disk/`) bekräftat fungerande via riktig
+  webbläsarnavigering. Resterande ~9 vyer inte individuellt klickade igenom än.
 - [ ] De ~44 anropen i `Scripts/chalmers.ill.js` som bytte samma rutt — detta är hela
   orderhanteringsgränssnittet: låsa/låsa upp, importera dokument, sätta status/typ/leveransbibliotek,
   leverans, reklamation, mail, patrondata, provider, ta emot bok, loggposter
-- [ ] Att `.cshtml`-vyerna kompileras och renderas korrekt utan `RazorBuildProvider`-overriden och utan
+- [x] Att `.cshtml`-vyerna kompileras och renderas korrekt utan `RazorBuildProvider`-overriden och utan
   `UmbracoCms`-paketen
-- [ ] Att mojibake-fixen håller (åäö renderas rätt) — särskilt i de 8 vyer som fick UTF-8-BOM tillagd
+
+  **Verifierat 2026-09-21** med en riktig Puppeteer-körning mot appen i isolerat läge (första
+  gången Chromium faktiskt gick att använda i den här sandboxen sedan brytpunkten - tidigare
+  sessioner trodde det var trasigt, se [[chillin-puppeteer-sandbox-limitation]]). Hittade och
+  fixade en verklig, allvarlig bugg under tiden: `Chalmers.ILL.OrderItem.cshtml`s `chillinVars`-
+  `<script>`-block hade en utvecklarkommentar som **själv** innehöll den bokstavliga strängen
+  `"</script>"` (som ett exempel på vad som annars måste undvikas i *data*) - webbläsarens
+  HTML-tokenizer bryr sig inte om att det står i en JS-kommentar, den skannar `<script>`-
+  innehållet som rå text efter exakt den bytesekvensen, så den riktiga taggen stängdes rakt där.
+  Allt som skulle stannat kvar i scriptet (resten av kommentaren, `eventIdToEventName`/
+  `orderItemData`-JSON, popover/MAIL-click-koden) renderades i stället som synlig sidtext, och
+  slutade med ett JS-syntaxfel ("Unexpected end of input"). Fixat genom att skriva om kommentaren
+  utan den bokstavliga tagg-sekvensen. Regressionstest tillagt i `IsolatedModeSmokeTest.cs`
+  (`RenderOrderItem_SeededOrderWithLogItems_RendersWithoutThrowing`, utökad): jämför antal
+  `<script`- mot `</script>`-förekomster i svaret - en generisk spärr mot just den här buggklassen,
+  inte bara den här instansen. Verifierat att testet faktiskt fallerar mot den gamla koden.
+  Efter fixen: ren rendering bekräftad med skärmdump (order-detaljvy med samtliga åtgärdsknappar,
+  loggrupper och orderlistan under, inga kvarvarande textrester).
+- [x] Att mojibake-fixen håller (åäö renderas rätt) — särskilt i de 8 vyer som fick UTF-8-BOM tillagd
+
+  **Verifierat 2026-09-21.** `document.body.innerText` i en riktig Chromium-sida innehåller
+  `"Åsa Öhman"` och `"Björn Ärlig"` (två av `DevDataSeeder`s testordrar, valda specifikt för sina
+  åäö-tecken) korrekt avkodade - inte som HTML-entiteter eller mojibake. Bekräftat visuellt i
+  skärmdump också (Örjan Blomqvist, Hanna Öqvist m.fl. i orderlistan).
 
 **Nytt som tillkommit i och med den här migreringen:**
 
@@ -2469,24 +2510,80 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
 - [ ] **Partial view-upplösning.** 26 `PartialView("bart-namn")`-anrop förlitar sig på att
   `~/Views/Partials/{0}.cshtml` finns i `ViewLocationFormats`. Öppna en order och klicka igenom
   samtliga åtgärdsflikar — det var exakt det här som var trasigt sist.
+
+  **Delvis verifierat 2026-09-21.** Öppnade en seedad order (`Chalmers.ILL.OrderItem.cshtml`) i en
+  riktig Chromium-session - det var den här punkten som hittade och fällde den trasiga
+  `<script>`-taggen ovan. Efter fixen renderar den partialen rent, med samtliga åtgärdsknappar
+  (Typ, Status, Leveransbibliotek, Referens, Beställardata, Skicka mail, Beställning, Logga, Ta
+  emot bok, Lånetid, Retur, Misc) synliga. **Kvar:** bara den partialen är öppnad hittills - de
+  övriga ~25 (Mail, LogEntry, ReceiveBook, de fyra DeliveryType-varianterna m.fl.) inte
+  individuellt klickade igenom.
 - [ ] **Layout-upplösning.** De fem vyerna med `Layout = "ChalmersILL.cshtml"` (bart filnamn) — verifiera
   att sidorna får sin layout och inte renderas nakna.
+
+  **Delvis verifierat 2026-09-21:** `ChalmersILL.cshtml` självt (orderlistan/huvudvyn) renderar med
+  fullständig layout (navbar, filterknappar, orderlista) - bekräftat i skärmdump. De fyra övriga
+  inte kontrollerade.
 - [ ] **SignalR-realtidsuppdateringar.** Öppna orderlistan i två webbläsarfönster, ändra en order i det
   ena och kontrollera att det andra uppdateras. Detta fångar både PascalCase/camelCase-problemet i
   payloaden och att `withAutomaticReconnect` fungerar. Testa även återanslutning genom att starta om
   servern med fönstren öppna.
-- [ ] **Inloggning, utloggning, rollbeteende.** Logga in som konto med respektive `Desk` (ska landa på
+
+  **Delvis verifierat 2026-09-21:** själva hub-anslutningen bekräftad fungerande - `notificationHub`
+  negotiate/WebSocket-uppgradering lyckas server- och klientsidan (`HubConnection.state ===
+  "Connected"`), inga JS-fel. **Kvar:** det faktiska tvåfönster-liveuppdateringstestet gick inte
+  att köra i den här sessionen - två samtidigt inloggade Chromium-sidor är för tungt för den här
+  devcontainerns enda CPU-kärna (`nproc` = 1), se [[chillin-puppeteer-sandbox-limitation]]. Kräver
+  antingen en maskin med fler kärnor eller den riktiga devcontainern/Azure.
+  **Sidoupptäckt, inte en regression:** `chalmers.ill.js`s ursprungliga (Umbraco-eran) kod gör
+  `alert("Could not Connect to signalR notification hub")` om den första anslutningen misslyckas -
+  en blockerande dialog utan återförsök. I den här sandboxens CPU-strypta miljö misslyckas den
+  första anslutningen tillräckligt ofta för att vara ett reellt problem för automatiserad
+  verifiering (huvudlös Chromium hänger på en obesvarad `alert()`) - `browser-check/screenshot.js`
+  fick en `page.on("dialog", ...)`-hanterare för det. Inte åtgärdat i appkoden: fanns redan i
+  "Added initial code base", inget den här migreringen orsakade, och stör inte en riktig
+  användare (som bara klickar bort dialogen) på samma sätt som headless-verifiering.
+- [x] **Inloggning, utloggning, rollbeteende.** Logga in som konto med respektive `Desk` (ska landa på
   `/disk/`), `Administrator` och `SuperAdmin` (ska se Konton-fliken). Verifiera att befintliga
   lösenordshashar i `members.json` fortfarande fungerar efter bytet till `PasswordHasher<T>` — det är
   hela poängen med IdentityV2-kompatibilitetsläget (fas 3).
+
+  **Inloggning/rollbeteende verifierat 2026-09-21** med tre riktiga konton (`Desk`, `Administrator`,
+  `SuperAdmin`) mot en `members.json` med `PasswordHasher<T>`-genererade hashar: `Desk` landar på
+  `/disk/?login=ok` (titel "Diskapp används ej längre"), `Administrator` och `SuperAdmin` landar
+  båda på `/bestaellningar?login=ok`. Hittade och fixade under tiden en verklig bugg (se nedan).
+  **Inte kontrollerat:** att `SuperAdmin` specifikt ser Konton-fliken (skiljer den inte från
+  `Administrator` i det här passet) och utloggningsflödet.
+
+  **Ny bugg hittad och fixad 2026-09-21: fel lösenord gav ett webbläsar-nätverksfel, inte
+  felmeddelandet.** `LoginSurfaceController.HandleLogin` omdirigerade felvägen till
+  `Request.Path.Value + "?error=..."` - dvs. tillbaka till sig själv, den POST-only-rutt formuläret
+  postar till (`/umbraco/surface/LoginSurface/HandleLogin`), inte till den GET-bara inloggningssidan.
+  Webbläsarens uppföljande GET mot den POST-only-rutten gav 405, dvs. en `chrome-error://`-sida i
+  stället för "Felaktig inloggning"-meddelandet i `Chalmers.ILL.Login.cshtml`. `LoginSurfaceControllerTest`s
+  enhetstest fångade aldrig detta eftersom det konstruerar controllern direkt och hårdkodar
+  `HttpContext.Request.Path` till `"/login"` - en aspirationell sträng som aldrig var den verkliga
+  routade URL:en, så testet speglade buggen i stället för att fånga den. Fixat: redirectar nu till
+  den konstant `/ChalmersILLLoginPage` (samma sträng som `Program.cs`s `CookieAuthenticationOptions.
+  LoginPath`). Nytt end-to-end-test i `IsolatedModeSmokeTest.cs`
+  (`HandleLogin_WrongPassword_RedirectsToLoginPageWithErrorMessage`) gör en riktig HTTP-rundtripp:
+  POST med fel lösenord, följer redirecten, verifierar 200 OK och att felmeddelandet faktiskt finns
+  i svaret - exakt den typen av verklig-URL-verifiering det gamla testet saknade.
 - [ ] **Lösenordsbyte**, inklusive felvägen: fel nuvarande lösenord ska ge felmeddelande, inte
   `?success=true` (fas 0a).
-- [ ] **De två maskin-till-maskin-endpointsen.** `POST /SystemSurface/Update`,
+- [x] **De två maskin-till-maskin-endpointsen.** `POST /SystemSurface/Update`,
   `POST /SystemSurface/SendOutAutomaticMailsThatAreDue` från cron-serverns IP, och
   `GET /PublicDataSurface/GetChillinDataForSierraPatron?recordId=...` utan inloggning. Ingendera är
   klickbar i gränssnittet och båda missas därför lätt.
-- [ ] **Loggning.** Att en loggfil faktiskt skapas och fylls (fas 0a). Verifiera på Linux, där
+
+  **Verifierat 2026-09-21** med `curl` mot alla tre utan inloggning: samtliga gav 200 (inte
+  401/403), dvs. fas 0a:s undantag från det globala `[Authorize]` håller.
+- [x] **Loggning.** Att en loggfil faktiskt skapas och fylls (fas 0a). Verifiera på Linux, där
   sökvägsseparator och skiftlägeskänslighet skiljer sig.
+
+  **Verifierat 2026-09-21.** `App_Data/Logs/ChillinTraceLog.txt` skapas och fylls vid körning på
+  Linux, med daglig rullning (`ChillinTraceLog.txt20260917`, `...20260918` från tidigare körningar
+  finns kvar bredvid den aktuella filen) - `rollingStyle=Date` fungerar som konfigurerat.
 - [ ] **De externa integrationerna** — 🖐️ **kräver handpåläggning.** FOLIO och Graph ska vid det här
   laget vara provade mot sina testinstanser (steg 2 i testtrappan ovan); det som återstår här är att
   verifiera dem i skarp konfiguration, tillsammans med Elasticsearch-sökning och -indexering, Azure
@@ -2495,8 +2592,19 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   orsaka mest skada om den beter sig fel, eftersom den når låntagare direkt.
 - [ ] **Filuppladdning och nedladdning av bilagor** — `MediaItemSurfaceController` är den enda platsen
   som returnerar `File(...)`.
-- [ ] **Statiska filer** serveras korrekt från `wwwroot/` (fas 10), inklusive de tecken- och
+- [x] **Statiska filer** serveras korrekt från `wwwroot/` (fas 10), inklusive de tecken- och
   MIME-typskänsliga (`.svg`, `.woff`, `.ttf`).
+
+  **Verifierat 2026-09-21, och en verklig bugg hittad och fixad under tiden:** `wwwroot/Css/` och
+  `wwwroot/Scripts/` (kvar med stor bokstav sedan fas 10:s flytt) matchade inte de faktiska,
+  gemena vyreferenserna (`/css/...`, `/scripts/...`) - fungerade av misstag på Windows
+  (skiftlägesokänsligt filsystem) men gav 404 på Linux för **hela huvudstilmallen och hela
+  `chalmers.ill.js`**, dvs. appen skulle ha kört helt ostylad och utan sin JS-logik i drift. Fas
+  10:s egen verifiering testade av misstag `/Css/...` (stor bokstav, matchande katalognamnet) i
+  stället för vad vyerna faktiskt begär. Fixat med `git mv` till gemena katalognamn - historik
+  bevarad, inga vyändringar behövdes eftersom vyerna redan använde gemener. `/lib/`-tillgångarna
+  (fas 5:s bower-ersättning, inkl. `.svg`/`.woff`/`.ttf`-typsnitten) verifierade sedan tidigare
+  samma dag.
 - [ ] **Lagringsbytet** — 🖐️ **kräver handpåläggning.** Kör engångsmigreringen från SQL till filer
   (fas 7) mot en kopia och verifiera: samma antal ordrar, stickprov på fullständiga aggregat
   inklusive loggposter och bilagor, och att ES-återindexeringen ger samma träffantal som databasen.

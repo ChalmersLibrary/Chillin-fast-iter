@@ -39,6 +39,14 @@ async function shoot(page, name) {
 
   try {
     const page = await browser.newPage();
+    // ChalmersILL.cshtml's SignalR wiring (chalmers.ill.js, original code, predates every
+    // migration) calls window.alert() if the initial notificationHub connection fails - a
+    // blocking dialog with no auto-dismiss hangs headless Chromium indefinitely (Puppeteer
+    // does not dismiss dialogs on its own). Found 2026-09-21 verifying fas 11: the WebSocket
+    // handshake is genuinely flaky under this devcontainer's constrained CPU, so this fires
+    // often enough here to be a real problem for automated verification, even though it's not
+    // a bug this migration introduced.
+    page.on("dialog", (dialog) => dialog.dismiss());
     await page.setViewport({ width: 1280, height: 900 });
 
     await page.goto(baseUrl + "/", { waitUntil: "load", timeout: 15000 });
