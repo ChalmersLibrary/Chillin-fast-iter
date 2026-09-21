@@ -57,15 +57,25 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             return httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
         }
 
+        // Must match Program.cs's CookieAuthenticationOptions.LoginPath - this is the GET-able
+        // page that renders Chalmers.ILL.Login.cshtml (which reads ?error=... back out), not the
+        // POST-only route this action itself is reached through. Redirecting to Request.Path.Value
+        // instead (the bug this replaced) sent the browser's follow-up GET back at this same
+        // [HttpPost]-only action, which 405'd - a real network error page instead of the intended
+        // "fel login/lösenord" message, on every failed login attempt. Never caught by
+        // LoginSurfaceControllerTest because that test hardcodes HttpContext.Request.Path to
+        // "/login" rather than the real posted-to URL, so it mirrored the bug instead of catching it.
+        private const string LoginPageUrl = "/ChalmersILLLoginPage";
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> HandleLogin(Models.LoginModel model)
         {
             if (!ModelState.IsValid)
-                return Redirect(Request.Path.Value + "?error=invalid-model");
+                return Redirect(LoginPageUrl + "?error=invalid-model");
 
             if (!_validateUser(model.Login, model.Password))
-                return Redirect(Request.Path.Value + "?error=invalid-member");
+                return Redirect(LoginPageUrl + "?error=invalid-member");
 
             var roles = _getRolesForUser(model.Login).ToList();
             await _signIn(HttpContext, model.Login, roles);

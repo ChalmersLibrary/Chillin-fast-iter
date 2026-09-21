@@ -56,7 +56,7 @@ namespace Chalmers.ILL.Tests.Controllers
 
             Assert.IsFalse(signedIn);
             Assert.IsNotNull(result);
-            Assert.AreEqual("/login?error=invalid-member", result.Url);
+            Assert.AreEqual("/ChalmersILLLoginPage?error=invalid-member", result.Url);
         }
 
         [TestMethod]
@@ -68,7 +68,7 @@ namespace Chalmers.ILL.Tests.Controllers
             var result = await controller.HandleLogin(new Models.LoginModel { Login = "", Password = "" }) as RedirectResult;
 
             Assert.IsNotNull(result);
-            Assert.AreEqual("/login?error=invalid-model", result.Url);
+            Assert.AreEqual("/ChalmersILLLoginPage?error=invalid-model", result.Url);
         }
 
         [TestMethod]
@@ -84,7 +84,6 @@ namespace Chalmers.ILL.Tests.Controllers
         {
             var controller = new LoginSurfaceController(new StubMemberInfoManager(), validateUser, getRolesForUser, signIn, new StubChillinConfiguration());
             var httpContext = new DefaultHttpContext();
-            httpContext.Request.Path = "/login";
             controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
             return controller;
         }

@@ -124,6 +124,46 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
+        // Found via a real Puppeteer pass (fas 11 verification, 2026-09-21): a wrong password
+        // produced a browser network-error page, not the "fel login/lösenord" message. Root cause
+        // was LoginSurfaceController.HandleLogin redirecting to Request.Path.Value + "?error=...",
+        // i.e. back at this same [HttpPost]-only action (the real POST-to URL is
+        // /umbraco/surface/LoginSurface/HandleLogin), which 405'd on the browser's follow-up GET.
+        // LoginSurfaceControllerTest's unit test never caught this because it constructs the
+        // controller directly and hardcodes HttpContext.Request.Path to "/login" - mirroring the
+        // bug instead of exercising the real routed URL. Only a real HTTP round trip like this one
+        // can catch a wrong redirect target.
+        [TestMethod]
+        public async Task HandleLogin_WrongPassword_RedirectsToLoginPageWithErrorMessage()
+        {
+            using var factory = CreateFactory(seedSuperAdminAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+            var loginPageHtml = await (await client.GetAsync("/ChalmersILLLoginPage")).Content.ReadAsStringAsync();
+            var token = Regex.Match(loginPageHtml, "__RequestVerificationToken[^>]*value=\"([^\"]*)\"").Groups[1].Value;
+
+            using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/umbraco/surface/LoginSurface/HandleLogin")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["Login"] = "superadmin",
+                    ["Password"] = "not-the-right-password",
+                    ["__RequestVerificationToken"] = token
+                })
+            };
+            var loginResponse = await client.SendAsync(loginRequest);
+
+            Assert.AreEqual(HttpStatusCode.Found, loginResponse.StatusCode);
+            var redirectUrl = loginResponse.Headers.Location.ToString();
+            StringAssert.StartsWith(redirectUrl, "/ChalmersILLLoginPage");
+            StringAssert.Contains(redirectUrl, "error=invalid-member");
+
+            var errorPageResponse = await client.GetAsync(redirectUrl);
+            Assert.AreEqual(HttpStatusCode.OK, errorPageResponse.StatusCode);
+            var errorPageHtml = await errorPageResponse.Content.ReadAsStringAsync();
+            StringAssert.Contains(errorPageHtml, "Felaktig inloggning");
+        }
+
         // Found by manually exercising DevDataSeeder's output (fas 10, "Ordna testdata för
         // utvecklingsmiljön") against a real running app - every one of the 17 seeded orders'
         // detail view crashed with KeyNotFoundException. Chalmers.ILL.OrderItem.cshtml's log-group
