@@ -7,9 +7,8 @@ This is the system that is used on Chalmers Library for handling incoming inter 
 This branch is mid-migration away from .NET Framework/`System.Web` to modern .NET, running on
 Linux instead of Windows/IIS. See [CLAUDE.md](CLAUDE.md) for the current architecture and
 [TODO-remove-dotnet-framework.md](TODO-remove-dotnet-framework.md) for what's done and what's left
-(client-side asset pipeline and Azure deployment are the two big remaining pieces). The steps below
-describe the current, not-yet-finished state - they will keep changing until that TODO list is
-checked off.
+(Azure deployment is the big remaining piece). The steps below describe the current, not-yet-finished
+state - they will keep changing until that TODO list is checked off.
 
 ## Prerequisites
 1. [.NET SDK 10](https://dotnet.microsoft.com/download) or later.

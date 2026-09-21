@@ -1265,7 +1265,7 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   webbläsare — det bör göras som en del av brytpunktens löpande kontroll. 224/224 gröna
   (`dotnet test`, ingen ändring i testantal — ren klient-JS/vy-ändring, ingen C#-yta berörd).
 
-- [ ] **Ersätt bower med en modern asset-strategi — blockerar deploy-pipelinen**
+- [x] **Ersätt bower med en modern asset-strategi — blockerar deploy-pipelinen**
   **Detta saknades helt i den tidigare listan och är ett verkligt deployment-hinder.**
   `Chalmers.ILL/bower_components/` innehåller jquery, bootstrap, Snap.svg, Chart.js, moment, signalr,
   bootstrap-markdown, markdown, eonasdan-bootstrap-datetimepicker — och är **inte spårad i git**
@@ -1279,6 +1279,28 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   `@Scripts.Render`/`@Styles.Render`) — behåll den enkelheten om ni inte har skäl att ändra.
   `Views/ChalmersILL.cshtml:150` gör cache-busting med `?r=@DateTime.Now.Ticks`, dvs. filen cachas
   aldrig — värt att byta mot en versionssträng eller `asp-append-version`.
+
+  **Löst 2026-09-21: kurerat `wwwroot/lib/`, inte npm/package.json.** `npm view`/CDN (cdnjs,
+  jsdelivr, `codeload.github.com`) är blockerade i den här sandboxens nätverk, men
+  `raw.githubusercontent.com` fungerar — samma väg bower själv hämtar ifrån. Alla nio paket
+  hämtades vid exakt de bower-pinnade taggarna direkt från respektive GitHub-repo (jquery 2.1.3,
+  bootstrap v3.0.2 inkl. `dist/fonts/*` för glyphicons, Snap.svg v0.3.0, Chart.js v1.0.1, moment
+  2.9.0, bootstrap-markdown v2.8.0, markdown-js v0.4.0, eonasdan-bootstrap-datetimepicker v4.0.0 —
+  den sista fanns bara under tagg-namnet `v4.0.0`, inte `4.0.0`, vilket npm/en första
+  tag-sökning missade). Lagda under `wwwroot/lib/<paket>/<samma relativa sökväg som i
+  bower_components>`, dvs. exakt samma pinnade versioner och katalogstruktur som förut — bara
+  `/bower_components/` → `/lib/` i de fyra vyerna (`ChalmersILL.cshtml`,
+  `ChalmersILLLoginPage.cshtml`, `ChalmersILLStatisticsPage.cshtml`, `ChalmersILLDiskPage.cshtml`),
+  ingen versionsuppgradering, inget npm/build-steg i deploy-pipelinen. `bower.json` och de två
+  `bower_components`-raderna i `.gitignore` borttagna.
+  Verifierat i isolerat läge (curl, se `IsolationGuard`): `/ChalmersILLLoginPage` (kräver ingen
+  inloggning) laddar `bootstrap.min.css`/`bootstrap.min.js`/`jquery.min.js` från `/lib/...`, alla
+  200, noll kvarvarande `bower_components`-strängar i HTML:en. Alla nio vendorade filer plus
+  bootstraps fyra fontformat gav 200 direkt. Kunde **inte** verifiera visuellt/JS-beteende
+  (Chromium/Puppeteer fungerar inte i den här sandboxens Bash-verktyg, se README/CLAUDE.md om
+  brytpunkten) — flaggat som ej webbläsarverifierat i fas 11.
+  Cache-busting-bytet i `ChalmersILL.cshtml:150` är kvar oberoende (kosmetisk, inte ett
+  deploy-hinder) — se Städning.
 
 - [x] **Ta bort NuGet-paketet `jQuery` 1.6.4 — det är oanvänt**
   Vyerna laddar bower-versionen (`~2.1.3`) från `/bower_components/jquery/dist/jquery.min.js`.
@@ -2013,7 +2035,7 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   innan resten kan skapas via gränssnittet. Görs i samband med att filen läggs upp under `/home/data/`
   ovan.
 
-- [ ] **Flytta statiska filer till `wwwroot/`**
+- [x] **Flytta statiska filer till `wwwroot/`**
   `Scripts/` (bara `chalmers.ill.js`), `Css/` (2 filer), `images/`, och det som ersätter
   `bower_components/` (fas 5). Uppdatera de hårdkodade absoluta sökvägarna i vyerna — det finns noll
   `Url.Content`/`Url.Action`-anrop, alla länkar är strängar.
@@ -2027,12 +2049,8 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Verifierat med en riktig körning i isolerat läge: `GET /Scripts/chalmers.ill.js`,
   `/Css/chalmers.ill.main.css` och `/images/cth_logo.png` gav alla 200, ingen längre
   "WebRootPath was not found"-varning i loggen vid uppstart.
-  **Kvar:** `bower_components/`-ersättningen (fas 5, separat punkt nedan) — den delen kräver en
-  faktisk asset-pipeline-avvägning (npm-versioner vs. nuvarande bower-pinnade versioner) och
-  visuell/webbläsarverifiering som inte gick att göra i den här sessionens sandbox (Chromium
-  startar men DevTools-websocketen kopplas ner direkt — troligen en begränsning i den här specifika
-  verktygssandlådan, inte i den riktiga devcontainern). Görs som egen punkt när det kan
-  webbläsarverifieras.
+  **`bower_components/`-ersättningen genomförd 2026-09-21** (se fas 5:s punkt ovan för detaljer) —
+  landade under `wwwroot/lib/`, samma mönster som `Scripts`/`Css`/`images`.
 
 - [x] **Rensa Windows-antaganden ur sökvägshanteringen**
   Linux både i utveckling och drift, så fel här upptäcks nu i devcontainern i stället för först i
@@ -2395,9 +2413,11 @@ och `Always On`.
   stället för att duplicera detaljer som ändå ändras löpande, `dotnet build`/`dotnet test`-stegen,
   och hur man kör appen lokalt i **isolerat läge** (`Chillin__Isolated=true`) utan att behöva
   Elasticsearch/Graph/FOLIO — den enklaste vägen in för en ny utvecklare just nu.
-  **Medvetet inte skrivet ännu:** något om klient-assets (npm/bower-ersättningen) eftersom fas 5:s
-  asset-strategi inte är beslutad än — bättre att inte beskriva den innan den finns, än att beskriva
-  fel sak. Uppdatera README igen när den punkten landar.
+  **Medvetet inte skrivet ännu (då):** något om klient-assets (npm/bower-ersättningen) eftersom
+  fas 5:s asset-strategi inte var beslutad än — bättre att inte beskriva den innan den fanns, än att
+  beskriva fel sak. **Uppdaterad 2026-09-21** när den punkten landade (kurerat `wwwroot/lib/`, se
+  fas 5): "Status"-stycket pekar inte längre ut klient-asset-pipelinen som en av de två stora
+  återstående bitarna.
 
 ---
 
@@ -2594,3 +2614,8 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   `IsolatedModeSmokeTest.RenderEditTemplatesAction_NoTemplatesYet_RendersWithoutThrowing`
   (inloggning via en delad `LoginAsSuperAdminAsync`-hjälpmetod, delad med föregående punkts test),
   verifierat att det fallerar utan fixen. 227/227 gröna.
+
+- [ ] **Byt cache-bustingen i `Views/ChalmersILL.cshtml:150` mot en versionssträng**
+  `?r=@DateTime.Now.Ticks` gör att filen (nu `/lib/signalr/signalr.min.js`, se fas 5:s
+  bower-ersättning ovan) aldrig cachas — varje sidladdning hämtar om den. Kosmetiskt, inte ett
+  deploy-hinder; byt mot en fast versionssträng eller `asp-append-version` när det finns tid.

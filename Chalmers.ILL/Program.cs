@@ -125,8 +125,8 @@ app.UseForwardedHeaders(forwardedHeadersOptions);
 // Scripts/, Css/, images/ moved under wwwroot/ (fas 10, "Flytta statiska filer till wwwroot/") -
 // the default wwwroot-rooted UseStaticFiles() below serves them at the same /Scripts, /Css,
 // /images request paths the views already hardcode, so no view changes were needed. The
-// bower_components/ replacement (fas 5's asset-strategy item) is a separate, not yet done, piece
-// of this same move.
+// bower_components/ replacement (fas 5's asset-strategy item) is now vendored under wwwroot/lib/
+// the same way.
 app.UseStaticFiles();
 
 app.UseRouting();
