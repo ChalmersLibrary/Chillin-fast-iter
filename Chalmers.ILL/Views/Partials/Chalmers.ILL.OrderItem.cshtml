@@ -470,9 +470,13 @@
 
     var chillinVars = {
         // OrderItem contains patron/log free text. Newtonsoft doesn't escape "<" the way
-        // System.Text.Json's default encoder does, so a message containing "</script>" would
-        // otherwise break out of this block - escape it to a JS unicode escape, which still
-        // evaluates to the same string once parsed.
+        // System.Text.Json's default encoder does, so a message containing a closing script
+        // tag would otherwise break out of this block - escape it to a JS unicode escape,
+        // which still evaluates to the same string once parsed. (Careful: don't write that
+        // literal tag sequence anywhere in this comment either - the HTML parser looks for it
+        // as raw bytes with no idea it's inside a JS comment, and closes the real tag right
+        // here. That exact self-referential bug shipped once already - see TODO-remove-dotnet-
+        // framework.md, fas 11.)
         eventIdToEventName: @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.EventIdToEventNameMapping).Replace("<", "\\u003c")),
         orderItemData: @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.OrderItem).Replace("<", "\\u003c"))
     }

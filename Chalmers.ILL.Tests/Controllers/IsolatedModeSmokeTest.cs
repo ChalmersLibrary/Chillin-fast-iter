@@ -187,6 +187,23 @@ namespace Chalmers.ILL.Tests.Controllers
             var response = await client.GetAsync("/OrderItemSurface/RenderOrderItem?nodeId=1");
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            // Found via a real Puppeteer pass (fas 11 verification, 2026-09-21): the chillinVars
+            // <script> block near the bottom of Chalmers.ILL.OrderItem.cshtml had a developer
+            // comment that itself contained the literal text "</script>" (as an example of what
+            // *data* must be escaped to avoid). The browser's HTML tokenizer has no concept of a
+            // JS comment - it scans <script> content as raw text looking for that exact byte
+            // sequence - so the comment closed the real tag right there, and everything meant to
+            // stay inside it (the rest of the comment, eventIdToEventName/orderItemData JSON, the
+            // popover/MAIL-click wiring) rendered as visible page text instead of executing,
+            // ending in a JS syntax error ("Unexpected end of input") for whatever script tag
+            // happened to close the resulting mess. AssertEqual(OK) alone couldn't catch this -
+            // the response is still 200 with a broken body. An unbalanced <script>/</script>
+            // count is a generic tripwire for exactly this class of bug, not just this instance.
+            var html = await response.Content.ReadAsStringAsync();
+            var openTags = Regex.Matches(html, "<script[ >]").Count;
+            var closeTags = Regex.Matches(html, "</script>").Count;
+            Assert.AreEqual(openTags, closeTags, "Unbalanced <script>/</script> tags - some script content is likely leaking into the visible page.");
         }
 
         // Found the same way as the test above: opening every tab reachable from the settings page
