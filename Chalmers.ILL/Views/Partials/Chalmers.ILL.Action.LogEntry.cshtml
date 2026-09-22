@@ -26,9 +26,9 @@
                 <div>
                     <div class="btn-group">
                         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-                            <span id="currently-selected-status" data-status-id="-1" data-cancellation-reason-id="-1" data-purchased-material-id="-1">Ingen förändring</span> <span class="caret"></span>
+                            <span id="logentry-currently-selected-status" data-status-id="-1" data-cancellation-reason-id="-1" data-purchased-material-id="-1">Ingen förändring</span> <span class="caret"></span>
                         </button>
-                        <ul class="dropdown-menu" id="orderitem-statuslist" role="menu">
+                        <ul class="dropdown-menu" id="orderitem-logentry-statuslist" role="menu">
                             <li><a href="#" onclick="updateSelectedStatus(-1, 'Ingen förändring', -1, -1); event.preventDefault();">Ingen förändring</a></li>
                             @{
                                 var allowedStatusValues = new String[] { "Annullerad", "Åtgärda", "Inköpt", "Väntar", "Förlorad?", "Förlorad" };
@@ -130,7 +130,7 @@
     });
 
     function updateSelectedStatus(newStatusId, newStatusText, cancellationReasonId, purchasedMaterialId) {
-        var currSelectedStatusObj = $("#currently-selected-status");
+        var currSelectedStatusObj = $("#logentry-currently-selected-status");
         currSelectedStatusObj.data("status-id", newStatusId);
         currSelectedStatusObj.data("cancellation-reason-id", cancellationReasonId);
         currSelectedStatusObj.data("purchased-material-id", purchasedMaterialId);
@@ -138,7 +138,7 @@
     }
 
     function submitLogEntry(obj) {
-        var newStatusObj = $("#currently-selected-status");
+        var newStatusObj = $("#logentry-currently-selected-status");
         var newStatusId = -1;
         var newStatusCancellationReasonId = -1;
         var newStatusPurchasedMaterialId = -1;

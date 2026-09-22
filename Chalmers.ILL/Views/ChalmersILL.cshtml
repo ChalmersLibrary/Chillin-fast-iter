@@ -1,6 +1,10 @@
 ﻿@model Chalmers.ILL.Models.Page.ChalmersILLModel
 @{
     Layout = null;
+    // Fast cache-bustingsträng istället för @@DateTime.Now.Ticks (som gjorde att dessa tre
+    // filer aldrig cachades - varje sidladdning hämtade om dem). Bumpa manuellt när
+    // chalmers.ill.{main,print}.css eller chalmers.ill.js ändras.
+    const string staticAssetVersion = "1";
 }
 
 @{
@@ -26,8 +30,8 @@
 		<title>Chalmers fjärrlån &amp; bokförvärv</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css">
-        <link rel="stylesheet" href="/css/chalmers.ill.main.css?r=@DateTime.Now.Ticks" media="screen">
-        <link rel="stylesheet" href="/css/chalmers.ill.print.css?r=@DateTime.Now.Ticks" media="print">
+        <link rel="stylesheet" href="/css/chalmers.ill.main.css?v=@staticAssetVersion" media="screen">
+        <link rel="stylesheet" href="/css/chalmers.ill.print.css?v=@staticAssetVersion" media="print">
         <link rel="stylesheet" href="/lib/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css" />
         <link rel="stylesheet" href="/lib/bootstrap-markdown/css/bootstrap-markdown.min.css" />
         <script src="/lib/jquery/dist/jquery.min.js"></script>
@@ -149,7 +153,7 @@
         <script src="/lib/signalr/signalr.min.js" type="text/javascript"></script>
 
         <!-- Custom Javascript for this app -->
-        <script src="/scripts/chalmers.ill.js?r=@DateTime.Now.Ticks" type="text/javascript"></script>
+        <script src="/scripts/chalmers.ill.js?v=@staticAssetVersion" type="text/javascript"></script>
 
         <script type="text/javascript">
     $(function () {

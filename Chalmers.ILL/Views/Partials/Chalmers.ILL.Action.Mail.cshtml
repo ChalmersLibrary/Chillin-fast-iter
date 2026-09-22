@@ -110,9 +110,9 @@
                 <div>
                     <div class="btn-group">
                         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-                            <span id="currently-selected-status" data-status-id="-10" data-cancellation-reason-id="-10" data-purchased-material-id="-10">Ej vald</span> <span class="caret"></span>
+                            <span id="mail-currently-selected-status" data-status-id="-10" data-cancellation-reason-id="-10" data-purchased-material-id="-10">Ej vald</span> <span class="caret"></span>
                         </button>
-                        <ul class="dropdown-menu" id="orderitem-statuslist" role="menu">
+                        <ul class="dropdown-menu" id="orderitem-mail-statuslist" role="menu">
                             <li><a href="#" onclick="updateSelectedStatus(-1, 'Ingen förändring', -1, -1); event.preventDefault();">Ingen förändring</a></li>
                             @{
                                 var allowedStatusValues = new List<String>() { "Annullerad", "Inköpt" };
@@ -197,7 +197,7 @@
         });
 
         function updateSelectedStatus(newStatusId, newStatusText, cancellationReasonId, purchasedMaterialId) {
-            var currSelectedStatusObj = $("#currently-selected-status");
+            var currSelectedStatusObj = $("#mail-currently-selected-status");
             currSelectedStatusObj.data("status-id", newStatusId);
             currSelectedStatusObj.data("cancellation-reason-id", cancellationReasonId);
             currSelectedStatusObj.data("purchased-material-id", purchasedMaterialId);
@@ -205,7 +205,7 @@
         }
 
         function submitMailDispatch(obj) {
-            var newStatusObj = $("#currently-selected-status");
+            var newStatusObj = $("#mail-currently-selected-status");
             var newStatusId = newStatusObj.data("status-id");
             var newStatusCancellationReasonId = newStatusObj.data("cancellation-reason-id");
             var newStatusPurchasedMaterialId = newStatusObj.data("purchased-material-id");

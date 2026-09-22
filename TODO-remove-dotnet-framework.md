@@ -2877,12 +2877,19 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   (inloggning via en delad `LoginAsSuperAdminAsync`-hjälpmetod, delad med föregående punkts test),
   verifierat att det fallerar utan fixen. 227/227 gröna.
 
-- [ ] **Byt cache-bustingen i `Views/ChalmersILL.cshtml:150` mot en versionssträng**
+- [x] **Byt cache-bustingen i `Views/ChalmersILL.cshtml:150` mot en versionssträng**
   `?r=@DateTime.Now.Ticks` gör att filen (nu `/lib/signalr/signalr.min.js`, se fas 5:s
   bower-ersättning ovan) aldrig cachas — varje sidladdning hämtar om den. Kosmetiskt, inte ett
   deploy-hinder; byt mot en fast versionssträng eller `asp-append-version` när det finns tid.
 
-- [ ] **Fler dubblerade DOM-id:n kvar att döpa om**
+  **Genomfört 2026-09-22.** Fanns på tre ställen, inte bara ett (`chalmers.ill.main.css`,
+  `chalmers.ill.print.css`, `chalmers.ill.js`). Bytt till en delad `const string
+  staticAssetVersion = "1"` (bumpas manuellt när någon av de tre filerna ändras) — inte
+  `asp-append-version`, eftersom projektet inte har någon `@@addTagHelper` i `_ViewImports.cshtml`
+  och att slå på inbyggda tag helpers globalt bara för det här hade varit en bredare risk än
+  vad en kosmetisk punkt motiverar. 230/230 gröna, oförändrat.
+
+- [x] **Fler dubblerade DOM-id:n kvar att döpa om**
   Hittat under fas 11:s genomklick 2026-09-22 (se fyndet under "~44 anropen" ovan):
   `id="orderitem-statuslist"` fanns på tre olika `<ul>` i `Chalmers.ILL.OrderItem.cshtml` (status,
   leveransbibliotek, inköpsbibliotek) — de två sistnämnda omdöpta där, som en del av den punkten.
@@ -2892,3 +2899,11 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   samtidigt som `Chalmers.ILL.OrderItem.cshtml`s egen lista när en åtgärdsflik är öppen. Ofarligt
   idag (ingen kod läser id:na, bara inline `onclick`), men ogiltig HTML och en fälla för framtida
   `getElementById`-kod. Lågprioriterat, oberoende av migreringsarbetet i övrigt.
+
+  **Genomfört 2026-09-22.** Verifierat först att inget i `chalmers.ill.js` (eller någon annan
+  fil) läser dessa id:n — bara resp. partials egna inline-`onclick`/`$(...)`-anrop. Döpt om till
+  `orderitem-mail-statuslist`/`mail-currently-selected-status` i `Chalmers.ILL.Action.Mail.cshtml`
+  och `orderitem-logentry-statuslist`/`logentry-currently-selected-status` i
+  `Chalmers.ILL.Action.LogEntry.cshtml`, samt de tillhörande `$("#...")`-selektorerna i respektive
+  fils egen `<script>`-block. `Chalmers.ILL.OrderItem.cshtml`s egen `orderitem-statuslist` orörd
+  (redan unik). 230/230 gröna, oförändrat.
