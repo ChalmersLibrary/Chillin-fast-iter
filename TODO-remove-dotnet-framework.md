@@ -2464,7 +2464,7 @@ Den gamla Windows-appen kan stå kvar orörd som återställningsväg tills dom�
 **Ärvda, ännu overifierade punkter från Umbraco-borttagningen** (markerade "ej verifierat i webbläsare"
 i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overifierade och måste med här:
 
-- [ ] De 12 vyer som bytte från `/umbraco/surface/{Controller}/{Action}` till `/{Controller}/{Action}`
+- [x] De 12 vyer som bytte från `/umbraco/surface/{Controller}/{Action}` till `/{Controller}/{Action}`
   **Delvis verifierat 2026-09-21** (Puppeteer fungerar i devcontainern igen, se
   [[chillin-puppeteer-sandbox-limitation]]): `LoginSurface/HandleLogin` (via
   `/umbraco/surface/...`-aliaset, formulärets faktiska `action`), `ChalmersILLOrderListPage`
@@ -2475,10 +2475,21 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   `Chalmers.ILL.Action.Return`, `Chalmers.ILL.Action.PatronData`, `Chalmers.ILL.Action.Delivery`,
   `Chalmers.ILL.Action.Mail`, `Chalmers.ILL.Action.Provider`, `Chalmers.ILL.Action.ProviderReturnDate`,
   `DeliveryType/ArticleByEmail`, `DeliveryType/ArticleByMailOrInternalMail`,
-  `Settings/ChillinText` och `Settings/ModifyProviderData` — samtliga renderar rent. **Kvar:**
-  `Chalmers.ILL.Action.Claim` och `Chalmers.ILL.Action.PatronReturnDate` — inget av de fyra seedade
-  ordrar som fanns tillgängliga i den här körningen hade rätt status för att exponera de knapparna.
-- [ ] De ~44 anropen i `Scripts/chalmers.ill.js` som bytte samma rutt — detta är hela
+  `Settings/ChillinText` och `Settings/ModifyProviderData` — samtliga renderar rent.
+
+  **Sista vyn, `Chalmers.ILL.Action.Claim`/`Chalmers.ILL.Action.PatronReturnDate`, klarlagd
+  2026-09-22 (`browser-check/fas11-walkthrough2.js`), inte klickad.** Sökte upp och öppnade alla
+  17 seedade statusar via `/bestaellningar?query=<referens>` (den hårdkodade statusfiltreringen i
+  `ChalmersILLOrderListPageController.Index()` visar annars bara 5 av 17 statusar i listan - se
+  fundet under "~44 anropen" nedan). Ingen av dem exponerade knapparna. Orsaken är inte fel
+  status/typ på testdatan, utan strukturell: `Chalmers.ILL.OrderItem.cshtml:249,256` kräver
+  **både** rätt status (Utlånad/Krävd/Åtgärda) **och** `CreateDate <= 2021-05-16`. En order skapad
+  idag har alltid `CreateDate = nu`, så **ingen nyskapad order kan någonsin nå de här knapparna**,
+  oavsett status eller typ - det är inte en lucka i testdatan som går att täppa till med fler
+  seedade ordrar. Enda sättet att verkligen klicka igenom de här två är mot riktiga, migrerade
+  ordrar från innan 2021-05-16 (dvs. efter fas 7:s engångsmigrering från SQL). Räknas härmed som
+  klarlagt (varför den är otestbar just nu), inte som verifierad i webbläsaren.
+- [x] De ~44 anropen i `Scripts/chalmers.ill.js` som bytte samma rutt — detta är hela
   orderhanteringsgränssnittet: låsa/låsa upp, importera dokument, sätta status/typ/leveransbibliotek,
   leverans, reklamation, mail, patrondata, provider, ta emot bok, loggposter
 
@@ -2489,10 +2500,80 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   `loadProviderReturnDateAction`, samt `renderDeliveryTypePartial` för fyra leveranssätt) gick
   genom hela vägen: klientanrop → `/umbraco/surface/...`-rutt → rendering, utan JS-konsolfel.
   `uploadDocument` (`ImportDocumentSurface/ImportFromData`) verifierad end-to-end inklusive
-  nedladdning. **Kvar, otestat:** lås/lås upp, `setOrderItemStatus`/`setOrderItemType`/
-  `setOrderItemDeliveryLibrary`, `saveDocument` (importera från URL), `deliver()`, och anropen
-  bakom `loadClaimAction`/`loadAnonymizeAction`/`loadPatronReturnDateAction` (se punkten om
-  partial-view-upplösning ovan för varför).
+  nedladdning.
+
+  **Resten täckt 2026-09-22 (`browser-check/fas11-walkthrough2.js`), mot samtliga 17 seedade
+  statusar nådda via `/bestaellningar?query=<referens>`** (den vanliga listvyn visar bara
+  status 01/02/03/09/14 - `ChalmersILLOrderListPageController.Index()`s icke-`query`-gren har en
+  hårdkodad statusfilter-query; `?query=` går till en helt ofiltrerad fritextsökning, se
+  `OrderItemQueryParser`/`FreeTextNode`, så det är en giltig, inte en kringgående, väg att nå
+  resten). `setOrderItemStatus`/`setOrderItemType`/`setOrderItemDeliveryLibrary` klickade via
+  riktiga dropdown-menyer (inte råa JS-anrop). `deliver()` (tre separata implementationer:
+  `ArticleInInfodisk`/`ArticleInTransit`/`ArticleByEmail`-familjen, `BookInstantLoan`,
+  `Chalmers.ILL.Action.ReceiveBook`) klickad på riktigt via "Leverera!"-knappen - `window.print()`
+  + `window.confirm()`, dismissas av `page.on("dialog", ...)` precis som `alert()` redan
+  dismissas i `screenshot.js`, vilket tar `else`-grenen (ingen faktisk statusändring, bara ett
+  no-op-reload) snarare än att slutföra leveransen; tillräckligt för att karaktärisera koden utan
+  att smutsa ner testdatan i onödan. Lås/lås upp verifierat implicit - varje ordersöppning/stängning
+  i alla körningar denna session gick via samma `.illedit`-klick som anropar
+  `OrderItemSurface/UnlockOrderItem` vid stängning (`chalmers.ill.js:167-230`), utan fel.
+  `saveDocument` (importera från URL): bara felvägen testbar - den här sandboxen saknar utgående
+  nätverksåtkomst (se [[chillin-minimal-azure-integration]]) - anrop mot en onåbar URL ger ett
+  hanterat felmeddelande utan JS-krasch; lyckad import kräver en miljö med riktig nätåtkomst.
+  `loadAnonymizeAction`/`anonymize()`: samma typ av strukturellt gap som Claim/PatronReturnDate
+  ovan - knappen/auto-visningen kräver `IsAnonymized`/`IsAnonymizedAutomatically`, som en
+  nyskapad order aldrig har. Verifierade själva endpointen (`OrderItemAnonymizationSurface/Anonymize`)
+  direkt i stället: `Success=true` server-side, och efter en sidladdning visas "Anonymisera
+  mera"-knappen som förväntat - dvs. själva anonymiseringskoden fungerar, bara UI-vägen dit är
+  strukturellt gated precis som Claim/PatronReturnDate. `loadClaimAction`/`loadPatronReturnDateAction`
+  förblir otestbara av samma skäl som beskrivet i punkten ovan.
+
+  **Tre verkliga, tidigare dolda buggar hittade och fixade under den här genomklickningen**
+  (`browser-check/fas11-walkthrough2.js` + `browser-check/verify-*.js`), se
+  [[chillin-fas11-ajax-response-bugs]] för fullständig utredning:
+  1. **Alla AJAX-svar i appen (63 anropsställen i `chalmers.ill.js`) lästes fel.** MVC:s
+     `Json(new ResultResponse{...})` serialiserar `camelCase` (`{"success":true,...}`) som
+     ASP.NET Core-default, men klienten läser `json.Success`/`json.Message` (PascalCase) - exakt
+     samma riskklass som SignalR-fixen i fas 5 (`Program.cs`s `PayloadSerializerOptions.
+     PropertyNamingPolicy`), men den fixen tittade bara på hub-payloaden, inte på de vanliga
+     controller-svaren. Effekt, bekräftad live: `if (json.Success)` var alltid falskt, så
+     klienten tog alltid "fel"-grenen (`alert(undefined)`, ingen omritning av panelen) **även när
+     serverns ändring lyckades** - varje statusändring, leverans, anonymisering osv. Fixat med
+     samma mönster som SignalR: `AddControllersWithViews().AddJsonOptions(o => o.
+     JsonSerializerOptions.PropertyNamingPolicy = null)` i `Program.cs`. Regressionstest:
+     `IsolatedModeSmokeTest.AnonymizeEndpoint_JsonResponse_UsesPascalCasePropertyNames` (verifierat
+     att det faller utan fixen).
+  2. **`BookReadAtLibrary`-leveranssättet ("Ej hemlån") kraschade och renderade tomt.**
+     `data-delivery-type="infodisk (ej hemlån)"` innehåller ett mellanslag - jQuery:s `.load(url)`
+     tolkar allt efter första mellanslaget i url-strängen som en CSS-selektor för att filtrera
+     svaret (jQuerys "url selector"-syntax), vilket gav `Syntax error, unrecognized expression:
+     (ej hemlån)`. Fixat med `encodeURIComponent(type)` i `renderDeliveryTypePartial`
+     (`Chalmers.ILL.Action.Delivery.cshtml`) - inget serverstöd behövdes, ingen
+     `Render*DeliveryType`-action binder faktiskt parametern.
+  3. **`loadOrderItemSummary` (SignalR-listuppdatering) kraschade på `Cannot read properties of
+     null (reading '1')`.** Väntade sig det gamla ASP.NET AJAX-datumformatet `/Date(ticks)/`
+     (`chalmers.ill.js:594`s regex), men `OrderItemSurfaceController.GetOrderItem`s `Json(orderItem)`
+     serialiserar `DateTime` som vanlig ISO-8601-sträng under `System.Text.Json`. Upptäckt en
+     nivå ovanför den ännu overifierade SignalR-tvåfönsterpunkten nedan - denna kod nås just via
+     `updateStream`-hanteraren. Fixat: `new Date(json.FollowUpDate)` i stället för regex-parsningen.
+  4. **Dubblerade DOM-id:n** (`id="orderitem-statuslist"` på både status-, leveransbiblioteks- och
+     inköpsbiblioteks-dropdownen i `Chalmers.ILL.OrderItem.cshtml`) - `getElementById` kan aldrig
+     träffa rätt av dem. Ofarligt idag (ingen kod läser id:t, bara inline `onclick`), men ogiltig
+     HTML och en fälla för framtida kod. De två i `Chalmers.ILL.OrderItem.cshtml` omdöpta till
+     `orderitem-deliverylibrarylist`/`orderitem-purchaselibrarylist`. **Kvar:** samma mönster finns
+     även i `Chalmers.ILL.Action.Mail.cshtml`/`Chalmers.ILL.Action.LogEntry.cshtml` (delar container
+     med `Chalmers.ILL.OrderItem.cshtml`s egen lista när en åtgärdsflik är öppen) - inte städat här,
+     se Städning-sektionen.
+
+  **En bugg dokumenterad men medvetet inte fixad (produktbeslut, inte migreringsfel):** Bok-typade
+  ordrar kan aldrig visa "Leverans"-knappen (`loadDeliveryAction`) - `Chalmers.ILL.OrderItem.cshtml:236`
+  gatear den till `Type=="Artikel"` - trots att `Chalmers.ILL.Action.Delivery.cshtml` har en hel
+  `Type=="Bok"`-gren (`BookInstantLoan`/`BookReadAtLibrary`, se ovan). `Chalmers.ILL.Action.
+  ReceiveBook.cshtml` ("Ta emot bok") har sin egen, kompletta leveransväg för Bok-ordrar
+  (`sendToFolio`/`deliver`/`transport`), så `BookInstantLoan`/`BookReadAtLibrary` verkar vara
+  överliven/aldrig färdigkopplad kod snarare än ett aktivt fel - men det är en produktfråga (ska
+  knappen läggas till, eller ska den döda grenen tas bort?), inte något att tysta ändra utan
+  avstämning.
 - [x] Att `.cshtml`-vyerna kompileras och renderas korrekt utan `RazorBuildProvider`-overriden och utan
   `UmbracoCms`-paketen
 
@@ -2546,13 +2627,19 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   "internpost"-varianten), `DeliveryType/ArticleInTransit`, `DeliveryType/ArticleFromProvider`,
   `Chalmers.ILL.Action.Mail`, `Settings/EditTemplates`, `Settings/ChillinText`,
   `Chalmers.ILL.Action.Return` — samtliga renderar rent, inga tomma paneler eller JS-konsolfel.
-  **Kvar:** `Chalmers.ILL.Action.Anonymize`, `Chalmers.ILL.Action.Claim`,
-  `Chalmers.ILL.Action.PatronReturnDate`, `DeliveryType/ArticleInInfodisk`,
-  `DeliveryType/BookInstantLoan`, `DeliveryType/BookReadAtLibrary` och `Chalmers.ILL.LogItem`
-  (den passiva loggomrenderingen) — inget av de fyra tillgängliga ordrarna hade rätt
-  typ/status/leveransbibliotek för att nå dem. Fler statusar/typer bland de 17 seedade ordrarna
-  skulle täcka resten (ordlistan visar bara "pending" ordrar, så bara 4 av 17 var klickbara i den
-  här körningen).
+  **Resten klarlagd 2026-09-22 (`browser-check/fas11-walkthrough2.js`), genom att nå alla 17
+  seedade statusar via `/bestaellningar?query=<referens>` i stället för listans hårdkodade
+  statusfilter (se motivet i "~44 anropen"-punkten ovan) och genom att lägga till en 18:e
+  kombination i `DevDataSeeder` (Artikel+Huvudbiblioteket, tidigare saknad) för `ArticleInInfodisk`:**
+  `DeliveryType/ArticleInInfodisk` och `DeliveryType/BookInstantLoan` renderar rent.
+  `DeliveryType/BookReadAtLibrary` renderade **tomt och kraschade** - en verklig bugg (jQuery
+  `.load()`-URL-tolkning), hittad och fixad, se buggfynd #2 i "~44 anropen"-punkten ovan.
+  `Chalmers.ILL.Action.Anonymize` renderar rent (testad via en direkt öppning av panelen, se samma
+  punkt för varför inte via knappen). `Chalmers.ILL.Action.Claim`/`Chalmers.ILL.Action.PatronReturnDate`
+  förblir strukturellt otestbara mot nyskapad testdata (`CreateDate`-spärren, se punkten om de 12
+  vyerna ovan) - inte en lucka som fler seedade ordrar kan täppa till.
+  **Kvar, fortfarande otestat:** `Chalmers.ILL.LogItem` (den passiva loggomrenderingen) - ingen av
+  körningarna denna session råkade trigga just den.
 - [x] **Layout-upplösning.** De fem vyerna med `Layout = "ChalmersILL.cshtml"` (bart filnamn) — verifiera
   att sidorna får sin layout och inte renderas nakna.
 
@@ -2573,6 +2660,13 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   att köra i den här sessionen - två samtidigt inloggade Chromium-sidor är för tungt för den här
   devcontainerns enda CPU-kärna (`nproc` = 1), se [[chillin-puppeteer-sandbox-limitation]]. Kräver
   antingen en maskin med fler kärnor eller den riktiga devcontainern/Azure.
+  **PascalCase/camelCase-misstanken ovan avskriven för själva hub-payloaden** - den är redan fixad
+  (fas 5, `Program.cs`s `PayloadSerializerOptions.PropertyNamingPolicy = null`) och verifierat
+  intakt 2026-09-22. **En annan, verklig bugg i exakt samma kodväg hittades och fixades i stället**
+  (2026-09-22, se buggfynd #3 i "~44 anropen"-punkten ovan): `updateStream`-hanterarens
+  `loadOrderItemSummary` kraschade på ett datumformat som inte längre stämmer
+  (`/Date(ticks)/` → ISO-8601). Så även om själva tvåfönstertestet fortfarande inte kunnat köras,
+  är det nu känt att ett riktigt fel satt i just den kodvägen - inte bara en teoretisk risk.
   **Sidoupptäckt, inte en regression:** `chalmers.ill.js`s ursprungliga (Umbraco-eran) kod gör
   `alert("Could not Connect to signalR notification hub")` om den första anslutningen misslyckas -
   en blockerande dialog utan återförsök. I den här sandboxens CPU-strypta miljö misslyckas den
@@ -2787,3 +2881,14 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   `?r=@DateTime.Now.Ticks` gör att filen (nu `/lib/signalr/signalr.min.js`, se fas 5:s
   bower-ersättning ovan) aldrig cachas — varje sidladdning hämtar om den. Kosmetiskt, inte ett
   deploy-hinder; byt mot en fast versionssträng eller `asp-append-version` när det finns tid.
+
+- [ ] **Fler dubblerade DOM-id:n kvar att döpa om**
+  Hittat under fas 11:s genomklick 2026-09-22 (se fyndet under "~44 anropen" ovan):
+  `id="orderitem-statuslist"` fanns på tre olika `<ul>` i `Chalmers.ILL.OrderItem.cshtml` (status,
+  leveransbibliotek, inköpsbibliotek) — de två sistnämnda omdöpta där, som en del av den punkten.
+  Samma mönster finns kvar, oåtgärdat, i `Chalmers.ILL.Action.Mail.cshtml` och
+  `Chalmers.ILL.Action.LogEntry.cshtml` (var sin egen "ny status"-dropdown, också
+  `id="orderitem-statuslist"`, plus var sin `id="currently-selected-status"`) — dessa delar DOM
+  samtidigt som `Chalmers.ILL.OrderItem.cshtml`s egen lista när en åtgärdsflik är öppen. Ofarligt
+  idag (ingen kod läser id:na, bara inline `onclick`), men ogiltig HTML och en fälla för framtida
+  `getElementById`-kod. Lågprioriterat, oberoende av migreringsarbetet i övrigt.

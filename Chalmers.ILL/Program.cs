@@ -57,7 +57,22 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 
-builder.Services.AddControllersWithViews(FilterConfig.RegisterGlobalFilters);
+builder.Services.AddControllersWithViews(FilterConfig.RegisterGlobalFilters)
+    .AddJsonOptions(options =>
+    {
+        // Same risk, same fix as the SignalR PropertyNamingPolicy below, just missed at the time
+        // (fas 5 only looked at the hub payload) - found in fas 11 browser testing: every
+        // Surface controller's plain `Json(new ResultResponse { Success, Message })` (and the two
+        // machine-to-machine endpoints' payloads, PublicDataSurfaceController/
+        // SystemSurfaceController) serialized as camelCase under ASP.NET Core's MVC default,
+        // while chalmers.ill.js reads json.Success/json.Message etc. in PascalCase (63 call
+        // sites) - confirmed live: every one of those calls silently took its "failure" branch
+        // (alert(undefined), no view refresh) even when the server-side mutation succeeded.
+        // Pre-migration MVC4/Json.NET also defaulted to PascalCase, so this restores original
+        // behaviour rather than introducing new inconsistency for GetChillinDataForSierraPatron's
+        // external (Sierra) consumer.
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+    });
 builder.Services.Configure<RazorViewEngineOptions>(ViewEngineConfig.RegisterViewEngines);
 
 builder.Services.AddSignalR().AddJsonProtocol(options =>

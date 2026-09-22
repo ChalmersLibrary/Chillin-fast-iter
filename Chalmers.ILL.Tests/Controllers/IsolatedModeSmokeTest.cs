@@ -246,6 +246,42 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
+        // Found via fas11-walkthrough2.js (fas 11 browser verification, 2026-09-22): every AJAX
+        // action in chalmers.ill.js reads its JSON response as json.Success/json.Message (63 call
+        // sites, all PascalCase - Views/Partials/*.cshtml's inline scripts are the same). ASP.NET
+        // Core MVC's default Controller.Json(...) serializes with System.Text.Json's camelCase
+        // policy, so every one of those responses actually came back as {"success":...,
+        // "message":...} - confirmed live: the client's `if (json.Success)` branch was always
+        // false, so it always ran the "failure" path (alert(undefined) - json.Message is also
+        // undefined - and no view refresh), even though the server-side mutation genuinely
+        // succeeded. Exactly the same risk class as the SignalR payload fix already made in fas 5
+        // (see Program.cs's PayloadSerializerOptions.PropertyNamingPolicy comment) - that one
+        // only looked at the hub, this is the same bug in every plain controller Json() response.
+        // Fixed by giving AddControllersWithViews the matching AddJsonOptions in Program.cs.
+        [TestMethod]
+        public async Task AnonymizeEndpoint_JsonResponse_UsesPascalCasePropertyNames()
+        {
+            using var factory = CreateFactory(seedSuperAdminAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsSuperAdminAsync(client);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/OrderItemAnonymizationSurface/Anonymize")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["nodeId"] = "1",
+                    ["reference"] = "anonymiserad testreferens",
+                    ["logsSerialized"] = "[]"
+                })
+            };
+            var response = await client.SendAsync(request);
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            StringAssert.Contains(body, "\"Success\":true", "Response should use the PascalCase property name chalmers.ill.js actually reads (json.Success).");
+            Assert.IsFalse(body.Contains("\"success\""), "Response must not use camelCase - the client never reads json.success and would silently treat this as a failure.");
+        }
+
         // Shared by both view-rendering regression tests above - DevDataSeeder (fas 10) always
         // creates this account with SuperAdmin/Administrator/Desk, so any authenticated page is
         // reachable through it without a test needing its own members.json setup.

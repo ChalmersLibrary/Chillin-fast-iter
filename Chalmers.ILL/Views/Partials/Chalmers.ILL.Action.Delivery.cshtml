@@ -111,7 +111,16 @@
 
     function renderDeliveryTypePartial(renderApiMethod, type) {
         $("#loading-delivery-type-partial-view").show();
-        $("#delivery-type-view").html("").show().load("/OrderItemDeliverySurface/" + renderApiMethod + "?nodeId=" + @Model.OrderItem.NodeId + "&deliveryType=" + type,
+        // encodeURIComponent is required, not cosmetic: jQuery's .load(url) treats the first
+        // literal space in the url string as the start of a "url selector" filter expression
+        // (https://api.jquery.com/load/). "infodisk (ej hemlån)" (BookReadAtLibrary's
+        // data-delivery-type) has both a space and parentheses, which jQuery then tries to parse
+        // as a CSS selector - "Syntax error, unrecognized expression: (ej hemlån)" - so the
+        // partial never loads. Found via fas11-walkthrough2.js (fas 11 browser verification,
+        // 2026-09-22). No server-side change needed: none of the OrderItemDeliverySurfaceController
+        // Render*DeliveryType actions actually bind a deliveryType parameter, so this value was
+        // always inert past the client anyway.
+        $("#delivery-type-view").html("").show().load("/OrderItemDeliverySurface/" + renderApiMethod + "?nodeId=" + @Model.OrderItem.NodeId + "&deliveryType=" + encodeURIComponent(type),
             function (responseText, textStatus, req) {
                 $("#loading-delivery-type-partial-view").hide();
             }

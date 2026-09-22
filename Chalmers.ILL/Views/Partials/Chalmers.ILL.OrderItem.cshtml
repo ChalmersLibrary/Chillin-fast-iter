@@ -180,7 +180,7 @@
                 <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">
                     Leveransbibliotek <span class="caret"></span>
                 </button>
-                <ul class="dropdown-menu" id="orderitem-statuslist" role="menu">
+                <ul class="dropdown-menu" id="orderitem-deliverylibrarylist" role="menu">
                     @{
                         foreach (var library in Model.AvailableDeliveryLibraries)
                         {
@@ -203,7 +203,7 @@
                     <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">
                         Inköpsbibliotek <span class="caret"></span>
                     </button>
-                    <ul class="dropdown-menu" id="orderitem-statuslist" role="menu">
+                    <ul class="dropdown-menu" id="orderitem-purchaselibrarylist" role="menu">
                         @{
                             foreach (var library in Enum.GetValues(typeof(OrderItemModel.PurchaseLibraries)).Cast<OrderItemModel.PurchaseLibraries>())
                             {

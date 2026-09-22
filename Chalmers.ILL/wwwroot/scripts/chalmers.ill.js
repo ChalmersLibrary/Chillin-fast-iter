@@ -591,7 +591,16 @@ function loadOrderItemSummary(id)
 
             // Update follow up date.
             // TODO: Fix culture sensitive date string creation.
-            var followUpDate = new Date(parseInt(json.FollowUpDate.toString().match(/Date\(([0-9]*)\)/)[1]));
+            // json.FollowUpDate used to arrive as the old ASP.NET AJAX "/Date(ticks)/" wire format
+            // (Web API's pre-System.Text.Json default). OrderItemSurfaceController.GetOrderItem's
+            // plain Json(orderItem) now serializes DateTime as a normal ISO-8601 string instead, so
+            // the old regex always returned null and this threw "Cannot read properties of null
+            // (reading '1')" - silently, since it's only ever reached from the SignalR
+            // updateStream handler (fas 11 browser verification, 2026-09-22: found while
+            // characterizing a Bok order's otherwise-unreachable Leverans view, not the
+            // two-window live-update test itself - the sandbox is still too CPU-constrained for
+            // that, see TODO's "SignalR-realtidsuppdateringar" entry).
+            var followUpDate = new Date(json.FollowUpDate);
             $("#" + json.NodeId + " div[data-column='createDate']").text(followUpDate.getFullYear() + "-" + ("00" + (followUpDate.getMonth() + 1)).substr(-2) + "-" + ("00" + followUpDate.getDate()).substr(-2));
 
             // Update type

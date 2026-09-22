@@ -189,10 +189,16 @@ namespace Chalmers.ILL.Isolated
         // TODO-remove-umbraco.md ("åäö renderas rätt") has something to actually show it if it
         // ever comes back. FollowUpDate alternates past/future to exercise the pending/overdue
         // styling on the order list without needing a separate "overdue" fixture.
+        //
+        // 02:Åtgärda is deliberately Artikel+Z (Huvudbiblioteket), not the ZL used by the other
+        // Artikel orders below: Chalmers.ILL.Action.Delivery.cshtml only offers the
+        // ArticleInInfodisk delivery-type view for Artikel+Huvudbiblioteket (every other
+        // library/type combination falls through to ArticleInTransit), and ZL is still exercised
+        // by 05/09/13/15 below, so this doesn't lose any other coverage.
         private static readonly SeedOrder[] SeedOrders = new[]
         {
             new SeedOrder { Status = "01:Ny", Type = "Bok", LibrarySigel = "Z", PatronName = "Åsa Öhman", TitleInformation = "Kärlek och kaos i Köpenhamn", OriginalOrder = "Beställning av bok från låntagare Åsa Öhman.", Reference = "ref-ny-001", FollowUpDate = DateTime.Now.AddDays(7) },
-            new SeedOrder { Status = "02:Åtgärda", Type = "Artikel", LibrarySigel = "ZL", PatronName = "Björn Ärlig", TitleInformation = "En artikel om ångbåtar på Vänern", OriginalOrder = "Artikelbeställning, ofullständig referens.", Reference = "ref-atgarda-002", FollowUpDate = DateTime.Now.AddDays(-2) },
+            new SeedOrder { Status = "02:Åtgärda", Type = "Artikel", LibrarySigel = "Z", PatronName = "Björn Ärlig", TitleInformation = "En artikel om ångbåtar på Vänern", OriginalOrder = "Artikelbeställning, ofullständig referens.", Reference = "ref-atgarda-002", FollowUpDate = DateTime.Now.AddDays(-2) },
             new SeedOrder { Status = "03:Beställd", Type = "Inköpsförslag", LibrarySigel = "ZA", PatronName = "Gösta Lindqvist", TitleInformation = "Arkitekturens historia i Göteborg", OriginalOrder = "Inköpsförslag från student.", Reference = "ref-bestalld-003", FollowUpDate = DateTime.Now.AddDays(14) },
             new SeedOrder { Status = "04:Väntar", Type = "Bok", LibrarySigel = "Z", PatronName = "Märta Sjögren", TitleInformation = "Väntans tid - en roman", OriginalOrder = "Väntar på leverans från annat bibliotek.", Reference = "ref-vantar-004", FollowUpDate = DateTime.Now.AddDays(30) },
             new SeedOrder { Status = "05:Levererad", Type = "Artikel", LibrarySigel = "ZL", PatronName = "Astrid Nordqvist", TitleInformation = "Nordiska språkkontakter, en översikt", OriginalOrder = "Levererad artikel, redo för avhämtning.", Reference = "ref-levererad-005", FollowUpDate = DateTime.Now.AddDays(-1) },
