@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fas 7, "Bygg engångsmigreringen från SQL till filer" (TODO-remove-dotnet-framework.md).
+       Standalone, one-time-use tool: reads the old EF6 schema (SQL Server / Azure SQL) and writes
+       out the same per-order JSON files FileOrderItemManager reads. Never point the connection
+       string argument at the live database directly - restore an exported copy (e.g. a bacpac) to
+       a throwaway SQL Server instance first and point this at that. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Chalmers.ILL.Migration</RootNamespace>
+    <AssemblyName>Chalmers.ILL.Migration</AssemblyName>
+    <Nullable>disable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Only offline-cached SQL client in this environment; deprecated in favor of
+         Microsoft.Data.SqlClient but still fully functional cross-platform (managed SNI on Linux
+         since 4.5) and sufficient for the plain SELECT-only workload here. Swap it if
+         Microsoft.Data.SqlClient becomes available. -->
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chalmers.ILL\Chalmers.ILL.csproj" />
+  </ItemGroup>
+
+</Project>

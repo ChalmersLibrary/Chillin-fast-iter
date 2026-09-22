@@ -1665,13 +1665,60 @@ EF6-på-`net10.0` behöver inte längre verifieras.
   (t.ex. en reindexeringskö) hör hemma i fas 10:s "återställningsväg om indexet tappas".
   Characterization-testerna för spara-flödet beskrivs under föregående punkt.
 
-- [ ] **Bygg engångsmigreringen från SQL till filer**
+- [x] **Bygg engångsmigreringen från SQL till filer**
   Ett fristående verktyg som läser den befintliga databasen och skriver ut en fil per order.
   Måste vara **verifierbar**: jämför antal poster, och stickprovsjämför fullständiga aggregat
   (inklusive loggposter och bilagor) mellan databas och fil. Kör om ES-indexeringen efteråt och
   jämför träffantal mot databasen.
   Detta verktyg är dessutom vad som producerar testdatan till utvecklingsmiljön — kör det mot en
   anonymiserad kopia (appen har redan `AnonymizeOrder`). Se punkten om testdata vid brytpunkten.
+
+  **Genomfört 2026-09-22.** Nytt fristående konsolprojekt `Chalmers.ILL.Migration` (net10.0, tillagt
+  i `Chalmers.ILL.sln`). Läser **inte** via EF6 — databasen har inga `[Column]`/`[Table]`/Fluent-
+  mappningar (verifierat genom att läsa samtliga 19 migrationer i det borttagna
+  `Chalmers.ILL/Migrations/` vid commit dc9b998^, incheckningen innan fas 7 tog bort dem: inget
+  `RenameColumn`/`RenameTable` förekommer någonstans), så tabell-/kolumnnamn följer ren EF6
+  code-first-konvention rakt av från den sista modellversionen (samma commit) plus FK/shadow-
+  kolumnerna från den allra första migrationen (`SierraInfo_DbId`, `OrderItemModel_NodeId`,
+  `SierraModel_DbId`), som ingen senare migration ändrade. `SqlOrderItemSource.cs` läser detta direkt
+  med `System.Data.SqlClient` (enda SQL-klienten som fanns i det lokala NuGet-cachet i den här
+  sessionen — offline, inget nätverk; `Microsoft.Data.SqlClient` är förstahandsvalet annars och bör
+  bytas in om det blir tillgängligt) mot fem tabeller grupperade i minnet
+  (`OrderItemModels`/`LogItems`/`OrderAttachments`/`SierraModels`/`SierraAddressModels`).
+
+  **Arkitektur:** `IOrderItemSource` (`ReadAll`/`ReadOne`) abstraherar källan så att
+  `MigrationRunner`/`OrderFileWriter` är testbara utan en riktig SQL Server —
+  `Chalmers.ILL.Tests/Migration/MigrationRunnerTest.cs` (7 tester, `FakeOrderItemSource`) täcker
+  filläggning per hink (`{NodeId/1000:D3}/{NodeId}.json`, samma layout som `FileOrderItemManager`),
+  att `next-node-id.txt` sätts till högsta `NodeId` + 1, att `orderid-index.json` byggs korrekt, att
+  `null`-listor för logg/bilagor normaliseras till tomma listor (samma invariant som
+  `FileOrderItemManager.ApplyReadTimeFixups` förutsätter), och — viktigast — att verifieringssteget
+  **faktiskt slår fel** när en oberoende omläsning av källan skiljer sig från den skrivna filen (inte
+  bara passerar trivialt när allt redan stämmer). `SqlOrderItemSource` självt kunde inte köras mot
+  en riktig databas i den här sessionen (ingen SQL Server tillgänglig, inget nätverk för att sätta
+  upp en) — schemamappningen är alltså verifierad genom kodgranskning av migrationshistoriken, inte
+  genom körning mot skarp data. **En riktig provkörning mot en återställd kopia krävs innan
+  verktyget litas på mot produktionsdata.**
+
+  **Verktyget pratar aldrig med den skarpa databasen direkt** (avstämt med användaren 2026-09-22):
+  `--connection-string` ska peka på en lokalt återställd kopia av en exporterad databasdump (t.ex.
+  en bacpac importerad till en engångs-SQL-Server), inte på `sb` (den skarpa Azure SQL-instansen).
+  Detta är inte automatiserat här — export/import av en riktig bacpac kräver verktyg
+  (`sqlpackage`/Azure-åtkomst) som inte fanns i den här sessionen.
+
+  **Självverifiering** (`MigrationRunner.Run`): (1) antal lästa ordrar mot antal skrivna filer, (2)
+  ett konfigurerbart stickprov (`--sample-size`, default 25) av redan skrivna ordrar där varje order
+  läses om **oberoende** från källan (`IOrderItemSource.ReadOne`, egna SQL-frågor — inte samma
+  in-minnes-gruppering som `ReadAll`) och djupjämförs mot filen på disk (logg-/bilage-/adresslistor
+  sorteras på ett stabilt nyckelfält före jämförelsen så att ordningsskillnader mellan två oberoende
+  frågor inte felaktigt rapporteras som avvikelser), (3) valfri ES-återindexering
+  (`--elasticsearch-url`/`--elasticsearch-index`) följt av jämförelse av dokumentantal mot antal
+  skrivna filer.
+
+  **Kvarstår innan verktyget kan köras mot riktig data:** en provkörning mot en faktiskt återställd
+  kopia av databasen (för att verifiera schemamappningen mot verklig data, inte bara mot
+  migrationshistoriken), samt beslut om hur en anonymiserad testdatakopia produceras för
+  utvecklingsmiljön (se punkten om testdata vid brytpunkten).
 
 - [ ] **Sätt upp backup av orderfilerna**
   Databasen gav point-in-time-återställning; filer gör det inte automatiskt. Å andra sidan är JSON

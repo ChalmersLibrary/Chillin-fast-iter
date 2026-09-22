@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Chalmers.ILL\Chalmers.ILL.csproj" />
+    <ProjectReference Include="..\Chalmers.ILL.Migration\Chalmers.ILL.Migration.csproj" />
   </ItemGroup>
 
   <ItemGroup>
