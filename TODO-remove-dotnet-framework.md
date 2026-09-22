@@ -2469,10 +2469,30 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   [[chillin-puppeteer-sandbox-limitation]]): `LoginSurface/HandleLogin` (via
   `/umbraco/surface/...`-aliaset, formulärets faktiska `action`), `ChalmersILLOrderListPage`
   (`/bestaellningar`) och `ChalmersILLDiskPage` (`/disk/`) bekräftat fungerande via riktig
-  webbläsarnavigering. Resterande ~9 vyer inte individuellt klickade igenom än.
+  webbläsarnavigering.
+
+  **Ytterligare 8 av de 9 resterande klickade igenom 2026-09-22** (`browser-check/fas11-walkthrough.js`):
+  `Chalmers.ILL.Action.Return`, `Chalmers.ILL.Action.PatronData`, `Chalmers.ILL.Action.Delivery`,
+  `Chalmers.ILL.Action.Mail`, `Chalmers.ILL.Action.Provider`, `Chalmers.ILL.Action.ProviderReturnDate`,
+  `DeliveryType/ArticleByEmail`, `DeliveryType/ArticleByMailOrInternalMail`,
+  `Settings/ChillinText` och `Settings/ModifyProviderData` — samtliga renderar rent. **Kvar:**
+  `Chalmers.ILL.Action.Claim` och `Chalmers.ILL.Action.PatronReturnDate` — inget av de fyra seedade
+  ordrar som fanns tillgängliga i den här körningen hade rätt status för att exponera de knapparna.
 - [ ] De ~44 anropen i `Scripts/chalmers.ill.js` som bytte samma rutt — detta är hela
   orderhanteringsgränssnittet: låsa/låsa upp, importera dokument, sätta status/typ/leveransbibliotek,
   leverans, reklamation, mail, patrondata, provider, ta emot bok, loggposter
+
+  **Delvis täckt 2026-09-22, som en sidoeffekt av partial-view-genomklicket ovan:** de tolv
+  `load*Action`-anropen som öppnar respektive åtgärdsflik (`loadReferenceAction`,
+  `loadPatronDataView`, `loadMailAction`, `loadProviderAction`, `loadLogEntryAction`,
+  `loadDeliveryAction`, `loadReceiveBookAction`, `loadReturnAction`,
+  `loadProviderReturnDateAction`, samt `renderDeliveryTypePartial` för fyra leveranssätt) gick
+  genom hela vägen: klientanrop → `/umbraco/surface/...`-rutt → rendering, utan JS-konsolfel.
+  `uploadDocument` (`ImportDocumentSurface/ImportFromData`) verifierad end-to-end inklusive
+  nedladdning. **Kvar, otestat:** lås/lås upp, `setOrderItemStatus`/`setOrderItemType`/
+  `setOrderItemDeliveryLibrary`, `saveDocument` (importera från URL), `deliver()`, och anropen
+  bakom `loadClaimAction`/`loadAnonymizeAction`/`loadPatronReturnDateAction` (se punkten om
+  partial-view-upplösning ovan för varför).
 - [x] Att `.cshtml`-vyerna kompileras och renderas korrekt utan `RazorBuildProvider`-overriden och utan
   `UmbracoCms`-paketen
 
@@ -2515,15 +2535,33 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   riktig Chromium-session - det var den här punkten som hittade och fällde den trasiga
   `<script>`-taggen ovan. Efter fixen renderar den partialen rent, med samtliga åtgärdsknappar
   (Typ, Status, Leveransbibliotek, Referens, Beställardata, Skicka mail, Beställning, Logga, Ta
-  emot bok, Lånetid, Retur, Misc) synliga. **Kvar:** bara den partialen är öppnad hittills - de
-  övriga ~25 (Mail, LogEntry, ReceiveBook, de fyra DeliveryType-varianterna m.fl.) inte
-  individuellt klickade igenom.
-- [ ] **Layout-upplösning.** De fem vyerna med `Layout = "ChalmersILL.cshtml"` (bart filnamn) — verifiera
+  emot bok, Lånetid, Retur, Misc) synliga.
+
+  **Ytterligare 18 av de 26 klickade igenom 2026-09-22** (`browser-check/fas11-walkthrough.js`, mot
+  fyra av de seedade ordrarna): `Settings/MemberAdmin`, `Settings/ChangePassword`,
+  `Chalmers.ILL.Action.Reference`, `Settings/ModifyProviderData`, `Chalmers.ILL.Action.Provider`,
+  `Chalmers.ILL.Action.ReceiveBook`, `Chalmers.ILL.Action.ProviderReturnDate`,
+  `Chalmers.ILL.Action.PatronData`, `Chalmers.ILL.Action.LogEntry`, `Chalmers.ILL.Action.Delivery`,
+  `DeliveryType/ArticleByEmail`, `DeliveryType/ArticleByMailOrInternalMail` (både "post"- och
+  "internpost"-varianten), `DeliveryType/ArticleInTransit`, `DeliveryType/ArticleFromProvider`,
+  `Chalmers.ILL.Action.Mail`, `Settings/EditTemplates`, `Settings/ChillinText`,
+  `Chalmers.ILL.Action.Return` — samtliga renderar rent, inga tomma paneler eller JS-konsolfel.
+  **Kvar:** `Chalmers.ILL.Action.Anonymize`, `Chalmers.ILL.Action.Claim`,
+  `Chalmers.ILL.Action.PatronReturnDate`, `DeliveryType/ArticleInInfodisk`,
+  `DeliveryType/BookInstantLoan`, `DeliveryType/BookReadAtLibrary` och `Chalmers.ILL.LogItem`
+  (den passiva loggomrenderingen) — inget av de fyra tillgängliga ordrarna hade rätt
+  typ/status/leveransbibliotek för att nå dem. Fler statusar/typer bland de 17 seedade ordrarna
+  skulle täcka resten (ordlistan visar bara "pending" ordrar, så bara 4 av 17 var klickbara i den
+  här körningen).
+- [x] **Layout-upplösning.** De fem vyerna med `Layout = "ChalmersILL.cshtml"` (bart filnamn) — verifiera
   att sidorna får sin layout och inte renderas nakna.
 
-  **Delvis verifierat 2026-09-21:** `ChalmersILL.cshtml` självt (orderlistan/huvudvyn) renderar med
-  fullständig layout (navbar, filterknappar, orderlista) - bekräftat i skärmdump. De fyra övriga
-  inte kontrollerade.
+  **Verifierat 2026-09-21/22.** `ChalmersILLOrderListPage.cshtml` (huvudvyn) och
+  `ChalmersILLSettingsPage.cshtml` (via samtliga skärmdumpar av Instaellningar-sidan) renderar med
+  fullständig layout sedan 2026-09-21. `ChalmersILLStatisticsPage.cshtml` och
+  `ChalmersILLStartPage.cshtml` verifierade 2026-09-22 — båda renderar med navbar. Femte vyn,
+  `ChalmersILLLogoutPage.cshtml`, gör `Response.Redirect("/")` innan något markup hinner skickas
+  (se koden), så dess `Layout`-tilldelning är i praktiken aldrig i spel — inget att verifiera där.
 - [ ] **SignalR-realtidsuppdateringar.** Öppna orderlistan i två webbläsarfönster, ändra en order i det
   ena och kontrollera att det andra uppdateras. Detta fångar både PascalCase/camelCase-problemet i
   payloaden och att `withAutomaticReconnect` fungerar. Testa även återanslutning genom att starta om
@@ -2552,8 +2590,13 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   `SuperAdmin`) mot en `members.json` med `PasswordHasher<T>`-genererade hashar: `Desk` landar på
   `/disk/?login=ok` (titel "Diskapp används ej längre"), `Administrator` och `SuperAdmin` landar
   båda på `/bestaellningar?login=ok`. Hittade och fixade under tiden en verklig bugg (se nedan).
-  **Inte kontrollerat:** att `SuperAdmin` specifikt ser Konton-fliken (skiljer den inte från
-  `Administrator` i det här passet) och utloggningsflödet.
+  **Konton-fliken och utloggningsflödet verifierade 2026-09-22.** `admin` (`SuperAdmin`) ser och kan
+  använda Konton-fliken (skapa, se, ta bort konton via UI, `MemberAdminSurfaceController`). `alice`
+  (`Desk`+`Administrator`, ej `SuperAdmin`) ser korrekt **inte** fliken — matchar
+  `[Authorize(Roles = "SuperAdmin")]` på controllern och `User.IsInRole("SuperAdmin")`-villkoret i
+  `ChalmersILLSettingsPage.cshtml`. Utloggning (`/ChalmersILLLogoutPage`) verifierad end-to-end: sidan
+  visar utloggat läge, och ett efterföljande försök att nå `/bestaellningar` omdirigeras korrekt till
+  inloggningssidan (sessionen är alltså verkligen upphävd server-side, inte bara dold i UI:t).
 
   **Ny bugg hittad och fixad 2026-09-21: fel lösenord gav ett webbläsar-nätverksfel, inte
   felmeddelandet.** `LoginSurfaceController.HandleLogin` omdirigerade felvägen till
@@ -2569,8 +2612,14 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   (`HandleLogin_WrongPassword_RedirectsToLoginPageWithErrorMessage`) gör en riktig HTTP-rundtripp:
   POST med fel lösenord, följer redirecten, verifierar 200 OK och att felmeddelandet faktiskt finns
   i svaret - exakt den typen av verklig-URL-verifiering det gamla testet saknade.
-- [ ] **Lösenordsbyte**, inklusive felvägen: fel nuvarande lösenord ska ge felmeddelande, inte
+- [x] **Lösenordsbyte**, inklusive felvägen: fel nuvarande lösenord ska ge felmeddelande, inte
   `?success=true` (fas 0a).
+
+  **Verifierat 2026-09-22** med Puppeteer mot ett riktigt testkonto: fel nuvarande lösenord gav
+  `?error=invalid-member` och "Fel lösenord. Ditt nuvarande lösenord stämmer inte." — inte
+  `?success=true`. Korrekt nuvarande lösenord + nytt lösenord gav `?success=true` och
+  "Ditt lösenord är nu ändrat.". Verifierat end-to-end (inte bara UI-meddelandet): en efterföljande
+  inloggning med det nya lösenordet lyckades och landade på förväntad sida.
 - [x] **De två maskin-till-maskin-endpointsen.** `POST /SystemSurface/Update`,
   `POST /SystemSurface/SendOutAutomaticMailsThatAreDue` från cron-serverns IP, och
   `GET /PublicDataSurface/GetChillinDataForSierraPatron?recordId=...` utan inloggning. Ingendera är
@@ -2590,8 +2639,19 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   Blob-uppladdning/-nedladdning av bilagor, patrondata och Libris-pollning.
   Mailutskick bör gå mot en testadress i det allra sista steget — det är den integration som kan
   orsaka mest skada om den beter sig fel, eftersom den når låntagare direkt.
-- [ ] **Filuppladdning och nedladdning av bilagor** — `MediaItemSurfaceController` är den enda platsen
+- [x] **Filuppladdning och nedladdning av bilagor** — `MediaItemSurfaceController` är den enda platsen
   som returnerar `File(...)`.
+
+  **Verifierat 2026-09-22** med Puppeteer: laddade upp en fil via det riktiga filinput-elementet
+  (`#hidden-file-upload`, `FileReader`/`ImportDocumentSurface/ImportFromData`) på en Artikel-order i
+  "Internpost till filial"-leveranssättet, bekräftade att attachment-knappen dök upp i UI:t, och
+  hämtade sedan den faktiska nedladdningslänken (`/umbraco/surface/MediaItemSurface/GetMediaItem/...`
+  — det är fortsatt den avsiktligt bevarade legacy-aliasroutn, se `MediaItemUrlBuilder`) och fick
+  200 OK med korrekt `content-type`. **Fallgrop under verifieringen, inte en appbugg:** appen måste
+  köras med `ASPNETCORE_ENVIRONMENT=Development` (eller motsvarande) för att `BaseUrl` ska bli
+  `http://localhost:5000/` — utan den föll den tillbaka på `appsettings.Production.json`s
+  platshållarvärde `"xxx"` och byggde en trasig länk (`xxxumbraco/surface/...`). Bra att veta för
+  framtida browser-check-körningar i den här sandboxen.
 - [x] **Statiska filer** serveras korrekt från `wwwroot/` (fas 10), inklusive de tecken- och
   MIME-typskänsliga (`.svg`, `.woff`, `.ttf`).
 
