@@ -2655,7 +2655,7 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   Ett skript kan verifiera att URL:en svarar, men själva poängen är att en *fysisk, redan utskriven*
   följesedel går att skanna med en riktig telefon — inte bara att en nygenererad QR-kod fungerar.
   Detta går inte att rätta i efterhand: sedlarna är utskrivna på papper och kan inte bytas ut.
-- [ ] **Partial view-upplösning.** 26 `PartialView("bart-namn")`-anrop förlitar sig på att
+- [x] **Partial view-upplösning.** 26 `PartialView("bart-namn")`-anrop förlitar sig på att
   `~/Views/Partials/{0}.cshtml` finns i `ViewLocationFormats`. Öppna en order och klicka igenom
   samtliga åtgärdsflikar — det var exakt det här som var trasigt sist.
 
@@ -2685,8 +2685,25 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   punkt för varför inte via knappen). `Chalmers.ILL.Action.Claim`/`Chalmers.ILL.Action.PatronReturnDate`
   förblir strukturellt otestbara mot nyskapad testdata (`CreateDate`-spärren, se punkten om de 12
   vyerna ovan) - inte en lucka som fler seedade ordrar kan täppa till.
-  **Kvar, fortfarande otestat:** `Chalmers.ILL.LogItem` (den passiva loggomrenderingen) - ingen av
-  körningarna denna session råkade trigga just den.
+  **Sista punkten klarlagd 2026-09-23:** `Chalmers.ILL.LogItem`
+  (`LogItemSurfaceController.GetLogItemsAsPartial`) hade ingen körning denna session råkat trigga.
+  En kodsökning visar varför: **inget klientanrop i hela kodbasen träffar den.**
+  `wwwroot/scripts/chalmers.ill.js` anropar `/LogItemSurface/GetLogItems` (JSON, rad 901) och
+  `/LogItemSurface/RenderLogEntryAction` (formuläret för att skriva en *ny* logg, andra vyn
+  `Chalmers.ILL.Action.LogEntry` - redan verifierad ovan), men aldrig
+  `/LogItemSurface/GetLogItemsAsPartial`. Själva loggistan på ordersidan renderas i stället
+  server-side direkt i `Chalmers.ILL.OrderItem.cshtml` (`foreach (var logItem in
+  Model.OrderItem.LogItemsList)`) plus klientgruppering i samma vys inline-JS - inte via denna
+  partial. Enda övriga referensen i kodbasen är en kontrollerenhetstest
+  (`LogItemSurfaceControllerTest.cs`) som anropar metoden direkt, inte via HTTP.
+  Verifierat ändå direkt via en autentiserad sessions (`browser-check/verify-logitem-partial.js`,
+  isolerat läge): `GET /LogItemSurface/GetLogItemsAsPartial?nodeid=1` ger 200 och renderar de tre
+  seedade loggposterna korrekt (inga tomma paneler, inga JS-konsolfel utöver den redan kända
+  ofarliga `/favicon.ico`-404:an). Så alla 26 partialer är nu antingen genomklickade i en verklig
+  flöde eller, i det här enda fallet, verifierade direkt eftersom inget verkligt flöde når dem.
+  **Kandidat för en framtida död-kod-städning** (i stil med fas 0b:s "Ta bort bekräftat död kod"):
+  `GetLogItemsAsPartial`, `Chalmers.ILL.LogItem.cshtml` och deras enda test kan sannolikt tas bort
+  helt - inte gjort här, eftersom den här punkten bara gällde verifiering, inte kodstädning.
 - [x] **Layout-upplösning.** De fem vyerna med `Layout = "ChalmersILL.cshtml"` (bart filnamn) — verifiera
   att sidorna får sin layout och inte renderas nakna.
 
