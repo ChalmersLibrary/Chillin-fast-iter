@@ -1803,7 +1803,7 @@ GAC/VS, inte NuGet.
   Det är MVC4, inte MVC5. Påverkar inget i migreringen men förklarar varför vissa MVC5-recept inte
   matchar koden.
 
-- [ ] **Uppgradera `Elasticsearch.Net`/`NEST` 6.3.1**
+- [x] **Uppgradera `Elasticsearch.Net`/`NEST` 6.3.1**
   Används via `ElasticClient`-registreringen i `Bootstrapper.cs:142` och
   `ElasticSearchOrderItemSearcher` (den aktiva `IOrderItemSearcher`). NEST 6.x är gammalt och sedan
   några år ersatt av `Elastic.Clients.Elasticsearch`, som har ett annorlunda API.
@@ -1819,6 +1819,10 @@ GAC/VS, inte NuGet.
   major (NEST 7/8 eller `Elastic.Clients.Elasticsearch`) kräver fortfarande den faktiska
   ES-serverversionen i drift, som ingen i den här sessionen haft tillgång till — samma typ av
   avstämning som flera andra punkter i fas 6/10 väntar på (t.ex. de 19 saknade appSettings-nycklarna).
+
+  **Avstämt 2026-09-23: ES-serverversionen i drift är 6.8.** Samma major som NEST redan ligger på
+  (6.8.11 sedan 2026-09-17 ovan) — inget klientbyte till NEST 7/8 eller
+  `Elastic.Clients.Elasticsearch` behövs. Punkten är därmed löst i sin helhet, inte bara delvis.
 
 - [x] **Uppgradera övriga låsta paketversioner**
   `Newtonsoft.Json` 8.0.1 (mycket gammal; överväg `System.Text.Json` för nya ställen men behåll
