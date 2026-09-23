@@ -2743,6 +2743,24 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   fick en `page.on("dialog", ...)`-hanterare för det. Inte åtgärdat i appkoden: fanns redan i
   "Added initial code base", inget den här migreringen orsakade, och stör inte en riktig
   användare (som bara klickar bort dialogen) på samma sätt som headless-verifiering.
+
+  **Ytterligare verifierat 2026-09-23, utan webbläsare** (`browser-check/signalr-verify.js`,
+  en lättviktig `@microsoft/signalr`-nodklient i stället för två Chromium-fönster — den här
+  sandboxens CPU-begränsning gäller bara *renderingen*, inte push-mekaniken själv, så den går
+  att verifiera direkt): kopplade upp klienten mot `/notificationHub`, triggade
+  `SetOrderItemStatus` över vanligt HTTP (samma anrop som UI:ts statusdropdown gör) och
+  bekräftade att `updateStream` kom fram med rätt `NodeId`, alla förväntade PascalCase-fält
+  och utan krasch. Körde även samma `GetOrderItem`-anrop och datumparsning som klientkodens
+  `loadOrderItemSummary` gör efter en push (`new Date(json.FollowUpDate)`), både före och efter
+  statusändringen — bekräftar att 2026-09-22:s datumformat-fix fortfarande håller. Återställde
+  ordern till ursprunglig status efteråt. Detta täcker precis den del av punkten som faktiskt
+  är kod att verifiera (rätt mottagare signaleras, payload är korrekt, klientens parsning av
+  svaret kraschar inte) och stänger risken för PascalCase/datum-regressioner utan att behöva
+  mer hårdvara.
+  **Kvarstår, och kräver fortfarande en riktig miljö:** det visuella tvåfönstertestet (att en
+  andra inloggad session faktiskt ritar om DOM:en) och återanslutning efter omstart av servern
+  med fönster öppna — ingetdera går att särskilja från ett CPU-timeout i den här sandboxen, se
+  ovan.
 - [x] **Inloggning, utloggning, rollbeteende.** Logga in som konto med respektive `Desk` (ska landa på
   `/disk/`), `Administrator` och `SuperAdmin` (ska se Konton-fliken). Verifiera att befintliga
   lösenordshashar i `members.json` fortfarande fungerar efter bytet till `PasswordHasher<T>` — det är

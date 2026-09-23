@@ -4,9 +4,11 @@
   "description": "Browser-driven verification tool for the .NET Framework removal (brytpunkten efter fas 2, TODO-remove-dotnet-framework.md). Screenshots key pages using the devcontainer's system Chromium. Run with the app already started (dotnet run in Chalmers.ILL): npm run screenshot -- [baseUrl] [login] [password]",
   "scripts": {
     "screenshot": "node screenshot.js",
-    "fas11-walkthrough": "node fas11-walkthrough.js"
+    "fas11-walkthrough": "node fas11-walkthrough.js",
+    "signalr-verify": "node signalr-verify.js"
   },
   "dependencies": {
+    "@microsoft/signalr": "^10.0.11",
     "puppeteer-core": "^24.43.1"
   }
 }
