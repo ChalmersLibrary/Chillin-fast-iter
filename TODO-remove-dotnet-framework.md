@@ -716,7 +716,7 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
   3. En WARN-ram i loggen vid uppstart som räknar upp varje fejkad söm och var läget lästes ifrån.
      I `Live` loggas en INFO-rad, så att frånvaro av bannern aldrig är tvetydig.
   4. Avstämt med användaren: **ingen banner och inga testverktyg i gränssnittet.** Utkorg och data
-     inspekteras som filer via Kudu/SSH. Notera dock att `showManulMailFetchingTools=true` redan
+     inspekteras som filer via Kudu/SSH. Notera dock att `showManualMailFetchingTools=true` redan
      renderar en chili-ikon som POST:ar `/SystemSurface/Update`
      (`Views/ChalmersILL.cshtml:48-52`) — befintlig funktionalitet, slå på den i stället för att
      bygga något nytt.
@@ -2446,7 +2446,7 @@ och `Always On`.
   Egen webbapp på Linux-planen. Samma byggartefakt som produktionsappen — skillnaden ska vara
   **uteslutande app settings**, aldrig en separat build eller gren.
   App settings: `Chillin:Isolated=true`, `Chillin:DataPath=/home/data`, `BaseUrl`,
-  `testServer=<appens värdnamn>`, `showManulMailFetchingTools=true`. **Inga** Graph-, FOLIO-, PDB-
+  `testServer=<appens värdnamn>`, `showManualMailFetchingTools=true`. **Inga** Graph-, FOLIO-, PDB-
   eller ES-hemligheter — frånvaron är i sig ett räcke som uppstartskontrollen verifierar.
   `Always On` på, `HTTPS Only` på, `InvariantGlobalization` **inte** satt (ICU krävs för
   `sv-se`-sorteringen). Kudu/SSH behövs för datauppladdning till `/home/data`.
