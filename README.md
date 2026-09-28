@@ -29,8 +29,10 @@ state - they will keep changing until that TODO list is checked off.
    (`Chalmers.ILL/Isolated/DevDataSeeder.cs`).
    The one thing that *isn't* seeded is a login account, since there's no chicken-and-egg way to
    create the first one through the UI: add a `members.json` under that data path yourself (see
-   `Chalmers.ILL/Config/members.example.json` for the format - password hashes are generated with
-   `Microsoft.AspNetCore.Identity.PasswordHasher<T>` in `IdentityV2` compatibility mode). Once
+   `Chalmers.ILL/Config/members.example.json` for the format). Generate the `PasswordHash` value
+   with `dotnet run --project Chalmers.ILL.HashPassword -- <password>` - it hashes with the exact
+   `Microsoft.AspNetCore.Identity.PasswordHasher<T>`/`IdentityV2` settings `FileMembershipProvider`
+   expects, no NuGet restore needed (builds against the ASP.NET Core shared framework only). Once
    logged in as a `SuperAdmin`, further accounts can be created from the settings page instead of
    editing the file by hand.
 4. Full/live mode is configured through `appsettings.json`/`appsettings.{Environment}.json` rather

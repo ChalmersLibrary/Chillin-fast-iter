@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chalmers.ILL.Tests", "Chalm
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chalmers.ILL.Migration", "Chalmers.ILL.Migration\Chalmers.ILL.Migration.csproj", "{0422DD1C-E9DF-48B5-94FF-69E94419DE14}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chalmers.ILL.HashPassword", "Chalmers.ILL.HashPassword\Chalmers.ILL.HashPassword.csproj", "{03F101B9-ACF6-449B-8014-0C340A3B274A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		ChalmersILL|Any CPU = ChalmersILL|Any CPU
@@ -118,6 +120,36 @@ Global
 		{0422DD1C-E9DF-48B5-94FF-69E94419DE14}.Release|x64.Build.0 = Release|Any CPU
 		{0422DD1C-E9DF-48B5-94FF-69E94419DE14}.Release|x86.ActiveCfg = Release|Any CPU
 		{0422DD1C-E9DF-48B5-94FF-69E94419DE14}.Release|x86.Build.0 = Release|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChalmersILL|Any CPU.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChalmersILL|Any CPU.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChalmersILL|x64.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChalmersILL|x64.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChalmersILL|x86.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChalmersILL|x86.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Debug|x64.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Debug|x64.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Debug|x86.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Debug|x86.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Release|Any CPU.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Release|x64.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Release|x64.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Release|x86.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.ChillinTest.Release|x86.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Debug|x64.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Debug|x86.Build.0 = Debug|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Release|x64.ActiveCfg = Release|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Release|x64.Build.0 = Release|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Release|x86.ActiveCfg = Release|Any CPU
+		{03F101B9-ACF6-449B-8014-0C340A3B274A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

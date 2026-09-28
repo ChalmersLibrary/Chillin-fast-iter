@@ -2081,10 +2081,17 @@ den måste bevaras när koden byter till `ForwardedHeaders`.
   Kontohantering sker via `MemberAdminSurfaceController`/`MemberAdminService` (inställningssidan,
   skyddat av `[Authorize(Roles = "SuperAdmin")]`), som skapar konton och hashar lösenord åt användaren
   — de ~20 kontona ska skapas där, inte skrivas för hand. Men verktyget kräver att man redan är
-  inloggad som `SuperAdmin`, så minst ett konto måste ändå läggas i `members.json` manuellt (samma
-  `System.Web.Helpers.Crypto.HashPassword`-metod som i [TODO-remove-umbraco.md](TODO-remove-umbraco.md))
-  innan resten kan skapas via gränssnittet. Görs i samband med att filen läggs upp under `/home/data/`
+  inloggad som `SuperAdmin`, så minst ett konto måste ändå läggas i `members.json` manuellt innan
+  resten kan skapas via gränssnittet. Görs i samband med att filen läggs upp under `/home/data/`
   ovan.
+
+  **Verktyg tillagt 2026-09-28:** `Chalmers.ILL.HashPassword` (ny konsolapp i lösningen) genererar
+  `PasswordHash`-värdet — `dotnet run --project Chalmers.ILL.HashPassword -- <lösenord>`. Använder
+  samma `PasswordHasher<T>`/`IdentityV2`-inställningar som `FileMembershipProvider`/
+  `MemberAdminService` (inte den gamla `System.Web.Helpers.Crypto.HashPassword`-metoden som stod
+  här tidigare — den försvann med fas 3:s migrering bort från `System.Web`). Bygger enbart mot det
+  delade ASP.NET Core-ramverket (`FrameworkReference`, ingen `PackageReference`), så den fungerar
+  helt offline på Linux, utan NuGet-åtkomst.
 
 - [x] **Flytta statiska filer till `wwwroot/`**
   `Scripts/` (bara `chalmers.ill.js`), `Css/` (2 filer), `images/`, och det som ersätter
