@@ -44,7 +44,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 // Find OrderItem
                 var orderItem = _orderItemManager.GetOrderItem(nodeId);
 
-                _orderItemManager.SetReference(nodeId, reference, _orderItemManager.GenerateEventId(EVENT_TYPE), false, false);
+                _orderItemManager.SetReference(nodeId, reference, _orderItemManager.GenerateEventId(EVENT_TYPE));
 
                 // Construct JSON response for client (ie jQuery/getJSON)
                 json.Success = true;

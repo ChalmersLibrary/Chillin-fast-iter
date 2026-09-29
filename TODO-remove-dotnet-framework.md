@@ -1642,6 +1642,21 @@ EF6-på-`net10.0` behöver inte längre verifieras.
     den just med `false, false` och förlitar sig (omedvetet) på detta. Ofarligt idag (inget annat
     anrop följer i den kedjan), men uppenbart oavsiktligt givet mönstret överallt annars. Fixat till
     samma mönster som resten.
+
+    **Uppföljning 2026-09-29: riskbedömningen ovan var fel.** Anropsstället
+    (`OrderItemReferenceSurfaceController.cs:47`) fixades aldrig till samma mönster som de andra —
+    den fortsatte skicka `false, false` med `SetReference` som enda anrop i kedjan, utan något
+    flushande uppföljningsanrop. Eftersom `FileOrderItemManager.Flush` returnerar direkt vid
+    `doReindex=false` frigjordes aldrig det per-order-lås som `LoadForMutation` tar (`_orderLocks`,
+    en `SemaphoreSlim` utan timeout) — ändringen gick förlorad (aldrig sparad till disk, inget
+    loggat), och eftersom `FileOrderItemManager` är en singleton låg låset kvar över hela appens
+    livstid: varje senare redigering av *samma* order hängde för evigt i `AcquireLock().Wait()`,
+    utan att en sidladdning hjälpte. Hittat via manuell testning i isolerat läge. Fixat genom att ta
+    bort `false, false` från anropsstället (defaultvärdena `true, true` flushar direkt, som
+    `OrderItemStatusSurfaceController`/`OrderItemTypeSurfaceController`). Characterization-test
+    tillagt i `OrderItemReferenceSurfaceControllerTest.cs` (mot riktig `FileOrderItemManager`, inte
+    den no-op-stub som övriga controller-tester för denna yta använder — den hade aldrig kunnat
+    upptäcka buggen).
   - Läsning av en order som inte finns kastade `NullReferenceException` inifrån `FillOutStuff(null)`
     **innan** koden nådde sin egen `if (orderItem != null) ... else throw OrderItemNotFoundException`
     — den avsedda kastsatsen var död kod. Osynligt för slutanvändaren (controllers fångar `Exception`
