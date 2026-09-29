@@ -15,11 +15,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Chalmers.ILL.Tests.Controllers
 {
-    // A logged-in account with no real role - FileRoleProvider's implicit "Viewer" default (see
-    // that class and TODO-remove-dotnet-framework.md) - must only be able to reach actions
-    // explicitly marked [AllowViewer]. IsolatedModeSmokeTest has the real end-to-end HTTP version
-    // of this; these tests exercise ViewerReadOnlyFilter's own decision logic directly, the same
-    // way AuthorizationTest drives the SuperAdmin policy directly.
+    // Two tiers below "has a real role" (see TODO-remove-dotnet-framework.md, the "Viewer" entry):
+    // an account explicitly assigned only the "Viewer" role may reach actions marked
+    // [AllowViewer]; an account with NO roles at all may reach nothing, [AllowViewer] included.
+    // IsolatedModeSmokeTest has the real end-to-end HTTP version of this; these tests exercise
+    // ViewerReadOnlyFilter's own decision logic directly, the same way AuthorizationTest drives
+    // the SuperAdmin policy directly.
     [TestClass]
     public class ViewerReadOnlyFilterTest
     {
@@ -53,13 +54,23 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.IsNull(context.Result);
         }
 
-        // Matches FileRoleProvider.GetRolesForUser's default: an account with no roles assigned at
-        // all bakes zero role claims into the login cookie (see LoginSurfaceController), not a
-        // literal "Viewer" claim - the filter must treat that the same as an explicit "Viewer" role.
+        // An account with no roles assigned at all bakes zero role claims into the login cookie
+        // (see LoginSurfaceController) - stricter than "Viewer": blocked even from actions
+        // [AllowViewer] opens up for an explicit Viewer.
         [TestMethod]
-        public void UserWithNoRoleClaimsAtAll_IsTreatedAsViewer_IsForbidden()
+        public void NoRoleClaimsAtAll_ActionWithoutAllowViewer_IsForbidden()
         {
             var context = MakeContext(RolesOf(), hasAllowViewer: false, isAllowAnonymous: false);
+
+            new ViewerReadOnlyFilter().OnAuthorization(context);
+
+            Assert.IsInstanceOfType(context.Result, typeof(ForbidResult));
+        }
+
+        [TestMethod]
+        public void NoRoleClaimsAtAll_ActionWithAllowViewer_IsStillForbidden()
+        {
+            var context = MakeContext(RolesOf(), hasAllowViewer: true, isAllowAnonymous: false);
 
             new ViewerReadOnlyFilter().OnAuthorization(context);
 
@@ -134,8 +145,9 @@ namespace Chalmers.ILL.Tests.Controllers
         }
 
         // The controller behind the exact page the user reported ("jag kan se ordrar även om jag
-        // helt saknar roles") must stay reachable for Viewer - the fix is read access is fine,
-        // writes are not.
+        // helt saknar roles") must stay reachable for an explicit Viewer - read access is fine,
+        // writes are not (a truly roleless account is blocked from it entirely, see
+        // NoRoleClaimsAtAll_ActionWithAllowViewer_IsStillForbidden above).
         [TestMethod]
         public void ChalmersILLOrderListPageController_CarriesAllowViewer()
         {

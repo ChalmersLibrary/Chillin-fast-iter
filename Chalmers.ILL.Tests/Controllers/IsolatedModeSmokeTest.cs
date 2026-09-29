@@ -43,7 +43,7 @@ namespace Chalmers.ILL.Tests.Controllers
         // class comment: creating the first account is a one-time manual step, not something to
         // regenerate on every fresh DataPath). Tests that need to log in ask for one here instead,
         // which is the test-only equivalent of that manual step.
-        private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null, bool seedSuperAdminAccount = false, bool seedViewerAccount = false)
+        private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null, bool seedSuperAdminAccount = false, bool seedViewerAccount = false, bool seedRolelessAccount = false)
         {
             var dataPath = Path.Combine(Path.GetTempPath(), "chillin-isolated-smoke-" + Guid.NewGuid());
 
@@ -55,6 +55,11 @@ namespace Chalmers.ILL.Tests.Controllers
             if (seedViewerAccount)
             {
                 SeedViewerAccount(dataPath);
+            }
+
+            if (seedRolelessAccount)
+            {
+                SeedRolelessAccount(dataPath);
             }
 
             var config = new Dictionary<string, string>
@@ -106,11 +111,28 @@ namespace Chalmers.ILL.Tests.Controllers
             MemberFileStore.Save(new List<MemberAccount> { account }, Path.Combine(dataPath, "members.json"));
         }
 
-        // An account with NO roles at all - the exact scenario reported by the user ("jag kan se
-        // ordrar även om jag helt saknar roles") that led to FileRoleProvider's implicit "Viewer"
-        // default and ViewerReadOnlyFilter. Mutually exclusive with seedSuperAdminAccount - both
-        // write the same members.json and would clobber each other, and no current test needs both.
+        // An account explicitly assigned only the "Viewer" role - read-only, see
+        // ViewerReadOnlyFilter. Mutually exclusive with the other Seed* helpers here - they all
+        // write the same members.json and would clobber each other, and no current test needs more
+        // than one seeded account.
         private static void SeedViewerAccount(string dataPath)
+        {
+            Directory.CreateDirectory(dataPath);
+
+            var hasher = new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+            var account = new MemberAccount { Login = "viewer", Roles = new List<string> { "Viewer" } };
+            account.PasswordHash = hasher.HashPassword(account, "chillin-dev-viewer");
+
+            MemberFileStore.Save(new List<MemberAccount> { account }, Path.Combine(dataPath, "members.json"));
+        }
+
+        // An account with NO roles at all - the exact scenario reported by the user ("jag kan se
+        // ordrar även om jag helt saknar roles"). Stricter than Viewer: blocked from everything,
+        // per Lars 2026-09-29 ("saknar man roles så får man inte se något").
+        private static void SeedRolelessAccount(string dataPath)
         {
             Directory.CreateDirectory(dataPath);
 
@@ -315,6 +337,11 @@ namespace Chalmers.ILL.Tests.Controllers
 
         private static async Task LoginAsViewerAsync(HttpClient client)
         {
+            await LoginAsAsync(client, "viewer", "chillin-dev-viewer");
+        }
+
+        private static async Task LoginAsRolelessAsync(HttpClient client)
+        {
             await LoginAsAsync(client, "roleless", "chillin-dev-roleless");
         }
 
@@ -336,11 +363,8 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreEqual(HttpStatusCode.Found, loginResponse.StatusCode, $"Seeded login for '{login}' failed.");
         }
 
-        // The exact scenario the user reported: a logged-in account with zero roles at all could
-        // still reach the order list (and every other write endpoint) before ViewerReadOnlyFilter -
-        // the global AuthorizeFilter only ever checked "logged in", never roles. Confirms the read
-        // side keeps working for such an account (FileRoleProvider's implicit "Viewer" default is
-        // read-only, not no-access).
+        // An account explicitly assigned the "Viewer" role can still reach the order list - the
+        // restriction is read-only, not no-access.
         [TestMethod]
         public async Task Viewer_CanStillViewTheOrderList()
         {
@@ -353,12 +377,12 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
-        // The actual fix: the same roleless account must NOT be able to write a log entry - a
-        // regular [HttpPost] write action with no [AllowViewer]. Asserts on the actual data rather
-        // than a specific status code: cookie authentication's default Forbid() behaviour is a 302
-        // redirect to its (unconfigured, so 404ing) AccessDeniedPath, not a bare 403 - a pre-existing
-        // quirk shared with the SuperAdmin-only gate, and orthogonal to the one thing that actually
-        // matters here, which is that the write itself must never execute.
+        // The actual fix: a Viewer must NOT be able to write a log entry - a regular [HttpPost]
+        // write action with no [AllowViewer]. Asserts on the actual data rather than a specific
+        // status code: cookie authentication's default Forbid() behaviour is a 302 redirect to its
+        // (unconfigured, so 404ing) AccessDeniedPath, not a bare 403 - a pre-existing quirk shared
+        // with the SuperAdmin-only gate, and orthogonal to the one thing that actually matters
+        // here, which is that the write itself must never execute.
         [TestMethod]
         public async Task Viewer_BlockedFromWritingALogItem()
         {
@@ -403,6 +427,23 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreNotEqual(HttpStatusCode.OK, response.StatusCode);
             var orderItemJson = await (await client.GetAsync("/OrderItemSurface/GetOrderItem?nodeId=1")).Content.ReadAsStringAsync();
             Assert.IsFalse(orderItemJson.Contains("Should-never-be-set"), "The write must never have executed.");
+        }
+
+        // The exact scenario the user reported: a logged-in account with zero roles at all could
+        // reach the order list (and every write endpoint) before ViewerReadOnlyFilter existed - the
+        // global AuthorizeFilter only ever checked "logged in", never roles. Per Lars 2026-09-29
+        // ("saknar man roles så får man inte se något"), such an account is now stricter than an
+        // explicit Viewer: blocked from everything, order list included.
+        [TestMethod]
+        public async Task RolelessAccount_CannotViewTheOrderList()
+        {
+            using var factory = CreateFactory(seedRolelessAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsRolelessAsync(client);
+
+            var response = await client.GetAsync("/bestaellningar/");
+
+            Assert.AreNotEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         // Regression guard: an account with a real role must be completely unaffected by

@@ -56,7 +56,7 @@ namespace Chalmers.ILL.Tests.Members
         }
 
         [TestMethod]
-        public void IsUserInRole_AccountHasNullRoles_ReturnsFalseForARealRoleWithoutThrowing()
+        public void IsUserInRole_AccountHasNullRoles_ReturnsFalseWithoutThrowing()
         {
             var provider = MakeProvider(new MemberAccount { Login = "alice", PasswordHash = "irrelevant", Roles = null });
 
@@ -64,45 +64,41 @@ namespace Chalmers.ILL.Tests.Members
         }
 
         [TestMethod]
-        public void IsUserInRole_AccountHasNullRoles_IsViewer()
+        public void GetRolesForUser_AccountHasNullRoles_ReturnsEmptyWithoutThrowing()
         {
             var provider = MakeProvider(new MemberAccount { Login = "alice", PasswordHash = "irrelevant", Roles = null });
 
-            Assert.IsTrue(provider.IsUserInRole("alice", "Viewer"));
+            Assert.AreEqual(0, provider.GetRolesForUser("alice").Length);
         }
 
         [TestMethod]
-        public void IsUserInRole_AccountHasEmptyRoles_IsViewer()
-        {
-            var provider = MakeProvider(Account("alice"));
-
-            Assert.IsTrue(provider.IsUserInRole("alice", "Viewer"));
-        }
-
-        [TestMethod]
-        public void IsUserInRole_UnknownUser_IsNotViewer()
-        {
-            var provider = MakeProvider(Account("alice", "Desk"));
-
-            Assert.IsFalse(provider.IsUserInRole("bob", "Viewer"));
-        }
-
-        [TestMethod]
-        public void GetRolesForUser_AccountHasNullRoles_DefaultsToViewerWithoutThrowing()
-        {
-            var provider = MakeProvider(new MemberAccount { Login = "alice", PasswordHash = "irrelevant", Roles = null });
-
-            CollectionAssert.AreEquivalent(new[] { "Viewer" }, provider.GetRolesForUser("alice"));
-        }
-
-        [TestMethod]
-        public void GetAllRoles_OneAccountHasNullRoles_ContributesViewerWithoutThrowing()
+        public void GetAllRoles_OneAccountHasNullRoles_IgnoresItWithoutThrowing()
         {
             var provider = MakeProvider(
                 new MemberAccount { Login = "alice", PasswordHash = "irrelevant", Roles = null },
                 Account("bob", "Desk"));
 
-            CollectionAssert.AreEquivalent(new[] { "Desk", "Viewer" }, provider.GetAllRoles());
+            CollectionAssert.AreEquivalent(new[] { "Desk" }, provider.GetAllRoles());
+        }
+
+        // "Viewer" isn't special to FileRoleProvider - it's an ordinary assignable role string
+        // (see MemberAdminSurfaceController.ParseRoles), only its enforcement (read-only, and
+        // separately blocking an account with NO roles at all) is special - see
+        // ViewerReadOnlyFilter.
+        [TestMethod]
+        public void IsUserInRole_AccountExplicitlyHasViewerRole_ReturnsTrue()
+        {
+            var provider = MakeProvider(Account("alice", "Viewer"));
+
+            Assert.IsTrue(provider.IsUserInRole("alice", "Viewer"));
+        }
+
+        [TestMethod]
+        public void IsUserInRole_AccountHasNoRoles_IsNotImplicitlyViewer()
+        {
+            var provider = MakeProvider(Account("alice"));
+
+            Assert.IsFalse(provider.IsUserInRole("alice", "Viewer"));
         }
 
         private static MemberAccount Account(string login, params string[] roles) =>
