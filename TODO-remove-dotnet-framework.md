@@ -1302,6 +1302,22 @@ tyst bort hela inloggningsskyddet utan att någon kod klagade — samma risk fin
   Cache-busting-bytet i `ChalmersILL.cshtml:150` är kvar oberoende (kosmetisk, inte ett
   deploy-hinder) — se Städning.
 
+  **Bugg hittad och fixad 2026-09-28: "ingen versionsuppgradering" stämde inte för Bootstrap.**
+  Användaren märkte att bakgrundsfärgen på badges i filterknapparna (`.badge` i
+  `.btn-default`-knappar, t.ex. `#status00-counter` på orderlistan) hade gått från vit till grå.
+  `bower.json`s `~3.0.2` är ett **range**, inte en exakt version — bower löser det till senaste
+  matchande taggen, och `v3.0.3` (sista 3.0.x-taggen, aldrig någon 3.1.0 inblandad) var redan ute
+  när bower_components senast installerades på riktigt, så den gamla testservern körde faktiskt
+  3.0.3. Fas 5 hämtade literalt taggen `v3.0.2` istället för att lösa rangen, vilket i praktiken
+  var en nedgradering. `.btn-default .badge{color:#fff;background-color:#fff}` finns i 3.0.3 men
+  inte i 3.0.2 (tillkom mellan patcharna) — utan den regeln vann Bootstraps generiska
+  `.badge{background-color:#999}`.
+  Åtgärd: `wwwroot/lib/bootstrap/dist/css/bootstrap.min.css` och `.../js/bootstrap.min.js` bytta mot
+  `v3.0.3` från `raw.githubusercontent.com` (fonterna är bytidentiska mellan patcharna, orörda).
+  Verifierat i webbläsare (Chromium/Puppeteer, `browser-check/badge-check.js`): `#status00-counter`
+  i `.btn.btn-default.active` har nu `background-color: rgb(255, 255, 255)`, som på gamla
+  testservern.
+
 - [x] **Ta bort NuGet-paketet `jQuery` 1.6.4 — det är oanvänt**
   Vyerna laddar bower-versionen (`~2.1.3`) från `/bower_components/jquery/dist/jquery.min.js`.
   NuGet-paketets jQuery används ingenstans. Det är alltså inte en uppgradering utan en borttagning.
