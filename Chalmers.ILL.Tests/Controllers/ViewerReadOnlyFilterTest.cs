@@ -184,18 +184,21 @@ namespace Chalmers.ILL.Tests.Controllers
         {
             var httpContext = new DefaultHttpContext { User = principal };
 
-            var descriptor = new ControllerActionDescriptor
-            {
-                EndpointMetadata = hasAllowViewer ? new List<object> { new AllowViewerAttribute() } : new List<object>()
-            };
+            // [AllowAnonymous] shows up as an AllowAnonymousAttribute in EndpointMetadata on this
+            // ASP.NET Core version (confirmed by tracing a real request), NOT as an
+            // IAllowAnonymousFilter in AuthorizationFilterContext.Filters - see the comment in
+            // ViewerReadOnlyFilter itself. A version of this test that only populated `filters`
+            // passed while the real HTTP pipeline still 403'd an [AllowAnonymous] page for a
+            // roleless user - this must mirror EndpointMetadata to actually catch that.
+            var metadata = new List<object>();
+            if (hasAllowViewer) metadata.Add(new AllowViewerAttribute());
+            if (isAllowAnonymous) metadata.Add(new AllowAnonymousAttribute());
+
+            var descriptor = new ControllerActionDescriptor { EndpointMetadata = metadata };
 
             var actionContext = new ActionContext(httpContext, new RouteData(), descriptor);
 
-            var filters = isAllowAnonymous
-                ? new List<IFilterMetadata> { new AllowAnonymousFilter() }
-                : new List<IFilterMetadata>();
-
-            return new AuthorizationFilterContext(actionContext, filters);
+            return new AuthorizationFilterContext(actionContext, new List<IFilterMetadata>());
         }
     }
 }

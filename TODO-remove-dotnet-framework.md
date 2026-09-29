@@ -211,24 +211,32 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   HTTP-verb-antaganden. `OrderItemSurfaceController`s lås-actions (`LockOrderItem`/
   `UnlockOrderItem`/`TakeOverLockedOrderItem`) är också medvetet spärrade — en läsroll ska inte
   kunna ta redigeringslås.
-  **Känd kvarvarande brist, inte åtgärdad här:** cookie-autentiseringens default-`Forbid()` är en
-  302-redirect till en oconfigurerad (404:ande) `AccessDeniedPath`, inte ett rent 403 — samma
-  brist som redan fanns för `[Authorize(Roles = "SuperAdmin")]` innan detta, opåverkad av detta
-  arbete. Säkerhetsmässigt spelar det ingen roll (skrivningen/sidan exekverar aldrig), men en
-  rollös användare möts av en naken "HTTP ERROR 404"-webbläsarsida snarare än ett vänligt
-  felmeddelande, och en Viewer ser fortfarande redigeringsknappar/formulär som sedan tyst inte gör
-  något vid klick — ingen klientsidig döljning av skrivkontroller har gjorts.
-  Verifierat både via `IsolatedModeSmokeTest` (riktig HTTP-pipeline: Viewer ser orderlistan men
-  blockeras från både en vanlig POST-skrivning och en GET-verb-skrivning med verifiering att datan
-  faktiskt inte muterades; ett rollöst konto blockeras redan från orderlistan; ett konto med en
-  riktig roll är opåverkat) och i webbläsare (Chromium/Puppeteer, `browser-check/viewer-check.js`,
-  kontona `viewer` respektive `roleless` — båda `chillin123` — i devcontainerns delade
-  `~/data/members.json`): `viewer` ser orderlistan och en öppnad order korrekt och ett
-  `WriteLogItem`-försök via `fetch()` gav 404 efter redirect till `/Account/AccessDenied` utan att
-  skriva loggposten; `roleless` landar direkt på samma 404-sida även för orderlistan.
-  257/257 gröna (`FileRoleProviderTest` oförändrat default-beteende men ny täckning för "Viewer"
-  som vanlig rollsträng, ny `ViewerReadOnlyFilterTest`, fem HTTP-pipeline-tester i
-  `IsolatedModeSmokeTest`).
+  **Uppföljning samma dag: riktig felsida istället för en naken 404.** Lars: "kan man få en
+  felsida när man saknar role?" — cookie-autentiseringens default-`Forbid()` redirectade till en
+  oconfigurerad (404:ande) `AccessDeniedPath`, samma brist som redan fanns för
+  `[Authorize(Roles = "SuperAdmin")]`. Löst med en ny enkel sida (uttryckligen "behöver inte vara
+  snygg"): `ChalmersILLAccessDeniedPageController`/`-Model`/`-Page.cshtml` (samma minimala mönster
+  som `ChalmersILLLogoutPageController`, ett `alert alert-danger`-stycke i samma stil som
+  inloggningssidans "Felaktig inloggning."-meddelande), och `options.AccessDeniedPath =
+  "/ChalmersILLAccessDeniedPage"` i `Program.cs`s cookie-konfiguration.
+  **Hittade en verklig bugg under tiden:** sidan måste vara `[AllowAnonymous]` — annars nekar
+  `ViewerReadOnlyFilter` åtkomst till sidan som skulle förklara nekandet, en oändlig loop för ett
+  rollöst konto. Att koppla in den avslöjade att `ViewerReadOnlyFilter`s `[AllowAnonymous]`-koll
+  aldrig fungerat i praktiken: attributet dyker upp i `EndpointMetadata`
+  (`AllowAnonymousAttribute`/`IAllowAnonymous`) på den här ASP.NET Core-versionen, inte som en
+  `IAllowAnonymousFilter` i `context.Filters` (vilket är vad koden — kopierad efter mönstret i
+  MVC:s inbyggda `AuthorizeFilter` — bara kollade). Konsekvens: **en Viewer eller ett rollöst konto
+  kunde inte logga ut**, `/ChalmersILLLogoutPageController` nekades trots `[AllowAnonymous]`. Fanns
+  aldrig testat med en riktig HTTP-request förut — `AuthorizationTest.cs`s
+  `IsAllowAnonymous`-tester kollar bara attributet reflektivt, går aldrig igenom filtret.
+  Fixat genom att även kolla `EndpointMetadata` för `IAllowAnonymous` (behåller
+  `context.Filters`-kollen som ofarlig baksäkring).
+  Verifierat via `IsolatedModeSmokeTest` (`RolelessAccount_CannotViewTheOrderList` följer nu
+  redirecten hela vägen till en riktig 200-sida med texten "Åtkomst nekad";
+  `RolelessAccount_CanStillReachTheLogoutPage`, ny, pinnar utloggningsfixen) och i webbläsare
+  (Chromium/Puppeteer): `roleless` ser en ren "Åtkomst nekad"-sida med fullt fungerande nav istället
+  för en naken "HTTP ERROR 404", och kan fortfarande logga ut rent.
+  259/259 gröna.
 
 - [x] **`members.json` saknas fortfarande**
   `Chalmers.ILL/Config/` innehåller bara `members.example.json`. Filen är dessutom inte

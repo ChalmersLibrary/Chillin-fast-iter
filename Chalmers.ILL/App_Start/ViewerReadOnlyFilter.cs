@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using Chalmers.ILL.Members;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -38,7 +39,13 @@ namespace Chalmers.ILL
     {
         public void OnAuthorization(AuthorizationFilterContext context)
         {
+            // [AllowAnonymous] shows up as an AllowAnonymousAttribute (IAllowAnonymous) in
+            // EndpointMetadata on this ASP.NET Core version, NOT as an IAllowAnonymousFilter in
+            // context.Filters (confirmed by tracing a real request - the latter, which mirrors
+            // MVC's built-in AuthorizeFilter check, never actually matches here). Checking both
+            // costs nothing and stays correct if that ever changes.
             if (context.Filters.Any(f => f is IAllowAnonymousFilter)) return;
+            if (context.ActionDescriptor.EndpointMetadata.Any(m => m is IAllowAnonymous)) return;
 
             var user = context.HttpContext.User;
             if (user?.Identity?.IsAuthenticated != true) return;

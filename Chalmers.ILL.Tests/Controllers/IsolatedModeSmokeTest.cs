@@ -379,8 +379,8 @@ namespace Chalmers.ILL.Tests.Controllers
 
         // The actual fix: a Viewer must NOT be able to write a log entry - a regular [HttpPost]
         // write action with no [AllowViewer]. Asserts on the actual data rather than a specific
-        // status code: cookie authentication's default Forbid() behaviour is a 302 redirect to its
-        // (unconfigured, so 404ing) AccessDeniedPath, not a bare 403 - a pre-existing quirk shared
+        // status code: cookie authentication's Forbid() behaviour is a 302 redirect to
+        // AccessDeniedPath (see ChalmersILLAccessDeniedPageController), not a bare 403 - shared
         // with the SuperAdmin-only gate, and orthogonal to the one thing that actually matters
         // here, which is that the write itself must never execute.
         [TestMethod]
@@ -433,7 +433,9 @@ namespace Chalmers.ILL.Tests.Controllers
         // reach the order list (and every write endpoint) before ViewerReadOnlyFilter existed - the
         // global AuthorizeFilter only ever checked "logged in", never roles. Per Lars 2026-09-29
         // ("saknar man roles så får man inte se något"), such an account is now stricter than an
-        // explicit Viewer: blocked from everything, order list included.
+        // explicit Viewer: blocked from everything, order list included - and lands on a real
+        // "Åtkomst nekad" page rather than a raw 404 (Lars, 2026-09-29: "kan man få en felsida när
+        // man saknar role?").
         [TestMethod]
         public async Task RolelessAccount_CannotViewTheOrderList()
         {
@@ -443,7 +445,33 @@ namespace Chalmers.ILL.Tests.Controllers
 
             var response = await client.GetAsync("/bestaellningar/");
 
-            Assert.AreNotEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.Found, response.StatusCode);
+            StringAssert.Contains(response.Headers.Location.ToString(), "ChalmersILLAccessDeniedPage");
+
+            var accessDeniedResponse = await client.GetAsync(response.Headers.Location);
+            Assert.AreEqual(HttpStatusCode.OK, accessDeniedResponse.StatusCode);
+            var html = await accessDeniedResponse.Content.ReadAsStringAsync();
+            StringAssert.Contains(html, "Åtkomst nekad");
+        }
+
+        // Found while building the access-denied page above: [AllowAnonymous] shows up as an
+        // AllowAnonymousAttribute in EndpointMetadata on this ASP.NET Core version, not as an
+        // IAllowAnonymousFilter in the filter context - ViewerReadOnlyFilter's original check only
+        // looked at the latter, so it never actually matched, and would have Forbidden a roleless
+        // or Viewer-only account trying to log out (real request, not just the reflection-level
+        // [AllowAnonymous] check AuthorizationTest.cs does). Fixed by also checking
+        // EndpointMetadata; this pins the real HTTP behaviour so it can't silently regress again.
+        [TestMethod]
+        public async Task RolelessAccount_CanStillReachTheLogoutPage()
+        {
+            using var factory = CreateFactory(seedRolelessAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsRolelessAsync(client);
+
+            var response = await client.GetAsync("/ChalmersILLLogoutPage");
+
+            Assert.AreEqual(HttpStatusCode.Found, response.StatusCode);
+            Assert.AreEqual("/", response.Headers.Location.ToString());
         }
 
         // Regression guard: an account with a real role must be completely unaffected by

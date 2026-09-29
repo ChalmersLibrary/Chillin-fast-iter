@@ -51,6 +51,10 @@ builder.Services
         // neither requireSSL nor a real cookie name ("yourAuthCookie" - an obvious template
         // placeholder). Fixed here rather than carried over, per fas 3.
         options.LoginPath = "/ChalmersILLLoginPage";
+        // Default is the dead "/Account/AccessDenied" (404s, no such route) - Forbid() (see
+        // ViewerReadOnlyFilter and MemberAdminSurfaceController's [Authorize(Roles=...)]) would
+        // otherwise redirect a blocked-but-logged-in user to a raw browser error page.
+        options.AccessDeniedPath = "/ChalmersILLAccessDeniedPage";
         options.Cookie.Name = "ChalmersILLAuth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;

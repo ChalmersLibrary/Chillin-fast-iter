@@ -100,6 +100,15 @@ namespace Chalmers.ILL.Tests.Controllers
         }
 
         [TestMethod]
+        public void ChalmersILLAccessDeniedPageController_IsAllowAnonymous()
+        {
+            // Program.cs's AccessDeniedPath points here (see ViewerReadOnlyFilter). A roleless
+            // account is blocked from *everything* else - without [AllowAnonymous] it would be
+            // denied access to the page explaining that it was denied access, looping forever.
+            Assert.IsTrue(IsAllowAnonymous(typeof(ChalmersILLAccessDeniedPageController)));
+        }
+
+        [TestMethod]
         public void MemberAdminSurfaceController_RequiresSuperAdminRole()
         {
             // The only role-based server-side authorization in the whole app - creating and
