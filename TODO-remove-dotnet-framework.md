@@ -170,6 +170,55 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
   men inte mot `Roles == null`. Default-initialiseringen i `MemberAccount.cs:9` gäller bara när nyckeln
   saknas helt, inte när den står som `"Roles": null`.
 
+  **Byggt vidare 2026-09-29: kontot utan roller är nu läsroll "Viewer", inte fullt skrivbehörigt.**
+  Användaren upptäckte att ett konto helt utan roller (tomt/`null` `Roles`) ändå kunde se **och
+  redigera** ordrar — det globala `AuthorizeFilter` (fas 3) kollar bara "inloggad", aldrig roller,
+  och det var (och är) den enda kod som någonsin gated orderlistan. En utredning av rollen
+  "Viewer" (fanns som Umbraco-`MemberGroup` sedan 2015, `Chalmers.ILL.PackageActions/
+  ChillinInitialConfiguration.cs`, gav bara sidåtkomst i CMS-trädet) visade att den aldrig
+  motsvarades av någon kodkontroll, varken i Umbraco-appen eller här — död sedan dag ett.
+  Beslut (avstämt med användaren): en användare utan roller *är* nu "Viewer" — läsbehörighet,
+  inte obehörighet. `FileRoleProvider.GetRolesForUser`/`IsUserInRole`/`GetAllRoles` defaultar ett
+  konto med tomt/`null` `Roles` till `["Viewer"]` (ett okänt användarnamn ger fortfarande noll
+  roller — det är "inte inloggad", inte "inloggad utan roller"). Detta bakas in i cookien vid
+  inloggning som vanligt (`LoginSurfaceController`), ingen ändring behövdes där.
+  Själva spärren är ny: `Chalmers.ILL/App_Start/ViewerReadOnlyFilter.cs`, ett globalt MVC-filter
+  registrerat efter `AuthorizeFilter` i `FilterConfig.RegisterGlobalFilters`. En användare vars
+  enda roll är "Viewer" (eller som saknar rollclaims helt) blockeras (`ForbidResult`) från varje
+  action **utom** de som explicit är märkta `[AllowViewer]` — medvetet default-deny (spärra allt,
+  öppna upp läsningar) snarare än default-allow (lista alla skrivningar), eftersom en ny
+  skrivande action som glöms bort då stannar spärrad istället för att tyst bli skrivbar. Alla
+  läsande actions i `Controllers/SurfaceControllers/` (inkl. samtliga `Page`-controllers,
+  `PasswordSurfaceController` som självbetjäning, `StatisticsSurfaceController` i sin helhet) har
+  fått attributet — se commit-historiken för den fullständiga listan. Särskilt bevakat: några
+  redan existerande skrivande actions är exponerade över `[HttpGet]` istället för `[HttpPost]`
+  (t.ex. `OrderItemProviderSurfaceController.SetProvider`,
+  `OrderItemPatronDataSurfaceController.FetchPatronDataUsingSierraId`,
+  `OrderItemStatusSurfaceController.SetOrderItemStatus`,
+  `OrderItemTypeSurfaceController.SetOrderItemType`,
+  `OrderItemPurchaseLibrarySurfaceController.SetOrderItemPurchaseLibrary`,
+  `OrderItemDeliveryLibrarySurfaceController.SetOrderItemDeliveryLibrary`) — dessa har **inte**
+  fått `[AllowViewer]`, och har egna reflektionstester (`ViewerReadOnlyFilterTest.
+  GetVerbMutations_NeverCarryAllowViewer`) så att ingen framtida ändring råkar öppna dem via
+  HTTP-verb-antaganden. `OrderItemSurfaceController`s lås-actions (`LockOrderItem`/
+  `UnlockOrderItem`/`TakeOverLockedOrderItem`) är också medvetet spärrade — en läsroll ska inte
+  kunna ta redigeringslås.
+  **Känd kvarvarande brist, inte åtgärdad här:** cookie-autentiseringens default-`Forbid()` är en
+  302-redirect till en oconfigurerad (404:ande) `AccessDeniedPath`, inte ett rent 403 — samma
+  brist som redan fanns för `[Authorize(Roles = "SuperAdmin")]` innan detta, opåverkad av detta
+  arbete. Säkerhetsmässigt spelar det ingen roll (skrivningen exekverar aldrig), men UI:t visar
+  fortfarande redigeringsknappar/formulär för en Viewer som sedan tyst inte gör något vid klick —
+  ingen klientsidig döljning av skrivkontroller har gjorts. Verifierat både via
+  `IsolatedModeSmokeTest` (riktig HTTP-pipeline: Viewer ser orderlistan, blockeras från både en
+  vanlig POST-skrivning och en GET-verb-skrivning, overifierat att datan faktiskt inte muterades;
+  ett konto med en riktig roll är opåverkat) och i webbläsare (Chromium/Puppeteer,
+  `browser-check/viewer-check.js`, konto `viewer`/`chillin123` i devcontainerns delade
+  `~/data/members.json`): orderlistan och en öppnad order renderar korrekt, ett
+  `WriteLogItem`-försök via `fetch()` gav 404 efter redirect till `/Account/AccessDenied` och
+  skrev aldrig loggposten.
+  256/256 gröna (`FileRoleProviderTest` uppdaterad för det nya default-beteendet, ny
+  `ViewerReadOnlyFilterTest`, fyra nya HTTP-pipeline-tester i `IsolatedModeSmokeTest`).
+
 - [x] **`members.json` saknas fortfarande**
   `Chalmers.ILL/Config/` innehåller bara `members.example.json`. Filen är dessutom inte
   `<Content Include>`-ad i `Chalmers.ILL.csproj`, till skillnad från `chillinPrevalues.json` — det

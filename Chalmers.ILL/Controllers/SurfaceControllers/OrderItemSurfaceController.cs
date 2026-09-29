@@ -45,6 +45,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">The OrderItem Node Id</param>
         /// <returns>Partial View html data</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderOrderItem(int nodeId)
         {
             // Get current member.
@@ -68,6 +69,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">The OrderItem Node Id</param>
         /// <returns>JSON result</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult GetOrderItem(int nodeId)
         {
             // Get current member.
@@ -211,6 +213,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// Get all locked OrderItems for Current Member
         /// </summary>
         /// <returns>JSON result</returns>
+        [AllowViewer]
         public ActionResult GetLocksForCurrentMember()
         {
             // Response JSON

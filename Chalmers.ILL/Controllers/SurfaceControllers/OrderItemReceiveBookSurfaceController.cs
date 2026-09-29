@@ -44,6 +44,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderReceiveBookAction(int nodeId)
         {
             var standardTextTitle = _chillinTextRepository.ByTextField("standardTitleText");

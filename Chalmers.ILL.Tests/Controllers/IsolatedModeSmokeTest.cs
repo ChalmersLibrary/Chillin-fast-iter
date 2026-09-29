@@ -43,13 +43,18 @@ namespace Chalmers.ILL.Tests.Controllers
         // class comment: creating the first account is a one-time manual step, not something to
         // regenerate on every fresh DataPath). Tests that need to log in ask for one here instead,
         // which is the test-only equivalent of that manual step.
-        private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null, bool seedSuperAdminAccount = false)
+        private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null, bool seedSuperAdminAccount = false, bool seedViewerAccount = false)
         {
             var dataPath = Path.Combine(Path.GetTempPath(), "chillin-isolated-smoke-" + Guid.NewGuid());
 
             if (seedSuperAdminAccount)
             {
                 SeedSuperAdminAccount(dataPath);
+            }
+
+            if (seedViewerAccount)
+            {
+                SeedViewerAccount(dataPath);
             }
 
             var config = new Dictionary<string, string>
@@ -97,6 +102,24 @@ namespace Chalmers.ILL.Tests.Controllers
             }));
             var account = new MemberAccount { Login = "superadmin", Roles = new List<string> { "Desk", "Administrator", "SuperAdmin" } };
             account.PasswordHash = hasher.HashPassword(account, "chillin-dev-superadmin");
+
+            MemberFileStore.Save(new List<MemberAccount> { account }, Path.Combine(dataPath, "members.json"));
+        }
+
+        // An account with NO roles at all - the exact scenario reported by the user ("jag kan se
+        // ordrar även om jag helt saknar roles") that led to FileRoleProvider's implicit "Viewer"
+        // default and ViewerReadOnlyFilter. Mutually exclusive with seedSuperAdminAccount - both
+        // write the same members.json and would clobber each other, and no current test needs both.
+        private static void SeedViewerAccount(string dataPath)
+        {
+            Directory.CreateDirectory(dataPath);
+
+            var hasher = new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+            var account = new MemberAccount { Login = "roleless", Roles = new List<string>() };
+            account.PasswordHash = hasher.HashPassword(account, "chillin-dev-roleless");
 
             MemberFileStore.Save(new List<MemberAccount> { account }, Path.Combine(dataPath, "members.json"));
         }
@@ -287,6 +310,16 @@ namespace Chalmers.ILL.Tests.Controllers
         // reachable through it without a test needing its own members.json setup.
         private static async Task LoginAsSuperAdminAsync(HttpClient client)
         {
+            await LoginAsAsync(client, "superadmin", "chillin-dev-superadmin");
+        }
+
+        private static async Task LoginAsViewerAsync(HttpClient client)
+        {
+            await LoginAsAsync(client, "roleless", "chillin-dev-roleless");
+        }
+
+        private static async Task LoginAsAsync(HttpClient client, string login, string password)
+        {
             var loginPageHtml = await (await client.GetAsync("/ChalmersILLLoginPage")).Content.ReadAsStringAsync();
             var token = Regex.Match(loginPageHtml, "__RequestVerificationToken[^>]*value=\"([^\"]*)\"").Groups[1].Value;
 
@@ -294,13 +327,109 @@ namespace Chalmers.ILL.Tests.Controllers
             {
                 Content = new FormUrlEncodedContent(new Dictionary<string, string>
                 {
-                    ["Login"] = "superadmin",
-                    ["Password"] = "chillin-dev-superadmin",
+                    ["Login"] = login,
+                    ["Password"] = password,
                     ["__RequestVerificationToken"] = token
                 })
             };
             var loginResponse = await client.SendAsync(loginRequest);
-            Assert.AreEqual(HttpStatusCode.Found, loginResponse.StatusCode, "Seeded superadmin login failed - SeedSuperAdminAccount may be broken.");
+            Assert.AreEqual(HttpStatusCode.Found, loginResponse.StatusCode, $"Seeded login for '{login}' failed.");
+        }
+
+        // The exact scenario the user reported: a logged-in account with zero roles at all could
+        // still reach the order list (and every other write endpoint) before ViewerReadOnlyFilter -
+        // the global AuthorizeFilter only ever checked "logged in", never roles. Confirms the read
+        // side keeps working for such an account (FileRoleProvider's implicit "Viewer" default is
+        // read-only, not no-access).
+        [TestMethod]
+        public async Task Viewer_CanStillViewTheOrderList()
+        {
+            using var factory = CreateFactory(seedViewerAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsViewerAsync(client);
+
+            var response = await client.GetAsync("/bestaellningar/");
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        // The actual fix: the same roleless account must NOT be able to write a log entry - a
+        // regular [HttpPost] write action with no [AllowViewer]. Asserts on the actual data rather
+        // than a specific status code: cookie authentication's default Forbid() behaviour is a 302
+        // redirect to its (unconfigured, so 404ing) AccessDeniedPath, not a bare 403 - a pre-existing
+        // quirk shared with the SuperAdmin-only gate, and orthogonal to the one thing that actually
+        // matters here, which is that the write itself must never execute.
+        [TestMethod]
+        public async Task Viewer_BlockedFromWritingALogItem()
+        {
+            using var factory = CreateFactory(seedViewerAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsViewerAsync(client);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/LogItemSurface/WriteLogItem")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["nodeId"] = "1",
+                    ["Type"] = "KOMMENTAR",
+                    ["Message"] = "Should never be written by a Viewer.",
+                    ["newFollowUpDate"] = "",
+                    ["statusId"] = "-1",
+                    ["cancellationReasonId"] = "-1",
+                    ["purchasedMaterialId"] = "-1"
+                })
+            };
+            var response = await client.SendAsync(request);
+
+            Assert.AreNotEqual(HttpStatusCode.OK, response.StatusCode);
+            var logItemsJson = await (await client.GetAsync("/LogItemSurface/GetLogItems?nodeId=1")).Content.ReadAsStringAsync();
+            Assert.IsFalse(logItemsJson.Contains("Should never be written by a Viewer."), "The write must never have executed.");
+        }
+
+        // The sneakiest category found while designing this fix: several mutating actions are
+        // exposed over [HttpGet] instead of [HttpPost] (pre-existing, not something this fix
+        // changes) - a role check that only looked at the HTTP verb would have missed them and
+        // left a Viewer able to mutate order data via a plain link/GET. ViewerReadOnlyFilter checks
+        // per-action [AllowViewer] instead, so this must be blocked exactly like the POST case above.
+        [TestMethod]
+        public async Task Viewer_BlockedFromAGetVerbMutation()
+        {
+            using var factory = CreateFactory(seedViewerAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsViewerAsync(client);
+
+            var response = await client.GetAsync("/OrderItemProviderSurface/SetProvider?nodeId=1&providerName=Should-never-be-set&providerOrderId=&providerInformation=&newFollowUpDate=&updateStatusAndFollowUpDate=false");
+
+            Assert.AreNotEqual(HttpStatusCode.OK, response.StatusCode);
+            var orderItemJson = await (await client.GetAsync("/OrderItemSurface/GetOrderItem?nodeId=1")).Content.ReadAsStringAsync();
+            Assert.IsFalse(orderItemJson.Contains("Should-never-be-set"), "The write must never have executed.");
+        }
+
+        // Regression guard: an account with a real role must be completely unaffected by
+        // ViewerReadOnlyFilter, exactly like before this fix existed.
+        [TestMethod]
+        public async Task SuperAdmin_StillAllowedToWriteALogItem()
+        {
+            using var factory = CreateFactory(seedSuperAdminAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsSuperAdminAsync(client);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/LogItemSurface/WriteLogItem")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["nodeId"] = "1",
+                    ["Type"] = "KOMMENTAR",
+                    ["Message"] = "A real role must still be able to write.",
+                    ["newFollowUpDate"] = "",
+                    ["statusId"] = "-1",
+                    ["cancellationReasonId"] = "-1",
+                    ["purchasedMaterialId"] = "-1"
+                })
+            };
+            var response = await client.SendAsync(request);
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         // Fas 10, "Vyerna redirectar till produktion om värdnamnet är okänt": with an unrecognised

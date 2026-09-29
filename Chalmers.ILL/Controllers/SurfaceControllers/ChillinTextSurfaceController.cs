@@ -18,6 +18,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderChillinTextsAction()
         {
             var pageModel = _chillinTextRepository.All();

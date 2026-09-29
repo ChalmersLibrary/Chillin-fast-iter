@@ -5,6 +5,9 @@ using Chalmers.ILL.Members;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
+    // Self-service on the caller's own account (requires their own current password to change
+    // it) - not an order/member-admin mutation, so safe for Viewer.
+    [AllowViewer]
     public class PasswordSurfaceController : Controller
     {
         private static readonly log4net.ILog _log = log4net.LogManager.GetLogger(typeof(PasswordSurfaceController));

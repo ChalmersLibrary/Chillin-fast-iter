@@ -36,6 +36,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderPatronDataView(int nodeId)
         {
             // Get a new OrderItem populated with values for this node
@@ -51,6 +52,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="pnr">The query string.</param>
         /// <returns>Returns a result indicating how the request went.</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult QueryPatronDataFromCache(string query)
         {
             var json = new ResultResponse();

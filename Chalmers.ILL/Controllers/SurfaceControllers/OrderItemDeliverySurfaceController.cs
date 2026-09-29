@@ -43,6 +43,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderDeliveryAction(int nodeId)
         {
             var pageModel = new ChalmersILLActionDeliveryModel(_orderItemManager.GetOrderItem(nodeId));
@@ -56,6 +57,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderArticleByEmailDeliveryType(int nodeId)
         {
             var pageModel = new Models.PartialPage.DeliveryType.ArticleByEmail(_orderItemManager.GetOrderItem(nodeId));
@@ -71,6 +73,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderArticleByMailOrInternalMailDeliveryType(int nodeId)
         {
             var pageModel = new Models.PartialPage.DeliveryType.ArticleByMailOrInternalMail(_orderItemManager.GetOrderItem(nodeId));
@@ -87,6 +90,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderArticleInInfodiskDeliveryType(int nodeId)
         {
             var pageModel = new Models.PartialPage.DeliveryType.ArticleInInfodisk(_orderItemManager.GetOrderItem(nodeId));
@@ -103,6 +107,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderArticleInTransitDeliveryType(int nodeId)
         {
             var pageModel = new Models.PartialPage.DeliveryType.ArticleInTransit(_orderItemManager.GetOrderItem(nodeId));
@@ -126,6 +131,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderArticleFromProviderDeliveryType(int nodeId)
         {
             var pageModel = new Models.PartialPage.DeliveryType.ArticleFromProvider(_orderItemManager.GetOrderItem(nodeId));
@@ -139,6 +145,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderBookInstantLoanDeliveryType(int nodeId)
         {
             var pageModel = new Models.PartialPage.DeliveryType.BookInstantLoan(_orderItemManager.GetOrderItem(nodeId));
@@ -153,6 +160,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderBookReadAtLibraryDeliveryType(int nodeId)
         {
             var pageModel = new Models.PartialPage.DeliveryType.BookReadAtLibrary(_orderItemManager.GetOrderItem(nodeId));

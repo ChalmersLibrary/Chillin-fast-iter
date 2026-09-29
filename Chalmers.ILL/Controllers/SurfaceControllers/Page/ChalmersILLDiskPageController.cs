@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
 {
+    [AllowViewer]
     public class ChalmersILLDiskPageController : Controller
     {
         IMemberInfoManager _memberInfoManager;

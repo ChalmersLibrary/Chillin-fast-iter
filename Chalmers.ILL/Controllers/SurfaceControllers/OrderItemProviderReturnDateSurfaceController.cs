@@ -31,6 +31,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderProviderReturnDateAction(int nodeId)
         {
             var pageModel = new ChalmersILLActionProviderReturnDateModel(_orderItemManager.GetOrderItem(nodeId));

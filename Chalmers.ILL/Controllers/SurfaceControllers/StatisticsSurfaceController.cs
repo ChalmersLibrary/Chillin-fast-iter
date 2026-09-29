@@ -13,6 +13,7 @@ using Chalmers.ILL.OrderItems;
 namespace Chalmers.ILL.Controllers.SurfaceControllers
 {
     [Authorize]
+    [AllowViewer]
     public class StatisticsSurfaceController : Controller
     {
         private IOrderItemSearcher _orderItemSearcher;

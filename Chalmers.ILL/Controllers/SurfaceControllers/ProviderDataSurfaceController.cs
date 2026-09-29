@@ -30,6 +30,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderModifyProviderDataAction()
         {
             var pageModel = new Models.PartialPage.Settings.ModifyProviderData();
@@ -40,6 +41,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult GetNodeIdsForOrderItemsWithGivenProviderName(string providerName)
         {
             var ids = new List<int>();
@@ -60,6 +62,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult GetDeliveryTimeInHoursForProvider(string providerName)
         {
             int time = 0;

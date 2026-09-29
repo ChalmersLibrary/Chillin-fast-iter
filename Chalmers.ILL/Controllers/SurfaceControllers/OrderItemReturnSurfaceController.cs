@@ -35,6 +35,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderReturnAction(int nodeId)
         {
             var pageModel = new ChalmersILLActionReturnModel(_orderItemManager.GetOrderItem(nodeId));

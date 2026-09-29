@@ -33,6 +33,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderLogEntryAction(int nodeId)
         {
             var pageModel = new ChalmersILLActionLogEntryModel(_orderItemManager.GetOrderItem(nodeId));
@@ -49,6 +50,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult GetLogItemsAsPartial(int nodeId)
         {
             // Call internal method to return List of LogItems for this OrderItem nodeId
@@ -63,6 +65,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// </summary>
         /// <param name="nodeId">OrderItem</param>
         /// <returns>Json Result</returns>
+        [AllowViewer]
         public JsonResult GetLogItems(int nodeId)
         {
             // The list of log entries to return binds to the model

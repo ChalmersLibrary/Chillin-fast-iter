@@ -32,6 +32,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderClaimAction(int nodeId)
         {
             var pageModel = new ChalmersILLActionClaimModel(_orderItemManager.GetOrderItem(nodeId));

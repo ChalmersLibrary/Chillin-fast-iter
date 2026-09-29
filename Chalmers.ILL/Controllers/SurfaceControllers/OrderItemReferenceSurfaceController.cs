@@ -24,6 +24,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderReferenceAction(int nodeId)
         {
             // Get a new OrderItem populated with values for this node

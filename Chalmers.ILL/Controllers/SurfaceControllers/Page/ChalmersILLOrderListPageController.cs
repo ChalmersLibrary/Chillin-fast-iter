@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
 {
+    [AllowViewer]
     public class ChalmersILLOrderListPageController : Controller
     {
         IMemberInfoManager _memberInfoManager;

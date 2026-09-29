@@ -23,6 +23,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderEditTemplatesAction()
         {
             var pageModel = new Models.PartialPage.Settings.EditTemplates();
@@ -34,6 +35,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult GetTemplateData(int nodeId)
         {
             var json = new ResultResponseWithStringData();
@@ -54,6 +56,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult GetPopulatedTemplateData(int templateId, int orderItemNodeId)
         {
             var json = new ResultResponseWithStringData();

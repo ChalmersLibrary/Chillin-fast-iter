@@ -22,6 +22,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [AllowViewer]
         public ActionResult GetMediaItem(string id)
         {
             ActionResult res = Json(new ResultResponse(false, "Unknown error."));

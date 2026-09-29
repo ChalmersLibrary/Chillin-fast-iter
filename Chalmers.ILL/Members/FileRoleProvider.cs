@@ -10,6 +10,14 @@ namespace Chalmers.ILL.Members
     // in the app are implemented.
     public class FileRoleProvider
     {
+        // An account with no roles assigned is implicitly "Viewer" - a read-only default rather
+        // than "no access at all", since the global AuthorizeFilter already lets any logged-in
+        // account reach every page/action regardless of roles (see ViewerReadOnlyFilter, which
+        // is what actually enforces the read-only restriction this role implies). An *unknown*
+        // account (FindAccount returns null) is NOT given this default - that's "not logged in",
+        // not "logged in with no roles".
+        public const string ViewerRole = "Viewer";
+
         private readonly Func<List<MemberAccount>> _loadAccounts;
 
         public FileRoleProvider(Func<List<MemberAccount>> loadAccounts)
@@ -17,20 +25,21 @@ namespace Chalmers.ILL.Members
             _loadAccounts = loadAccounts;
         }
 
-        public bool IsUserInRole(string username, string roleName)
-        {
-            var account = FindAccount(username);
-            return account?.Roles?.Any(r => string.Equals(r, roleName, StringComparison.OrdinalIgnoreCase)) ?? false;
-        }
+        public bool IsUserInRole(string username, string roleName) =>
+            GetRolesForUser(username).Any(r => string.Equals(r, roleName, StringComparison.OrdinalIgnoreCase));
 
         public string[] GetRolesForUser(string username)
         {
             var account = FindAccount(username);
-            return account?.Roles?.ToArray() ?? new string[0];
+            if (account == null) return new string[0];
+            return EffectiveRoles(account.Roles);
         }
 
         public string[] GetAllRoles() =>
-            _loadAccounts().SelectMany(a => a.Roles ?? new List<string>()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            _loadAccounts().SelectMany(a => EffectiveRoles(a.Roles)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+        private static string[] EffectiveRoles(List<string> roles) =>
+            (roles == null || roles.Count == 0) ? new[] { ViewerRole } : roles.ToArray();
 
         public bool RoleExists(string roleName) =>
             GetAllRoles().Any(r => string.Equals(r, roleName, StringComparison.OrdinalIgnoreCase));

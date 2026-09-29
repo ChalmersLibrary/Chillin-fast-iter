@@ -50,6 +50,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">OrderItem Node Id</param>
         /// <returns>Partial View</returns>
         [HttpGet]
+        [AllowViewer]
         public ActionResult RenderMailAction(int nodeId)
         {
             var model = new ChalmersILLActionMailModel(_orderItemManager.GetOrderItem(nodeId));

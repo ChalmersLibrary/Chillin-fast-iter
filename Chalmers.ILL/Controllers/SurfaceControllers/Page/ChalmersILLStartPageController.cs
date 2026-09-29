@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Chalmers.ILL.Controllers.SurfaceControllers.Page
 {
+    [AllowViewer]
     public class ChalmersILLStartPageController : Controller
     {
         IMemberInfoManager _memberInfoManager;
