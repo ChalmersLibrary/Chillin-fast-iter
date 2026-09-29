@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Isolated;
+using Chalmers.ILL.Models;
+using Chalmers.ILL.OrderItems;
 using Chalmers.ILL.Tests.Configuration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -97,6 +100,53 @@ namespace Chalmers.ILL.Tests
             });
 
             Bootstrapper.RegisterTypes(services);
+        }
+
+        [TestMethod]
+        public void RegisterTypes_IsolatedMode_OrderTypeChangeIsVisibleThroughAnyServiceProviderBuiltFromTheSameCollection()
+        {
+            // Reproduces a reported bug: after changing an order's type, reloading the order list
+            // still showed the old type while the order's own page showed the new one. Root cause:
+            // IOrderItemSearcher used to be registered type-based
+            // (AddSingleton<IOrderItemSearcher, T>), so a second IServiceProvider built from this
+            // same IServiceCollection - exactly what Program.cs's builder.Build() does relative to
+            // the "interim"/"final" providers built inside RegisterTypes - got its own, separate
+            // InMemoryOrderItemSearcher instance that FileOrderItemManager's writes never reached.
+            var services = BuildServices(new Dictionary<string, string>
+            {
+                ["Chillin:Isolated"] = "true",
+                ["Chillin:DataPath"] = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "chillin-isolation-test-" + System.Guid.NewGuid())
+            });
+
+            Bootstrapper.RegisterTypes(services);
+
+            // providerB stands in for Program.cs's real runtime ServiceProvider (app.Services) -
+            // a second provider built from the same collection, just like builder.Build() is
+            // relative to the providers built inside RegisterTypes.
+            var providerA = services.BuildServiceProvider();
+            var providerB = services.BuildServiceProvider();
+
+            var searcherFromA = providerA.GetRequiredService<IOrderItemSearcher>();
+            var searcherFromB = providerB.GetRequiredService<IOrderItemSearcher>();
+            Assert.AreSame(searcherFromA, searcherFromB,
+                "IOrderItemSearcher must resolve to the same instance from every IServiceProvider built off this IServiceCollection, or writes made through IOrderItemManager never reach whichever instance a controller resolved.");
+
+            // doSignal: false - SetNotifier is only wired up in Program.cs, after the app's real
+            // ServiceProvider exists (see the comment in Bootstrapper.RegisterTypes); irrelevant to
+            // what this test is pinning down.
+            var orderItemManager = providerA.GetRequiredService<IOrderItemManager>();
+            var nodeId = orderItemManager.CreateOrderItemInDbFromOrderItemModel(new OrderItemModel
+            {
+                LogItemsList = new List<LogItem>(),
+                AttachmentList = new List<OrderAttachment>(),
+                TypeId = 11 // "Artikel"
+            }, doSignal: false);
+
+            orderItemManager.SetType(nodeId, 12, "event-1", doSignal: false); // -> "Bok"
+
+            var found = searcherFromB.Search("type:Bok").SingleOrDefault(o => o.NodeId == nodeId);
+            Assert.IsNotNull(found,
+                "Order list (IOrderItemSearcher, resolved from a separate ServiceProvider) never saw the type change made through IOrderItemManager.");
         }
     }
 }

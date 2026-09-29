@@ -97,14 +97,16 @@ if (app.Services.GetRequiredService<Chalmers.ILL.OrderItems.IOrderItemManager>()
 }
 
 // Fas 10, "Ordna testdata för utvecklingsmiljön": isolated mode only (local devcontainer or the
-// isolated test server) - never a live DataPath. Both pieces read fresh from disk on every call
-// (Isolated.FileTemplateService/InMemoryOrderItemSearcher), so there's no ordering requirement
-// against Bootstrapper.RegisterTypes the way chillinPrevalues.json used to have - this can live
-// entirely after the app is built and use the real, DI-resolved services. Order creation goes
-// through the same SetStatus/SetType calls every controller uses, so a seeded order can never
-// drift from what a real save produces. members.json is deliberately NOT seeded here - creating
-// a first account (there is no chicken-and-egg way to do it through the UI) is a one-time manual
-// step, not something to redo on every fresh DataPath; see README.md.
+// isolated test server) - never a live DataPath. Isolated.FileTemplateService reads fresh from
+// disk on every call; InMemoryOrderItemSearcher instead holds its snapshot in memory and only
+// sees later writes because Bootstrapper.RegisterTypes now registers the single resolved
+// instance rather than a type (see the fix there, 2026-09-29) - so this still has no ordering
+// requirement against Bootstrapper.RegisterTypes the way chillinPrevalues.json used to have, and
+// can live entirely after the app is built and use the real, DI-resolved services. Order creation
+// goes through the same SetStatus/SetType calls every controller uses, so a seeded order can
+// never drift from what a real save produces. members.json is deliberately NOT seeded here -
+// creating a first account (there is no chicken-and-egg way to do it through the UI) is a
+// one-time manual step, not something to redo on every fresh DataPath; see README.md.
 var chillinConfig = app.Services.GetRequiredService<IChillinConfiguration>();
 if (chillinConfig.Isolated)
 {

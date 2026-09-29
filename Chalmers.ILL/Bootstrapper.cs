@@ -14,6 +14,7 @@ using Chalmers.ILL.SignalR;
 using Chalmers.ILL.Templates;
 using Chalmers.ILL.UmbracoApi;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Nest;
 using System;
 using System.IO;
@@ -68,6 +69,18 @@ namespace Chalmers.ILL
             var mediaItemManager = interim.GetRequiredService<IMediaItemManager>();
             var mailWebApi = interim.GetRequiredService<IMailWebApi>();
             var folioConnection = interim.GetRequiredService<IFolioConnection>();
+
+            // Fixade en bugg (2026-09-29): IOrderItemSearcher var registrerat typbaserat
+            // (AddSingleton<IOrderItemSearcher, T>/AddTransient), så varje IServiceProvider som
+            // byggs från den här IServiceCollection - "final" nedan, och framför allt Program.cs's
+            // riktiga runtime-provider - fick sin egen instans. FileOrderItemManager (skapad med
+            // orderItemSearcher-instansen ovan) reindexerade bara den instansen, medan
+            // ordinelistan (som löser IOrderItemSearcher via vanlig DI mot runtime-providern) läste
+            // en helt annan, aldrig uppdaterad instans - i isolerat läge en permanent ögonblicksbild
+            // från appstart. Samma instans-registrering som IOrderItemManager redan använder
+            // (se orderItemManager nedan) löser det: alla providers som byggs från den här
+            // collection:en (inklusive Program.cs's) återanvänder exakt detta objekt.
+            services.Replace(ServiceDescriptor.Singleton(orderItemSearcher));
 
             // members.json lives under DataPath now (fas 6, isolerat läge steg A, "Datarot") - not
             // next to the deployed binaries. ChillinOrderConfiguration itself is hardcoded (fas 10,
