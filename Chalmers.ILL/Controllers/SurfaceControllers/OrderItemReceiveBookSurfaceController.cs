@@ -63,6 +63,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="providerInformation">Information about the provider</param>
         /// <returns>MVC ActionResult with JSON</returns>
         [HttpPost]
+        [RequiresOrderLock(PackJsonField = "orderNodeId")]
         public ActionResult SetOrderItemDeliveryReceived(string packJson)
         {
             var json = new ResultResponse();
@@ -126,6 +127,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="providerInformation">Information about the provider</param>
         /// <returns>MVC ActionResult with JSON</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult SetOrderItemDeliveryReceivedAtBranch(int nodeId)
         {
             var json = new ResultResponse();

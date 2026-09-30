@@ -30,6 +30,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="statusId">Delivery library DataType Id</param>
         /// <returns>MVC ActionResult with JSON</returns>
         [HttpGet]
+        [RequiresOrderLock(Parameter = "orderNodeId")]
         public ActionResult SetOrderItemDeliveryLibrary(int orderNodeId, int deliveryLibraryId)
         {
             var json = new ResultResponse();

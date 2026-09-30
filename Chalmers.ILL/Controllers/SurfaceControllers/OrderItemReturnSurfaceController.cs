@@ -47,6 +47,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult ReturnItem(int nodeId, string bookId, int status)
         {
             var json = new ResultResponse();

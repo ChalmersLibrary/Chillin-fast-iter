@@ -31,6 +31,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="statusId">Status property DataType Id</param>
         /// <returns>MVC ActionResult with JSON</returns>
         [HttpGet]
+        [RequiresOrderLock(Parameter = "orderNodeId")]
         public ActionResult SetOrderItemStatus(int orderNodeId, int statusId, int cancellationReasonId = -1, int purchasedMaterialId = -1)
         {
             var json = new ResultResponse();

@@ -15,10 +15,15 @@ namespace Chalmers.ILL
         // ViewerReadOnlyFilter adds a second, narrower restriction on top: a logged-in account
         // with no real role (FileRoleProvider's implicit "Viewer" default) may only reach actions
         // explicitly marked [AllowViewer] - see that file for the reasoning.
+        //
+        // RequiresOrderLockFilter adds a third, orthogonal restriction: an action explicitly
+        // marked [RequiresOrderLock] is blocked if the order it targets is locked by a different
+        // member - see that file for why this was needed.
         public static void RegisterGlobalFilters(MvcOptions options)
         {
             options.Filters.Add(new AuthorizeFilter());
             options.Filters.Add(new ViewerReadOnlyFilter());
+            options.Filters.Add(new RequiresOrderLockFilter());
         }
     }
 }

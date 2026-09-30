@@ -2902,6 +2902,41 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   **Kvarstår fortfarande:** det visuella tvåfönstertestet i en riktig webbläsare (DOM-omritning),
   se ovan - den här sessionens fynd var HTTP-nivå, inte en bekräftelse av klientkoden i en riktig
   Chromium-instans.
+
+  **Två verkliga buggar till hittade och fixade 2026-09-30, samma dag, efter användarens eget
+  tvåfönstertest i en riktig (icke-sandbox) miljö:** trots StableMemberId-fixen ovan rapporterade
+  användaren att låset fortfarande inte syntes, och att samma order gick att redigera samtidigt
+  i två inloggade sessioner.
+  1. **Klientsidan:** `updateStream`-hanteraren i `chalmers.ill.js` uppdaterade bara en redan
+     öppen ordervy vid en inkommande låsändring om den aktuella betraktaren **själv tidigare
+     hållit låset** (kollade `data-locked-by-memberid` på egna raden). En betraktare som bara
+     har ordern öppen utan att någonsin ha tagit låset själv - t.ex. öppnade den strax innan
+     den andra användaren låste den - fick aldrig sin vy uppdaterad; knapparna doldes aldrig.
+     Fixat: lade till en `else`-gren som laddar om den öppna panelen även för en betraktare som
+     inte håller låset, närhelst en relevant uppdatering kommer in för den öppna ordern.
+  2. **Serversidan, djupare:** verifierat direkt (HTTP, alice/bob) att **ingen mutations-
+     controller utom `OrderItemSurfaceController` själv någonsin kollade `EditedBy`** innan en
+     ändring tilläts - låset styrde bara vilken HTML som *renderades*
+     (`Chalmers.ILL.OrderItem.cshtml`s villkor), aldrig vad som faktiskt gick att spara. Bob
+     kunde ändra status på en order Alice hade låst, rakt av, ingen spärr. Fixat med en ny,
+     opt-in `[RequiresOrderLock]`-attribut plus ett globalt `RequiresOrderLockFilter`
+     (`Chalmers.ILL/App_Start/RequiresOrderLockFilter.cs`, registrerat i `FilterConfig.cs`
+     bredvid `ViewerReadOnlyFilter`) - applicerad på ~31 muterande actions över ~19 controllers
+     (status, typ, referens, leveransbibliotek, inköpsbibliotek, anonymisering, retur,
+     leverans/hämtning, providerdata, patrondata, krav/reklamation, bifogade dokument, manuella
+     loggposter m.fl.). Medvetet **inte** applicerad på rena `Render*`/`Query*`-actions (den
+     låsta grenen i partialen länkar ändå aldrig dit för den som inte har låset) eller på de två
+     maskin-till-maskin-endpointsen från fas 0a (`OrderItemReceivedAtBranchSurfaceController.
+     RenderResponse`, `BookCirculationSurfaceController`) - de drivs av fysisk QR-
+     skanning/cirkulationssystem, inte av en bemannad redigeringssession, så att blockera dem
+     mot en personals pågående redigering hade varit en regression, inte en fix. Verifierat live
+     (HTTP, tre olika bindningsformer: query-param, POST-formulär, `packJson`-body): Bob
+     blockeras med tydligt felmeddelande så länge Alice håller låset, och samma anrop lyckas så
+     fort hon släpper det - inget på disk ändras vid en blockerad ändring.
+  Enhetstester: `RequiresOrderLockFilterTest.cs` (filtrets beslutslogik, alla
+  upplösningsvägar). **Kvarstår, som ovan:** det visuella tvåfönstertestet i en riktig
+  webbläsare - dagens fynd/fixar är HTTP-verifierade, inte klick-för-klick i två samtidiga
+  Chromium-fönster.
 - [x] **Inloggning, utloggning, rollbeteende.** Logga in som konto med respektive `Desk` (ska landa på
   `/disk/`), `Administrator` och `SuperAdmin` (ska se Konton-fliken). Verifiera att befintliga
   lösenordshashar i `members.json` fortfarande fungerar efter bytet till `PasswordHasher<T>` — det är

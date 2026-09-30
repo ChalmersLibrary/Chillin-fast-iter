@@ -25,6 +25,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [RequiresOrderLock(Parameter = "orderNodeId")]
         public ActionResult MakeDuplicate(int orderNodeId)
         {
             var json = new ResultResponse();

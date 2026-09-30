@@ -35,6 +35,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult SetReference(int nodeId, string reference)
         {
             var json = new ResultResponse();

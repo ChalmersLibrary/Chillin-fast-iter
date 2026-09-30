@@ -31,6 +31,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="url">The url from which we should fetch the document.</param>
         /// <returns>Returns a result indicating how the request went.</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "orderItemNodeId")]
         public ActionResult ImportFromUrl(int orderItemNodeId, string url)
         {
             // Json response
@@ -91,6 +92,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="data">The base 64 encoded data which we should use to create the document.</param>
         /// <returns>Returns a result indicating how the request went.</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "orderItemNodeId")]
         public ActionResult ImportFromData(int orderItemNodeId, string filename, string data)
         {
             // Json response

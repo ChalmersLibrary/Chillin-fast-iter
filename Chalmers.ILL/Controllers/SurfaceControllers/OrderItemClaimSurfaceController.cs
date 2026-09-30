@@ -44,6 +44,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [RequiresOrderLock(PackJsonField = "nodeId")]
         public ActionResult ClaimItem(string packJson)
         {
             var json = new ResultResponse();

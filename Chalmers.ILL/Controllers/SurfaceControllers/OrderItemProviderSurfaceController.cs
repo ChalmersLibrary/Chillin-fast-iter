@@ -44,6 +44,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpGet]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult SetProvider(int nodeId, string providerName, string providerOrderId, string providerInformation, string newFollowUpDate, bool updateStatusAndFollowUpDate = true)
         {
             var json = new ResultResponse();

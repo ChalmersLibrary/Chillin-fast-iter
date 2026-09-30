@@ -69,6 +69,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="m">The data for the outgoing mail.</param>
         /// <returns>JSON result</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "m")]
         public ActionResult SendMail(OutgoingMailPackageModel m)
         {
             var json = new ResultResponse();

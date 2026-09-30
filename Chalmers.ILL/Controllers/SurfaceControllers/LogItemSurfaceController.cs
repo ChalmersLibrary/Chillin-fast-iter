@@ -83,6 +83,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="Message"></param>
         /// <returns></returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult WriteLogItem(int nodeId, string Type, string Message, string newFollowUpDate, int statusId, int cancellationReasonId, int purchasedMaterialId)
         {
             // Json response

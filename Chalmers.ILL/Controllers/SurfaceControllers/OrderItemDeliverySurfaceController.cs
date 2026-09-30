@@ -177,6 +177,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="delivery">Type of delivery</param>
         /// <returns>JSON result</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult SetDelivery(int nodeId, string logEntry, string delivery)
         {
             var json = new ResultResponse();
@@ -208,6 +209,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="delivery">Type of delivery</param>
         /// <returns>JSON result</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult SetTransport(int nodeId, string logEntry, string delivery)
         {
             var json = new ResultResponse();
@@ -237,6 +239,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="packJson">The serialized object of type DeliveryByMailPackage.</param>
         /// <returns>JSON result</returns>
         [HttpPost]
+        [RequiresOrderLock(PackJsonField = "nodeId")]
         public ActionResult SetArticleAvailableForPickup(string packJson)
         {
             var res = new ResultResponse();
@@ -279,6 +282,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="nodeId">The node ID for the order item in question.</param>
         /// <returns>JSON result</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult SetArticleAvailableForPickupAtBranch(int nodeId)
         {
             var res = new ResultResponse();
@@ -323,6 +327,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="packJson">The serialized object of type DeliveryByMailPackage.</param>
         /// <returns>JSON result</returns>
         [HttpPost]
+        [RequiresOrderLock(PackJsonField = "nodeId")]
         public ActionResult DeliverByMail(string packJson)
         {
             var res = new ResultResponse();
@@ -365,6 +370,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="packJson">The serialized object of type DeliveryByMailPackage.</param>
         /// <returns>JSON result</returns>
         [HttpPost]
+        [RequiresOrderLock(PackJsonField = "nodeId")]
         public ActionResult DeliverByPost(string packJson)
         {
             var res = new ResultResponse();
@@ -389,6 +395,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="packJson">The serialized object of type DeliveryByMailPackage.</param>
         /// <returns>JSON result</returns>
         [HttpPost]
+        [RequiresOrderLock(PackJsonField = "nodeId")]
         public ActionResult DeliverByInternpost(string packJson)
         {
             var res = new ResultResponse();

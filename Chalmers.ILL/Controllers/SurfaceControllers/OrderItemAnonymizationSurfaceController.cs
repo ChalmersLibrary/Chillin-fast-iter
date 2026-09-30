@@ -35,6 +35,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult Anonymize(int nodeId, string reference, string logsSerialized)
         {
             var json = new ResultResponse();
@@ -61,6 +62,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeIds")]
         public ActionResult SetIsAnonymizedOnMultiple(int[] nodeIds, bool isAnonymized)
         {
             var json = new ResultResponse();

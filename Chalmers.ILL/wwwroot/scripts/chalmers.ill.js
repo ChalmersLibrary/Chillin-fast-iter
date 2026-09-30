@@ -1341,14 +1341,25 @@ notificationHubConnection.on("updateStream", function (value) {
         }
     }
 
-    // If current member has NodeId in open state and SignalR says other member has taken lock
+    // If current member has NodeId in open state and SignalR says the lock situation changed
     if ($("#" + value.NodeId).hasClass("open") && value.EditedBy != -1) {
-        if ($("#action-buttons-" + value.NodeId).attr("data-locked-by-memberid")) {
-            if (value.EditedBy != "" && $("#action-buttons-" + value.NodeId).attr("data-locked-by-memberid") != value.EditedBy) {
-                alert(value.EditedByMemberName + " (" + value.EditedBy + ") took lock from you (" + $("#action-buttons-" + value.NodeId).attr("data-locked-by-memberid") + ").");
+        var ownLockAttr = $("#action-buttons-" + value.NodeId).attr("data-locked-by-memberid");
+        if (ownLockAttr) {
+            // We believe we hold the lock ourselves - only reload if someone else took it from us.
+            if (value.EditedBy != "" && ownLockAttr != value.EditedBy) {
+                alert(value.EditedByMemberName + " (" + value.EditedBy + ") took lock from you (" + ownLockAttr + ").");
                 loadOrderItemDetails(value.NodeId);
                 $("#"+value.NodeId).removeAttr("data-locked-by-memberid");
             }
+        }
+        else {
+            // We don't hold the lock ourselves (we may never have tried, or opened it just
+            // before someone else locked it) - reload so the rendered pane actually reflects
+            // who holds it now. Without this, an order left open in this state kept showing
+            // its edit buttons forever - re-rendering only ever happened for a viewer who had
+            // themselves held the lock at some point (the branch above), never for one who was
+            // just passively viewing an order that became locked - or unlocked - under them.
+            loadOrderItemDetails(value.NodeId);
         }
     }
 

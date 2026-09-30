@@ -31,6 +31,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="purchaseLibraryId">Purchase library</param>
         /// <returns>MVC ActionResult with JSON</returns>
         [HttpGet]
+        [RequiresOrderLock(Parameter = "orderNodeId")]
         public ActionResult SetOrderItemPurchaseLibrary(int orderNodeId, PurchaseLibraries purchaseLibrary)
         {
             var json = new ResultResponse();

@@ -31,6 +31,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="typeId">Type property DataType Id</param>
         /// <returns>MVC ActionResult with JSON</returns>
         [HttpGet]
+        [RequiresOrderLock(Parameter = "orderNodeId")]
         public ActionResult SetOrderItemType(int orderNodeId, int typeId)
         {
             var json = new ResultResponse();

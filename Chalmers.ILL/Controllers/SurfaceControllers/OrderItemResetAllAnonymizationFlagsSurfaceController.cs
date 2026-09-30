@@ -24,6 +24,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [RequiresOrderLock(Parameter = "nodeId")]
         public ActionResult Reset(int nodeId)
         {
             var json = new ResultResponse();

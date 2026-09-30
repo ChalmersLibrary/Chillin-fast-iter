@@ -80,6 +80,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="pnr">The "personnummer" which we should search for.</param>
         /// <returns>Returns a result indicating how the request went.</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "orderItemNodeId")]
         public ActionResult FetchPatronDataUsingLcnOrPnr(int orderItemNodeId, string lcn, string pnr, bool cache=true)
         {
             var json = new ResultResponse();
@@ -129,6 +130,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="cache">If we should fetch data from cache or not.</param>
         /// <returns>Result indicating how the request went.</returns>
         [HttpGet]
+        [RequiresOrderLock(Parameter = "orderItemNodeId")]
         public ActionResult FetchPatronDataUsingSierraId(int orderItemNodeId, string sierraId, bool cache = true)
         {
             var json = new ResultResponse();
@@ -177,6 +179,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="lcn">The library card number which we should search for.</param>
         /// <returns>Returns a result indicating how the request went.</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "orderItemNodeId")]
         public ActionResult FetchPatronDataUsingLcn(int orderItemNodeId, string lcn, bool cache=true)
         {
             var json = new ResultResponse();
@@ -222,6 +225,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         /// <param name="data">CID, e-mail or pnr</param>
         /// <returns>Returns a result indicating how the request went.</returns>
         [HttpPost]
+        [RequiresOrderLock(Parameter = "orderItemNodeId")]
         public ActionResult FetchPatronDataUsingPdbRoundtrip(int orderItemNodeId, string data)
         {
             var json = new ResultResponse();

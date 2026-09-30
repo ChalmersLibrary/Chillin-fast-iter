@@ -41,6 +41,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         [HttpPost]
+        [RequiresOrderLock(PackJsonField = "nodeId")]
         public ActionResult ChangeReturnDate(string packJson)
         {
             var json = new ResultResponse();
