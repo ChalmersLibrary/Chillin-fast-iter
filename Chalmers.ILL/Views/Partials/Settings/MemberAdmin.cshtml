@@ -59,6 +59,9 @@
             } else {
                 $("#member-settings-link").click();
             }
+        }).fail(function (jqxhr, textStatus, error) {
+            alert("Error: " + textStatus + " " + error);
+            unlockScreen();
         });
     }
 
@@ -72,6 +75,9 @@
                 alert(json.Message);
             }
             unlockScreen();
+        }).fail(function (jqxhr, textStatus, error) {
+            alert("Error: " + textStatus + " " + error);
+            unlockScreen();
         });
     }
 
@@ -83,6 +89,9 @@
         lockScreen();
         $.post("/MemberAdminSurface/SetMemberPassword", { login: login, newPassword: newPassword }).done(function (json) {
             alert(json.Message);
+            unlockScreen();
+        }).fail(function (jqxhr, textStatus, error) {
+            alert("Error: " + textStatus + " " + error);
             unlockScreen();
         });
     }
@@ -99,6 +108,9 @@
             } else {
                 $("#member-settings-link").click();
             }
+        }).fail(function (jqxhr, textStatus, error) {
+            alert("Error: " + textStatus + " " + error);
+            unlockScreen();
         });
     }
 </script>
