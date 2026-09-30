@@ -72,6 +72,61 @@ namespace Chalmers.ILL.Tests.Controllers
         }
 
         [TestMethod]
+        public async Task HandleLogin_ValidCredentials_AssignsNonZeroMemberId()
+        {
+            // Regression coverage for a real bug found 2026-09-30 via manual two-user testing:
+            // AddMemberToCache was always called with a literal 0, which every lock comparison
+            // in OrderItemSurfaceController/ChalmersILLOrderListPage.cshtml treats as "no member",
+            // so a locked order never showed as locked to anyone. The old StubMemberInfoManager
+            // below discarded the memberId argument entirely, so this went uncaught here even
+            // though the controller was fully unit tested.
+            int? capturedMemberId = null;
+            var memberInfoManager = new CapturingMemberInfoManager(id => capturedMemberId = id);
+            var controller = new LoginSurfaceController(memberInfoManager, (u, p) => true, u => new[] { "Desk" }, (ctx, login, roles) => Task.CompletedTask, new StubChillinConfiguration());
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+            await controller.HandleLogin(new Models.LoginModel { Login = "someuser", Password = "correct" });
+
+            Assert.IsNotNull(capturedMemberId);
+            Assert.AreNotEqual(0, capturedMemberId.Value);
+        }
+
+        [TestMethod]
+        public async Task HandleLogin_DifferentLogins_GetDifferentMemberIds()
+        {
+            int? idForAlice = null, idForBob = null;
+
+            var aliceController = new LoginSurfaceController(new CapturingMemberInfoManager(id => idForAlice = id), (u, p) => true, u => Array.Empty<string>(), (ctx, login, roles) => Task.CompletedTask, new StubChillinConfiguration());
+            aliceController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            await aliceController.HandleLogin(new Models.LoginModel { Login = "alice", Password = "correct" });
+
+            var bobController = new LoginSurfaceController(new CapturingMemberInfoManager(id => idForBob = id), (u, p) => true, u => Array.Empty<string>(), (ctx, login, roles) => Task.CompletedTask, new StubChillinConfiguration());
+            bobController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            await bobController.HandleLogin(new Models.LoginModel { Login = "bob", Password = "correct" });
+
+            Assert.IsNotNull(idForAlice);
+            Assert.IsNotNull(idForBob);
+            Assert.AreNotEqual(idForAlice.Value, idForBob.Value);
+        }
+
+        [TestMethod]
+        public async Task HandleLogin_SameLoginTwice_GetsSameMemberIdBothTimes()
+        {
+            int? firstId = null, secondId = null;
+
+            var controller1 = new LoginSurfaceController(new CapturingMemberInfoManager(id => firstId = id), (u, p) => true, u => Array.Empty<string>(), (ctx, login, roles) => Task.CompletedTask, new StubChillinConfiguration());
+            controller1.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            await controller1.HandleLogin(new Models.LoginModel { Login = "sameuser", Password = "correct" });
+
+            var controller2 = new LoginSurfaceController(new CapturingMemberInfoManager(id => secondId = id), (u, p) => true, u => Array.Empty<string>(), (ctx, login, roles) => Task.CompletedTask, new StubChillinConfiguration());
+            controller2.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            await controller2.HandleLogin(new Models.LoginModel { Login = "sameuser", Password = "correct" });
+
+            Assert.IsNotNull(firstId);
+            Assert.AreEqual(firstId.Value, secondId.Value);
+        }
+
+        [TestMethod]
         public void HandleLogin_HasValidateAntiForgeryTokenAttribute()
         {
             // Login had no CSRF protection at all (see TODO-remove-dotnet-framework.md, fas 3).
@@ -95,6 +150,25 @@ namespace Chalmers.ILL.Tests.Controllers
             public string GetCurrentMemberLoginName(HttpRequest request, HttpResponse response) => "testuser";
             public void PopulateModelWithMemberData(HttpRequest request, HttpResponse response, ChalmersILLModel model) { }
             public void AddMemberToCache(HttpResponse response, int memberId, string memberText, string memberLoginName) { }
+            public void ClearMemberCache(HttpResponse response) { }
+        }
+
+        // Unlike StubMemberInfoManager above, records the memberId HandleLogin actually passes
+        // to AddMemberToCache, since that's exactly the value the real bug got wrong.
+        class CapturingMemberInfoManager : IMemberInfoManager
+        {
+            private readonly Action<int> _onAddMemberToCache;
+
+            public CapturingMemberInfoManager(Action<int> onAddMemberToCache)
+            {
+                _onAddMemberToCache = onAddMemberToCache;
+            }
+
+            public int GetCurrentMemberId(HttpRequest request, HttpResponse response) => 1;
+            public string GetCurrentMemberText(HttpRequest request, HttpResponse response) => "Test User";
+            public string GetCurrentMemberLoginName(HttpRequest request, HttpResponse response) => "testuser";
+            public void PopulateModelWithMemberData(HttpRequest request, HttpResponse response, ChalmersILLModel model) { }
+            public void AddMemberToCache(HttpResponse response, int memberId, string memberText, string memberLoginName) => _onAddMemberToCache(memberId);
             public void ClearMemberCache(HttpResponse response) { }
         }
     }

@@ -2867,6 +2867,41 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   andra inloggad session faktiskt ritar om DOM:en) och återanslutning efter omstart av servern
   med fönster öppna — ingetdera går att särskilja från ett CPU-timeout i den här sandboxen, se
   ovan.
+
+  **Verklig bugg hittad 2026-09-30, via användarens eget tvåfönstertest utanför sandboxen:**
+  en beställning som en användare öppnade visade sig aldrig som låst för den andra användaren -
+  varken vid en färsk sidladdning eller via SignalR-pushen. Grundorsaken låg inte i SignalR
+  eller sökindexet (som båda redan uppdaterade `EditedBy` korrekt), utan i inloggningen:
+  `LoginSurfaceController.HandleLogin` (rad 82) satte `AddMemberToCache`s `memberId` till en
+  hårdkodad `0` för **alla** användare, sedan `MemberAccount` (fas 6, `Members/MemberAccount.cs`)
+  ersatte Umbraco-medlemsdatabasen (som hade ett numeriskt id) med `members.json` utan att något
+  id fick följa med. Eftersom `0` är sentinelvärdet för "olåst"/"ingen medlem" genom hela kedjan
+  (`ChalmersILLOrderListPage.cshtml`s `AsInt(...) != 0`, `OrderItemSurfaceController`s
+  `EditedByCurrentMember`-jämförelser, `data-memberid` i `ChalmersILL.cshtml`) blev resultatet att
+  varje lås såg olåst ut för alla utom - felaktigt - att `EditedByCurrentMember` alltid slog in
+  som sant, oavsett vem som frågade. Bekräftat direkt över HTTP med två separata cookie-jars
+  (`alice`/`bob`, samma teknik som `browser-check`-skripten ovan): innan fix visade `bob`s
+  `GetOrderItem` `EditedByCurrentMember: true` för ett lås `alice` hade tagit, och `bestaellningar/`
+  saknade `locked`-klassen helt, för alla.
+  **Fixat:** `LoginSurfaceController` härleder nu ett stabilt, icke-noll medlems-id från
+  inloggningsnamnet (SHA-256, versal-okänsligt) i stället för `0` - inget behov av att migrera
+  `members.json` (ett nytt numeriskt fält hade defaultat till `0` för varje befintlig, manuellt
+  underhållen post och återskapat exakt samma kollision). Verifierat om, samma HTTP-teknik som
+  ovan, efter fixen: `alice` och `bob` får olika, stabila id:n vid inloggning;
+  `bob`s `GetOrderItem` visar nu korrekt `EditedByCurrentMember: false` och `EditedBy` satt till
+  `alice`s id; `bestaellningar/` visar `locked`-klassen och rätt `data-editorid` för `bob`, men
+  inte för `alice` själv. Karaktäriseringstester tillagda i `LoginSurfaceControllerTest.cs` som
+  fångar det faktiska `memberId`-värdet till `AddMemberToCache` (den gamla stubben kastade bort
+  det argumentet helt, vilket är hur detta undgick den befintliga testsviten).
+  **Sidoupptäckter under samma test, inte åtgärdade (utanför den här punktens scope):**
+  `data-locked-by-memberid`-attributet HTML-entitetsescapas till `&quot;...&quot;` i stället för
+  `"..."` när `ChalmersILLOrderListPage.cshtml` (rad 93/96) bygger attributsträngen i C# och
+  injicerar den rått med `@data_attribute` - Razor HTML-kodar tokenet. Och
+  `OrderItemSurfaceController.LockOrderItem`s "already locked by MemberId X"-meddelande (rad 145)
+  rapporterar den **anropande** medlemmens id, inte låsinnehavarens.
+  **Kvarstår fortfarande:** det visuella tvåfönstertestet i en riktig webbläsare (DOM-omritning),
+  se ovan - den här sessionens fynd var HTTP-nivå, inte en bekräftelse av klientkoden i en riktig
+  Chromium-instans.
 - [x] **Inloggning, utloggning, rollbeteende.** Logga in som konto med respektive `Desk` (ska landa på
   `/disk/`), `Administrator` och `SuperAdmin` (ska se Konton-fliken). Verifiera att befintliga
   lösenordshashar i `members.json` fortfarande fungerar efter bytet till `PasswordHasher<T>` — det är

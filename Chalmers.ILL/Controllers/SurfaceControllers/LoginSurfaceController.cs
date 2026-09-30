@@ -79,12 +79,29 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
 
             var roles = _getRolesForUser(model.Login).ToList();
             await _signIn(HttpContext, model.Login, roles);
-            _memberInfoManager.AddMemberToCache(Response, 0, model.Login, model.Login);
+            _memberInfoManager.AddMemberToCache(Response, StableMemberId(model.Login), model.Login, model.Login);
 
             var redirectUrl = roles.Any(r => string.Equals(r, "Desk", StringComparison.OrdinalIgnoreCase))
                 ? "/disk/?login=ok"
                 : _config.OrderListPageUrl + "?login=ok";
             return Redirect(redirectUrl);
+        }
+
+        // MemberAccount (Members/MemberAccount.cs) has no persisted numeric id - it never got one
+        // after the Umbraco member database (which had one) was replaced by members.json (fas 6).
+        // This was passing a literal 0 for every login instead, which every OrderItemSurfaceController
+        // lock comparison treats as "not a real member" (see e.g. ChalmersILLOrderListPage.cshtml's
+        // AsInt(...) != 0 check) - so a lock taken by anyone looked, to everyone else, like no lock
+        // at all. Deriving a stable id from the login name instead avoids a members.json migration
+        // (a numeric field defaulting to 0 for every existing manually-maintained entry would just
+        // recreate the same collision). SHA-256 rather than string.GetHashCode(), which is randomized
+        // per process since .NET Core and so isn't stable across requests/restarts. Case-insensitive
+        // to match FileMembershipProvider/MemberAdminService's login matching.
+        private static int StableMemberId(string login)
+        {
+            var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(login.ToLowerInvariant()));
+            var id = BitConverter.ToInt32(hash, 0) & 0x7FFFFFFF;
+            return id == 0 ? 1 : id; // 0 is the "no member"/"unlocked" sentinel throughout the app
         }
     }
 }
