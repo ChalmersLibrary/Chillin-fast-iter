@@ -5,6 +5,8 @@ import * as path from "path";
 // Accounts the e2e tests can log in as. The app deliberately doesn't seed members.json itself
 // (creating the first account is a one-time manual step in real deployments), so the harness
 // does it - the same thing IsolatedModeSmokeTest does on the C# side.
+// "desk" is kept so a plain Desk account can still be logged in by hand, but the role is out of
+// use and no scenario targets it - see the role table in scenarios/SCENARIOS.md.
 export type Role = "superadmin" | "admin" | "desk" | "viewer" | "roleless";
 
 export const PASSWORD = "e2e-password"; // throwaway DataPath only, never a real credential

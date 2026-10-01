@@ -36,7 +36,7 @@ uppskattning av hur lång tid något *ska* ta.
 ## Hur det hänger ihop
 
 - `playwright.config.ts` — inställningar; `testIdAttribute` är `data-testid`.
-- `fixtures.ts` — `app` (en app per worker), inloggade sessioner per roll (`test.use({ role: "desk" })`),
+- `fixtures.ts` — `app` (en app per worker), inloggade sessioner per roll (`test.use({ role: "viewer" })`),
   `newSession(role)` för flera användare i samma scenario, och **vakten** (`guard`) som får varje test
   att misslyckas vid JS-fel, 4xx/5xx, misslyckade anrop eller oväntade dialoger.
 - `support/` — `app.ts` startar/stoppar appen med en tom temporär datamapp, `members.ts` skriver

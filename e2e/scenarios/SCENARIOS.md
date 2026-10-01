@@ -36,12 +36,8 @@ körbara Playwright-test i `e2e/tests/`, och därefter körs de utan Claude (`np
 - [ ] LOCK-003  Som två användare: ”Överta låset” flyttar låset, och den förra redaktören får veta det.
 - [ ] ROLE-001  Som Viewer: orderlistan går att läsa men ingen knapp som ändrar något syns eller fungerar.
 - [ ] ROLE-002  Som roleless: alla sidor stoppar (ingen orderlista, inga data).
-- [ ] ROLE-003  Som Desk: Inställningar-sidan är dold/stoppad. Som Administrator: den syns.
-- [ ] ROLE-004  Som Desk: en öppnad order visar inga åtgärdsknappar alls (Typ, Status, Referens,
-  ”Överta låset” …). Som Administrator: de syns. Döljningen är ren CSS och stoppar inte servern.
-- [ ] ORD-003  Som Desk: statusbyte (t.ex. Ny → Åtgärda) syns direkt i listan.
-  *(Går inte som skrivet — se ROLE-004: Desk ser ingen Status-knapp. Byt till Administrator,
-  eller behåll Desk om det är just den spärren du vill testa.)*
+- [ ] ROLE-003  Som Viewer: Inställningar-sidan är dold/stoppad. Som Administrator: den syns.
+- [ ] ORD-003  Som Administrator: statusbyte (t.ex. Ny → Åtgärda) syns direkt i listan.
 
 *(Lägg till egna rader här. Skriv hellre för många än för få — det går fort att stryka.)*
 
@@ -64,15 +60,16 @@ ofarlig.
 Detta är min läsning av `ViewerReadOnlyFilter` m.fl. — rätta det som är fel, så blir det ett
 automatiskt test (ROLE-xxx).
 
-Notera raden för **desk**: `ChalmersILL.cshtml` lägger in `<style>.editmode .btn { display:none }</style>`
-för alla konton utan rollen `Administrator`, så ett rent Desk-konto ser *inga* knappar i en öppnad
-order. Det är gammalt beteende (fanns långt före migreringen) och är enbart kosmetiskt — servern
-stoppar inte anropen. Är det så det ska vara, eller ska Desk kunna arbeta i ordrar?
+**Desk-rollen testas inte** — den används inte längre. Kontot finns kvar i `members.json` så att
+det går att logga in som ett rent Desk-konto om frågan skulle dyka upp, men inga scenarier använder
+det. (Värt att veta om du ändå provar: `ChalmersILL.cshtml` lägger in
+`<style>.editmode .btn { display:none }</style>` för alla konton utan rollen `Administrator`, så ett
+rent Desk-konto ser inga knappar alls i en öppnad order — gammalt beteende, enbart kosmetiskt.)
 
 | Roll | Roller i `members.json` | Orderlista | Ändra order | Inställningar | Kontoadmin |
 |------|-------------------------|------------|-------------|---------------|------------|
 | superadmin | Desk, Administrator, SuperAdmin | ja | ja | ja | ja |
 | admin | Desk, Administrator | ja | ja | ja | nej |
-| desk | Desk | ja | knapparna dolda (kosmetiskt), servern tillåter | dolt (kosmetiskt) | nej |
+| desk | Desk | *(används inte längre — testas inte)* | | | |
 | viewer | Viewer | ja (läsa) | nej (stoppas, utom `[AllowViewer]`) | nej | nej |
 | roleless | *(inga)* | nej (stoppas helt) | nej | nej | nej |

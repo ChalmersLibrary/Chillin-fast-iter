@@ -6,7 +6,7 @@ import { OrderListPage } from "../pages/OrderListPage";
 test.describe("locks", () => {
   // The second user is "admin", not "desk": ChalmersILL.cshtml hides every .btn inside .editmode
   // for accounts without the Administrator role, so a desk-only account can't see "Överta låset"
-  // (or any other action button) at all. That is pre-existing, deliberate behaviour - see ROLE-004.
+  // (or any other action button) at all. The desk role is out of use and isn't tested (SCENARIOS.md).
   test("LOCK-001: an order opened by one user is shown as locked to another", async ({ page, newSession }) => {
     const editor = new OrderListPage(page);
     await editor.goto();
