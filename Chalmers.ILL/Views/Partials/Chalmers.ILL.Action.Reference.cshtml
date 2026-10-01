@@ -13,9 +13,9 @@
         <div class="col-sm-6">
             <div class="form-group">
                 <label for="reference">Referens</label>
-                <textarea class="form-control" rows="20" id="reference" name="reference">@Model.Reference</textarea>
+                <textarea class="form-control" rows="20" id="reference" name="reference" data-testid="reference-input">@Model.Reference</textarea>
             </div>
-            <button class="btn btn-success" onclick="setOrderItemReference(@Model.NodeId, this.form.reference.value)">Spara referens</button>
+            <button class="btn btn-success" data-testid="reference-save" onclick="setOrderItemReference(@Model.NodeId, this.form.reference.value)">Spara referens</button>
         </div>
     </div>
     <script>

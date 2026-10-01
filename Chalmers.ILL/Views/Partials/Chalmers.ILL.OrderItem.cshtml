@@ -3,19 +3,19 @@
 @using Chalmers.ILL.Extensions;
 @using Chalmers.ILL.Models;
 
-<div class="col-sm-12 order-details">
+<div class="col-sm-12 order-details" data-testid="order-details">
 
     @{
         if (Model.OrderItem.EditedBy != "" && Model.OrderItem.EditedByCurrentMember == false)
         {
             <!-- Lock information and unlock button for this OrderItem -->
             <p>
-                <span class="label label-danger">
+                <span class="label label-danger" data-testid="order-locked-notice">
                     Låst av @Model.OrderItem.EditedByMemberName sedan @Model.OrderItem.UpdateDate.ToString("yyyy-MM-dd HH:mm")
                 </span>
             </p>
             <div id="unlock-buttons-@Model.OrderItem.NodeId" class="action-buttons">
-                <button type="button" class="btn btn-success" onclick="takeOverLockedOrderItem(@Model.OrderItem.NodeId);">Överta låset</button>
+                <button type="button" class="btn btn-success" data-testid="order-take-over-lock" onclick="takeOverLockedOrderItem(@Model.OrderItem.NodeId);">Överta låset</button>
             </div>
         }
         else
@@ -49,10 +49,10 @@
     {
         <!-- Type button -->
         <div class="btn-group">
-            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">
+            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" data-testid="order-type-toggle">
                 Typ <span class="caret"></span>
             </button>
-            <ul class="dropdown-menu" id="orderitem-typelist" role="menu">
+            <ul class="dropdown-menu" id="orderitem-typelist" role="menu" data-testid="order-type-menu">
                 @foreach (var type in Model.AvailableTypes)
                 {
                     if (type.Id == Model.OrderItem.TypeId)
@@ -61,7 +61,7 @@
                     }
                     else
                     {
-                        <li><a href="#" onclick="setOrderItemType(@Model.OrderItem.NodeId, @type.Id); event.preventDefault();">@type.Value</a></li>
+                        <li><a href="#" data-testid="order-type-option" onclick="setOrderItemType(@Model.OrderItem.NodeId, @type.Id); event.preventDefault();">@type.Value</a></li>
                     }
                 }
             </ul>
@@ -224,7 +224,7 @@
 
         if (Model.OrderItem.TypeId > 0)
         {
-            <button type="button" class="btn btn-primary" onclick="loadReferenceAction(@Model.OrderItem.NodeId);">Referens</button>
+            <button type="button" class="btn btn-primary" data-testid="order-open-reference" onclick="loadReferenceAction(@Model.OrderItem.NodeId);">Referens</button>
             <button type="button" class="btn btn-primary" onclick="loadPatronDataView(@Model.OrderItem.NodeId);">Beställardata</button>
             <button type="button" class="btn btn-primary" onclick="loadMailAction(@Model.OrderItem.NodeId);">Skicka mail</button>
         }
@@ -300,7 +300,7 @@
     }
 </div>
 <!-- Action Section -->
-<div id="action-@Model.OrderItem.NodeId" class="col-sm-12 order-details" style="display:none;"></div>
+<div id="action-@Model.OrderItem.NodeId" class="col-sm-12 order-details" data-testid="order-action-panel" style="display:none;"></div>
 <div id="loading-partial-view" hidden>Laddar...</div>
 
 <!-- Details about this OrderItem -->
