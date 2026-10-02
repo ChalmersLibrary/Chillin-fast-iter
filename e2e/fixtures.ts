@@ -18,11 +18,25 @@ export class Guard {
   private problems: string[] = [];
   private allowed: RegExp[] = [];
   private origins: string[] = [];
+  private accepted: RegExp[] = [];
   constructor(origin: string) {
     this.origins.push(origin);
   }
 
   allow(pattern: RegExp) {
+    this.allowed.push(pattern);
+  }
+
+  /**
+   * Answer "OK" to a confirm() whose text matches, instead of dismissing it.
+   *
+   * The guard dismisses every dialog, because one left open blocks headless Chromium forever. A
+   * test that needs to go through with a confirmed action (deleting an account, say) can't just
+   * add its own handler - the guard's has already answered no by the time it runs - so it says so
+   * here. Matching dialogs are expected, and are not reported as problems.
+   */
+  accept(pattern: RegExp) {
+    this.accepted.push(pattern);
     this.allowed.push(pattern);
   }
 
@@ -65,7 +79,8 @@ export class Guard {
     // A dialog blocks headless Chromium forever unless dismissed, so always dismiss - but record it.
     page.on("dialog", (d) => {
       this.add(`[${where()}] ${d.type()} dialog: ${d.message()}`);
-      d.dismiss().catch(() => {});
+      if (this.accepted.some((a) => a.test(d.message()))) d.accept().catch(() => {});
+      else d.dismiss().catch(() => {});
     });
   }
 

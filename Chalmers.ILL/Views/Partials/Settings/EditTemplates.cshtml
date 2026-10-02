@@ -4,11 +4,11 @@
     <h3>Skapa ny mall</h3>
     <div class="form-group">
         <label for="new-template-description">Beskrivning av ny mall</label>
-        <input type="text" class="form-control" id="new-template-description" name="new-template-description">
+        <input type="text" class="form-control" data-testid="new-template-description" id="new-template-description" name="new-template-description">
         <label for="new-template-acquisition">Mallen berör inköp</label>
         <input type="checkbox" id="new-template-acquisition" name="new-template-acquisition">
     </div>
-    <button class="btn btn-success" onclick="createTemplate();">Skapa ny mall</button>
+    <button class="btn btn-success" data-testid="create-template" onclick="createTemplate();">Skapa ny mall</button>
 </div>
 
 <div class="col-lg-12">

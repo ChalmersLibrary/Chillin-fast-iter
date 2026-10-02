@@ -23,4 +23,18 @@ export class LoginPage {
   get error() {
     return this.page.getByTestId("login-error");
   }
+
+  /**
+   * Checks that we are actually logged in, by reaching a page that requires it.
+   *
+   * Deliberately not an assertion about where login lands: HandleLogin sends every account with
+   * the Desk role to /disk/ (the page that says the disk app is no longer used), and only
+   * everyone else to the order list. Which of those is right is an open question - see
+   * SCENARIOS.md - and no scenario here should quietly depend on today's answer.
+   */
+  async expectLoggedIn() {
+    await this.page.goto("/bestaellningar/", { waitUntil: "load" });
+    await expect(this.page).toHaveURL(/bestaellningar/);
+    await expect(this.page.getByTestId("order-row").first()).toBeVisible();
+  }
 }

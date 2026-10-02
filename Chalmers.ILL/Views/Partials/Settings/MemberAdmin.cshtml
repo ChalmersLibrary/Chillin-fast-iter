@@ -4,13 +4,13 @@
     <h3>Skapa nytt konto</h3>
     <div class="form-group">
         <label for="new-member-login">Inloggningsnamn</label>
-        <input type="text" class="form-control" id="new-member-login" name="new-member-login">
+        <input type="text" class="form-control" data-testid="new-member-login" id="new-member-login" name="new-member-login">
         <label for="new-member-password">Lösenord</label>
-        <input type="text" class="form-control" id="new-member-password" name="new-member-password">
+        <input type="text" class="form-control" data-testid="new-member-password" id="new-member-password" name="new-member-password">
         <label for="new-member-roles">Roller (kommaseparerat, t.ex. Desk, Administrator)</label>
-        <input type="text" class="form-control" id="new-member-roles" name="new-member-roles">
+        <input type="text" class="form-control" data-testid="new-member-roles" id="new-member-roles" name="new-member-roles">
     </div>
-    <button class="btn btn-success" onclick="createMember();">Skapa konto</button>
+    <button class="btn btn-success" data-testid="create-member" onclick="createMember();">Skapa konto</button>
 </div>
 
 <div class="col-lg-12">
@@ -30,11 +30,11 @@
                     <td>@member.Login</td>
                     <td>
                         <input type="text" class="form-control member-roles-input" value="@string.Join(", ", member.Roles)">
-                        <button class="btn btn-default btn-xs" onclick="saveRoles(this);">Spara roller</button>
+                        <button class="btn btn-default btn-xs" data-testid="save-member-roles" onclick="saveRoles(this);">Spara roller</button>
                     </td>
                     <td>
                         <button class="btn btn-default btn-xs" onclick="setPassword(this);">Sätt nytt lösenord</button>
-                        <button class="btn btn-danger btn-xs" onclick="deleteMember(this);">Ta bort</button>
+                        <button class="btn btn-danger btn-xs" data-testid="delete-member" onclick="deleteMember(this);">Ta bort</button>
                     </td>
                 </tr>
             }

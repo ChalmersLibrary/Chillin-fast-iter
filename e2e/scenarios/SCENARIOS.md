@@ -68,6 +68,12 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | ORD-011 | ”Skapa kopia” ger en andra order med egen identitet | `tests/orders.spec.ts` |
 | ORD-013 | Ett misslyckat sparande säger ifrån, och busy-overlayen släpper (regression 1410e49, f1bd8bf) | `tests/orders.spec.ts` |
 | ORD-014 | Orderpanelen öppnas utan JS-fel för varje status (regression 279e039) | `tests/orders.spec.ts` |
+| SET-001 | Nytt lösenord gäller vid nästa inloggning, gammalt slutar gälla | `tests/settings.spec.ts` |
+| SET-002 | Fel nuvarande lösenord nekas, och det gamla fortsätter gälla | `tests/settings.spec.ts` |
+| SET-004 | Mallfliken listar mallar och en ny mall går att skapa (regression edbb71f) | `tests/settings.spec.ts` |
+| SET-005 | Ändrad chillin-text är kvar efter omladdning | `tests/settings.spec.ts` |
+| SET-007 | Nytt konto kan logga in | `tests/settings.spec.ts` |
+| SET-009 | Borttaget konto kan inte logga in | `tests/settings.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -171,15 +177,9 @@ pollningen också kör det dagliga underhållet.
 
 ### SET — inställningar
 
-- [ ] SET-001  Byt lösenord: det nya lösenordet fungerar vid nästa inloggning och det gamla slutar gälla.
-- [ ] SET-002  Fel nuvarande lösenord ger ett felmeddelande.
 - [ ] SET-003  En ändrad mall slår igenom i nästa mailutskick.
-- [ ] SET-004  Mallfliken fungerar även när det inte finns några mallar (regression edbb71f).
-- [ ] SET-005  En ändrad chillin-text syns där den används.
 - [ ] SET-006  En ny leverantör går att lägga till och kan väljas under ”Beställning”.
-- [ ] SET-007  Som superadmin: ett nytt konto går att skapa och kan logga in.
 - [ ] SET-008  Ändrade roller på ett konto slår igenom direkt vid nästa inloggning.
-- [ ] SET-009  Ett borttaget konto kan inte logga in.
 - [ ] SET-010  Ett fel i kontoadmin släpper busy-animationen i stället för att låsa sidan
   (regression f1bd8bf).
 
@@ -208,6 +208,20 @@ pollningen också kör det dagliga underhållet.
 
 *(Lägg till egna rader här. Skriv hellre för många än för få — det går fort att stryka.)*
 
+## Öppna frågor som testerna väckt
+
+- **Var ska en inloggning landa?** `LoginSurfaceController.HandleLogin` skickar varje konto med
+  rollen `Desk` till `/disk/?login=ok` — sidan som bara säger ”Diskapp används ej längre”. Konton
+  utan `Desk` går till orderlistan. Koden är oförändrad sedan före migreringen. Har de riktiga
+  personalkontona rollen `Desk`? I så fall landar alla på en död sida vid varje inloggning.
+  Scenarierna kontrollerar därför att man är inloggad genom att *nå orderlistan*, inte genom var
+  inloggningen råkar landa.
+- **Åtkomst-nekad-sidan** använder huvudlayouten och anropar därmed `GetLocksForCurrentMember`,
+  vilket är precis vad ett rollöst konto inte får. Varje visning avfyrar en 403 som ingenting
+  reagerar på. Deklarerad i ROLE-002 och ROLE-006.
+- **Låsrutorna är på engelska** (”Took over lock.”, ”… took lock from you.”) i ett i övrigt svenskt
+  gränssnitt.
+
 ## Det vakten fångar automatiskt i varje test
 
 Du behöver inte skriva scenarier för dessa; **alla** test misslyckas om något av följande händer:
@@ -219,7 +233,8 @@ Du behöver inte skriva scenarier för dessa; **alla** test misslyckas om något
 - en oväntad `alert`/`confirm`-ruta
 
 Ett test som *avsiktligt* provocerar fram något sådant säger det uttryckligen med
-`guard.allow(/mönster/)`. SignalR-reservvägen (WebSocket → long polling) är undantagen eftersom den är
+`guard.allow(/mönster/)`. Behöver testet dessutom svara **OK** på en `confirm()` — vakten svarar
+annars nej på allt, eftersom en öppen dialog låser webbläsaren — används `guard.accept(/mönster/)`. SignalR-reservvägen (WebSocket → long polling) är undantagen eftersom den är
 ofarlig.
 
 ## Roll × område (utkast, granska!)
