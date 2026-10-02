@@ -74,6 +74,11 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | SET-005 | Ändrad chillin-text är kvar efter omladdning | `tests/settings.spec.ts` |
 | SET-007 | Nytt konto kan logga in | `tests/settings.spec.ts` |
 | SET-009 | Borttaget konto kan inte logga in | `tests/settings.spec.ts` |
+| API-001 | QR-skanning av utlån sätter Utlånad | `tests/api.spec.ts` |
+| API-002 | QR-skanning av återlämning sätter Transport | `tests/api.spec.ts` |
+| API-003 | Okänt ordernummer besvaras i stället för att krascha | `tests/api.spec.ts` |
+| API-004 | Cirkulations-endpointsen kräver inloggning | `tests/api.spec.ts` |
+| API-005 | Sierra-endpointen svarar utan inloggning, med CORS | `tests/api.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -192,11 +197,9 @@ pollningen också kör det dagliga underhållet.
 
 ### API — maskin-till-maskin
 
-- [ ] API-001  QR-skanning vid utlåning (`BookCirculationSurface/Loaned`) sätter Utlånad **utan**
-  inloggning (fas 0a släppte de här två ur globala `[Authorize]`).
-- [ ] API-002  QR-skanning vid återlämning (`Returned`) sätter rätt status.
-- [ ] API-003  Ett okänt ordernummer ger ett vettigt svar, inte en krasch.
-- [ ] API-004  `PublicDataSurface/GetChillinDataForSierraPatron` svarar med låntagarens ordrar.
+- ~~API-001~~ *(mitt utkast påstod att QR-skanningen sätter Utlånad **utan** inloggning. Det gör
+  den inte: bara `SystemSurfaceController` och `PublicDataSurfaceController` är `[AllowAnonymous]`.
+  Automatiserat i den form koden faktiskt har — se API-001..005 i tabellen ovan.)*
 
 ### RT — realtid
 
@@ -219,6 +222,10 @@ pollningen också kör det dagliga underhållet.
 - **Åtkomst-nekad-sidan** använder huvudlayouten och anropar därmed `GetLocksForCurrentMember`,
   vilket är precis vad ett rollöst konto inte får. Varje visning avfyrar en 403 som ingenting
   reagerar på. Deklarerad i ROLE-002 och ROLE-006.
+- **En egen `browser.newContext()` ärver testets `storageState`.** Ett scenario som vill vara
+  anonymt måste ligga under `test.use({ role: "anonymous" })`. Utan det körs det som testets roll,
+  och ett behörighetsprov blir grönt utan att bevisa något. Det fick mig att tro att orderlistan
+  och QR-endpointen var öppna — de är de inte.
 - **Låsrutorna är på engelska** (”Took over lock.”, ”… took lock from you.”) i ett i övrigt svenskt
   gränssnitt.
 
