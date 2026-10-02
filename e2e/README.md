@@ -53,5 +53,11 @@ uppskattning av hur lång tid något *ska* ta.
   ligger i appens minne och delas inom en worker, så två scenarier får inte ändra samma order.
   Behöver ett scenario en orörd app: använd `startApp(label)` själv.
 - Dialoger avvisas automatiskt och noteras av vakten; vänta aldrig på `networkidle` (SignalR håller
-  anslutningar öppna).
+  anslutningar öppna). Behöver ett scenario svara **OK** på en `confirm()` används
+  `guard.accept(/mönster/)`.
+- **En kontext som skapas med `browser.newContext()` ärver testets `use`-inställningar, inklusive
+  `storageState`.** Ett test som vill ha en genuint anonym kontext måste alltså ligga under
+  `test.use({ role: "anonymous" })` — annars är den inloggad som testets roll, och ett
+  behörighetsprov bevisar ingenting. Det kostade en lång felsökning: en "anonym" sond som i själva
+  verket var inloggad fick orderlistan och QR-endpointen att se helt öppna ut.
 - Ett scenario som medvetet provocerar fram ett fel deklarerar det med `guard.allow(/mönster/)`.
