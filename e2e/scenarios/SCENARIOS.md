@@ -90,6 +90,10 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | MAIL-003 | Mailet går inte att skicka utan vald status, och inget skickas | `tests/mail.spec.ts` |
 | DELIV-002 | Leverans av artikel mailar låntagaren och flyttar ordern vidare | `tests/delivery.spec.ts` |
 | DELIV-004 | ”Retur” sätter status Återsänd | `tests/delivery.spec.ts` |
+| INBOX-002 | Ordern bär låntagarens uppgifter och säger att den kom från mail | `tests/inbox.spec.ts` |
+| INBOX-003 | Ett mail som inte är en beställning blir ingen halvskapad order | `tests/inbox.spec.ts` |
+| IMPORT-001 | Uppladdat dokument bifogas ordern och räknas | `tests/import.spec.ts` |
+| IMPORT-003 | Uppladdning kräver orderns lås | `tests/import.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -177,15 +181,12 @@ pollningen också kör det dagliga underhållet.
 
 ### INBOX — inkommande beställningar
 
-- [ ] INBOX-002  Ursprunglig beställning sparas på ordern och går att läsa under ”Beställning”.
-- [ ] INBOX-003  Ett mail som inte går att tolka ger inte en halvskapad order.
 
 ### IMPORT — uppladdade dokument
 
-- [ ] IMPORT-001  En uppladdad PDF syns i Leverans-listan och går att öppna igen.
-- [ ] IMPORT-002  En för stor fil avvisas med ett begripligt fel (gränsen ska stämma med App Service,
-  se fas 10).
-- [ ] IMPORT-003  Uppladdning kräver lås på ordern.
+- [ ] IMPORT-002  En för stor fil avvisas med ett begripligt fel.
+  *(Kvar med flit: gränsen ska enligt fas 10 stämma med App Service och är inte satt än i isolerat
+  läge. Ett test nu skulle spika fast fel gräns.)*
 
 ### SET — inställningar
 
