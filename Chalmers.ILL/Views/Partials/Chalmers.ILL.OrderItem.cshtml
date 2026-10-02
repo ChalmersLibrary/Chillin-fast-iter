@@ -255,9 +255,9 @@
             </div>
             if ((Model.OrderItem.StatusString == "Utlånad" || Model.OrderItem.StatusString == "Krävd" || Model.OrderItem.StatusString == "Åtgärda") && Model.OrderItem.CreateDate <= DateTime.Parse("2021-05-16"))
             {
-                <button type="button" class="btn btn-primary" onclick="loadClaimAction(@Model.OrderItem.NodeId);">Kräv</button>
+                <button type="button" class="btn btn-primary" data-testid="order-open-claim" onclick="loadClaimAction(@Model.OrderItem.NodeId);">Kräv</button>
             }
-            <button type="button" class="btn btn-primary" onclick="loadReturnAction(@Model.OrderItem.NodeId);">Retur</button>
+            <button type="button" class="btn btn-primary" data-testid="order-open-return" onclick="loadReturnAction(@Model.OrderItem.NodeId);">Retur</button>
         }
         <!-- Misc actions -->
         <div class="btn-group">

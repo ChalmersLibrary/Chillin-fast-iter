@@ -88,6 +88,8 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | MAIL-001 | Mail till låntagaren hamnar verkligen i utkorgen, med ordernumret i ämnet | `tests/mail.spec.ts` |
 | MAIL-002 | En mall fylls i med orderns egna uppgifter, inga platshållare kvar (täcker även SET-003) | `tests/mail.spec.ts` |
 | MAIL-003 | Mailet går inte att skicka utan vald status, och inget skickas | `tests/mail.spec.ts` |
+| DELIV-002 | Leverans av artikel mailar låntagaren och flyttar ordern vidare | `tests/delivery.spec.ts` |
+| DELIV-004 | ”Retur” sätter status Återsänd | `tests/delivery.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -165,10 +167,11 @@ pollningen också kör det dagliga underhållet.
 ### DELIV — leveransflödet
 
 - [ ] DELIV-001  ”Ta emot bok” sätter status Mottagen och loggar händelsen.
-- [ ] DELIV-002  Vart och ett av de sju leveranssätten sätter rätt status och skickar rätt mail.
-- [ ] DELIV-003  ”Kräv” loggar kravet och skickar mail till låntagaren.
-- [ ] DELIV-004  ”Retur” sätter status Återsänd.
-- [ ] DELIV-005  Lånetid mot låntagare går att sätta och syns på ordern.
+- ~~DELIV-003~~ *(går inte att skriva mot en ny order, och det är ett fynd i sig: ”Kräv”-knappen —
+  och ”Lånetid mot låntagare” — visas bara om `Model.OrderItem.CreateDate <= 2021-05-16`, en
+  hårdkodad gräns i `Chalmers.ILL.OrderItem.cshtml`. Funktionerna är alltså oåtkomliga för varje
+  order som beställts de senaste fyra åren, i drift såväl som i test. Avsiktligt eller kvarglömt?)*
+- ~~DELIV-005~~ *(samma datumspärr som DELIV-003.)*
 - [ ] DELIV-006  Lånetid från utlånande bibliotek går att sätta.
 - [ ] DELIV-007  Räknaren på Leverans-knappen visar antalet bifogade filer.
 
@@ -223,6 +226,8 @@ pollningen också kör det dagliga underhållet.
   anonymt måste ligga under `test.use({ role: "anonymous" })`. Utan det körs det som testets roll,
   och ett behörighetsprov blir grönt utan att bevisa något. Det fick mig att tro att orderlistan
   och QR-endpointen var öppna — de är de inte.
+- **”Kräv” och ”Lånetid mot låntagare” är spärrade för allt beställt efter 2021-05-16** av en
+  hårdkodad datumjämförelse i orderpanelen. Ingen ny order kan nå dem.
 - **Mailvyns mallista är tom i isolerat läge.** De 13 seedade systemmallarna är alla `Automatic`,
   och mailvyn visar bara manuella (`GetManualTemplates`). Den som provar testservern för hand möter
   alltså en tom lista tills någon skapar en mall under Inställningar. MAIL-002 skapar sin egen.

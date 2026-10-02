@@ -32,7 +32,7 @@
             <div class="form-group col-sm-12">
                 <div class="alert alert-success auto-mail-notification" role="alert">Automatiskt mailutskick kommer att levereras till <span id="patron-email" class="content-editable" contenteditable>@Model.OrderItem.PatronEmail</span> <span class="glyphicon glyphicon-pencil"></span> <a href="pull-right" onclick="toggleMailEdit(); event.preventDefault();"><span class="glyphicon glyphicon-chevron-down pull-right auto-mail-notification-body-toggle"></span></a></div>
                 <div class="auto-mail-notification-body-container"><textarea class="form-control auto-mail-notification-body hidden" rows="8" id="mail-message" name="mail-message">@Model.ArticleDeliveryByMailTemplate</textarea></div>
-                <button class="btn btn-success" onclick="deliver()">Leverera!</button>
+                <button class="btn btn-success" data-testid="deliver-now" onclick="deliver()">Leverera!</button>
             </div>
         </div>
     </div>
