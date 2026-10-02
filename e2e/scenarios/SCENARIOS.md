@@ -62,6 +62,12 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | ORD-005 | Inköpt kräver materialtyp | `tests/orders.spec.ts` |
 | ORD-006 | Byte av leveransbibliotek syns i listans bibliotekskolumn | `tests/orders.spec.ts` |
 | ORD-007 | Inköpsförslag kan få inköpsbibliotek, som syns i typkolumnen | `tests/orders.spec.ts` |
+| ORD-008 | Logganteckning sparas och visas med datum och författare | `tests/orders.spec.ts` |
+| ORD-009 | Alla 17 seed-ordrars paneler renderar utan undantag (regression 5370fa7) | `tests/orders.spec.ts` |
+| ORD-010 | Beställardata visar namn, e-post och kortnummer | `tests/orders.spec.ts` |
+| ORD-011 | ”Skapa kopia” ger en andra order med egen identitet | `tests/orders.spec.ts` |
+| ORD-013 | Ett misslyckat sparande säger ifrån, och busy-overlayen släpper (regression 1410e49, f1bd8bf) | `tests/orders.spec.ts` |
+| ORD-014 | Orderpanelen öppnas utan JS-fel för varje status (regression 279e039) | `tests/orders.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -120,15 +126,14 @@ pollningen också kör det dagliga underhållet.
 
 ### ORD — en enskild order
 
-- [ ] ORD-008  En logganteckning sparas och syns i händelselistan med rätt datum och användare
-  (regression: datumen kom en gång ut som `/Date(…)/`).
-- [ ] ORD-009  Händelselistan grupperas per datum utan att krascha (regression 5370fa7).
-- [ ] ORD-010  Beställardata visar låntagarens namn, e-post och kortnummer.
-- [ ] ORD-011  ”Skapa kopia” skapar en ny order med samma uppgifter och egen lås-status.
 - [ ] ORD-012  Anonymisering tar bort låntagaruppgifterna men behåller ordern och dess historik.
-- [ ] ORD-013  Ett sparande som misslyckas visar ett fel i stället för att se ut att lyckas
-  (regression 1410e49) — skriv gärna fler sådana; det var den buggklassen som var vanligast.
-- [ ] ORD-014  Orderdetaljvyn renderar utan JS-fel för en order i varje status (regression 279e039).
+  *(Kvar, och inte för att det är svårt att skriva: anonymiseringen startas inte av en knapp utan av
+  det dagliga underhållet, som bara tar ordrar vars `UpdateDate` är äldre än ett år (hårdkodat,
+  `SystemSurfaceController.AnonymizeOldOrderItems`) och som står i en avslutad status. Seedern
+  skapar alla ordrar genom den riktiga applikationskoden, så deras datum är alltid ”nu”. Det skulle
+  krävas en seed-order vars JSON efterbehandlas till ett gammalt datum. Värt att göra — det är
+  GDPR-relevant kod som i dag är helt otestad — men det är testdata som ändras för testernas skull,
+  så det behöver ett ja.)*
 
 ### MAIL — utgående mail
 

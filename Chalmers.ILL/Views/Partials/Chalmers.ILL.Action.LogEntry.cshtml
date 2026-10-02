@@ -9,7 +9,7 @@
         <div class="col-md-6">
             <div class="form-group">
                 <label for="message">Inlägg</label>
-                <textarea class="form-control" rows="6" id="message" name="message"></textarea>
+                <textarea class="form-control" rows="6" id="message" name="message" data-testid="log-entry-message"></textarea>
             </div>
             <div class="form-group" style="@(String.IsNullOrWhiteSpace(Model.OrderItem.Type) ? "display: none;" : "")">
                 <label for="followUpDate">Följs upp</label>
@@ -102,7 +102,7 @@
                     </div>
                 </div>
             </div>
-            <button class="btn btn-success" onclick="submitLogEntry(this); event.preventDefault();">Spara</button>
+            <button class="btn btn-success" data-testid="log-entry-save" onclick="submitLogEntry(this); event.preventDefault();">Spara</button>
         </div>
         <div class="col-md-6">
             <label for="log-function-chat-log">Tidigare kommunikation</label>

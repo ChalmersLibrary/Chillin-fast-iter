@@ -24,7 +24,7 @@
             </div>
         </div>
     </div>
-    <button class="btn btn-success" onclick="anonymize(@Model.NodeId, event);">Anonymisera</button>
+    <button class="btn btn-success" data-testid="anonymize-confirm" onclick="anonymize(@Model.NodeId, event);">Anonymisera</button>
     <script>
         $(function () {
             $("#reference").focus().scrollTop(0)[0].setSelectionRange(0, 0);
