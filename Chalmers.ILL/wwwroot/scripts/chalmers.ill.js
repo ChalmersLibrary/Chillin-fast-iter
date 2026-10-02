@@ -415,9 +415,6 @@ function takeOverLockedOrderItem(id)
         if (json.Success) {
             loadOrderItemDetails(id);
         }
-        else {
-            alert(json.Message);
-        }
     });
 }
 
@@ -1357,7 +1354,7 @@ notificationHubConnection.on("updateStream", function (value) {
         if (ownLockAttr) {
             // We believe we hold the lock ourselves - only reload if someone else took it from us.
             if (value.EditedBy != "" && ownLockAttr != value.EditedBy) {
-                alert(value.EditedByMemberName + " (" + value.EditedBy + ") took lock from you (" + ownLockAttr + ").");
+                alert(value.EditedByMemberName + " har tagit över låset på den här ordern från dig.");
                 loadOrderItemDetails(value.NodeId);
                 $("#"+value.NodeId).removeAttr("data-locked-by-memberid");
             }

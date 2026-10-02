@@ -105,7 +105,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
 
                 // Return JSON to client
                 json.Success = true;
-                json.Message = "Took over lock.";
+                json.Message = "Du har tagit över låset.";
 
                 // Notify SignalR clients of the update
                 _notifier.UpdateOrderItemUpdate(nodeId, memberId.ToString(), memberText);
@@ -115,7 +115,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             {
                 // Return JSON to client
                 json.Success = false;
-                json.Message = "Error taking lock: " + e.Message;
+                json.Message = "Kunde inte ta över låset: " + e.Message;
             }
 
             return Json(json);
@@ -142,14 +142,14 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 {
                     // Locked by someone else
                     json.Success = false;
-                    json.Message = "OrderItem is already locked by MemberId " + memberId;
+                    json.Message = "Ordern är redan låst av en annan användare (medlems-id " + memberId + ").";
                 }
                 else if (orderItem.EditedBy == "")
                 {
                     // Unlocked
                     _orderItemManager.SetEditedByData(nodeId, memberId.ToString(), _memberInfoManager.GetCurrentMemberText(Request, Response));
                     json.Success = true;
-                    json.Message = "Order item locked by current member.";
+                    json.Message = "Ordern är nu låst av dig.";
                 }
 
                 // Notify SignalR clients of the update
@@ -160,7 +160,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             {
                 // Return JSON to client
                 json.Success = false;
-                json.Message = "Error locking OrderItem: " + e.Message;
+                json.Message = "Kunde inte låsa ordern: " + e.Message;
             }
 
             return Json(json);
@@ -187,12 +187,12 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 {
                     _orderItemManager.SetEditedByData(nodeId, "", "");
                     json.Success = true;
-                    json.Message = "OrderItem unlocked by Current Member.";
+                    json.Message = "Låset på ordern är släppt.";
                 }
                 else if (orderItem.EditedBy == "")
                 {
                     json.Success = true;
-                    json.Message = "OrderItem unlocked by current member.";
+                    json.Message = "Låset på ordern är släppt.";
                 }
 
                 // Notify SignalR clients of the update
@@ -203,7 +203,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             {
                 // Return JSON to client
                 json.Success = false;
-                json.Message = "Error unlocking OrderItem: " + e.Message;
+                json.Message = "Kunde inte släppa låset på ordern: " + e.Message;
             }
 
             return Json(json);
@@ -248,7 +248,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
             {
                 // Return JSON to client.
                 json.Success = false;
-                json.Message = "Error reading locked OrderItems: " + e.Message;
+                json.Message = "Kunde inte läsa vilka ordrar som är låsta: " + e.Message;
                 _log.Error("Error reading locked OrderItems", e);
             }
 

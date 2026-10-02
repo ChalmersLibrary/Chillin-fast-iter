@@ -137,9 +137,10 @@ pollningen också kör det dagliga underhållet.
 **Två fällor som flera scenarier gick i:**
 
 - *En ny order har ingen typ,* och Status-knappen finns inte förrän den fått en. Sätt typ först.
-- *Default-listan visar bara pending-statusar.* En order som sätts till Annullerad, Inköpt,
-  Levererad m.fl. försvinner ur listan och nås bara via sökning — använd `list.find(referens)`,
-  inte `list.reload()`. Att raden är borta betyder alltså inte att ändringen inte sparades.
+- *Default-listan visar bara pending-statusar — men först efter omladdning.* En order som sätts
+  till Annullerad, Inköpt, Levererad m.fl. står kvar i listan med sin nya status, och panelen
+  förblir öppen; det är först vid nästa sidladdning som raden inte kommer med. Ett scenario som
+  laddar om måste därför använda `list.find(referens)` i stället för `list.reload()`.
 
 ### SMOKE — att appen lever
 
@@ -152,14 +153,7 @@ pollningen också kör det dagliga underhållet.
 
 ### ORD — en enskild order
 
-- [ ] ORD-012  Anonymisering tar bort låntagaruppgifterna men behåller ordern och dess historik.
-  *(Kvar, och inte för att det är svårt att skriva: anonymiseringen startas inte av en knapp utan av
-  det dagliga underhållet, som bara tar ordrar vars `UpdateDate` är äldre än ett år (hårdkodat,
-  `SystemSurfaceController.AnonymizeOldOrderItems`) och som står i en avslutad status. Seedern
-  skapar alla ordrar genom den riktiga applikationskoden, så deras datum är alltid ”nu”. Det skulle
-  krävas en seed-order vars JSON efterbehandlas till ett gammalt datum. Värt att göra — det är
-  GDPR-relevant kod som i dag är helt otestad — men det är testdata som ändras för testernas skull,
-  så det behöver ett ja.)*
+- ~~ORD-012~~ *(anonymiseringen ska inte testas — Lars 2026-10-02.)*
 
 ### MAIL — utgående mail
 
@@ -214,12 +208,12 @@ pollningen också kör det dagliga underhållet.
 
 ## Öppna frågor som testerna väckt
 
-- **Var ska en inloggning landa?** `LoginSurfaceController.HandleLogin` skickar varje konto med
-  rollen `Desk` till `/disk/?login=ok` — sidan som bara säger ”Diskapp används ej längre”. Konton
-  utan `Desk` går till orderlistan. Koden är oförändrad sedan före migreringen. Har de riktiga
-  personalkontona rollen `Desk`? I så fall landar alla på en död sida vid varje inloggning.
-  Scenarierna kontrollerar därför att man är inloggad genom att *nå orderlistan*, inte genom var
-  inloggningen råkar landa.
+- ~~Var ska en inloggning landa?~~ **Besvarat 2026-10-02:** `Desk` används inte alls — alla som
+  arbetar i systemet och ska kunna ändra något har `Administrator`. Grenen i
+  `LoginSurfaceController.HandleLogin` som skickar `Desk`-konton till `/disk/` kan alltså aldrig
+  träffa ett riktigt konto. Testkontona har inte längre `Desk` (`support/members.ts`), så de
+  speglar verkligheten. Kvar som fråga, men mindre brådskande: ska den grenen och
+  `ChalmersILLDiskPage` tas bort helt?
 - **Åtkomst-nekad-sidan** använder huvudlayouten och anropar därmed `GetLocksForCurrentMember`,
   vilket är precis vad ett rollöst konto inte får. Varje visning avfyrar en 403 som ingenting
   reagerar på. Deklarerad i ROLE-002 och ROLE-006.
@@ -232,8 +226,8 @@ pollningen också kör det dagliga underhållet.
 - **Mailvyns mallista är tom i isolerat läge.** De 13 seedade systemmallarna är alla `Automatic`,
   och mailvyn visar bara manuella (`GetManualTemplates`). Den som provar testservern för hand möter
   alltså en tom lista tills någon skapar en mall under Inställningar. MAIL-002 skapar sin egen.
-- **Låsrutorna är på engelska** (”Took over lock.”, ”… took lock from you.”) i ett i övrigt svenskt
-  gränssnitt.
+- ~~Låsrutorna är på engelska~~ **Åtgärdat 2026-10-02:** alla låsmeddelanden från
+  `OrderItemSurfaceController` och `chalmers.ill.js` är svenska nu.
 
 ## Det vakten fångar automatiskt i varje test
 
@@ -256,16 +250,14 @@ Detta är min läsning av `ViewerReadOnlyFilter` m.fl. — rätta det som är fe
 automatiskt test (ROLE-xxx). ROLE-001..010 är nu skrivna, och tabellen stämmer med dem —
 ~~ROLE-004~~ utgick när desk-rollen togs bort.
 
-**Desk-rollen testas inte** — den används inte längre. Kontot finns kvar i `members.json` så att
-det går att logga in som ett rent Desk-konto om frågan skulle dyka upp, men inga scenarier använder
-det. (Värt att veta om du ändå provar: `ChalmersILL.cshtml` lägger in
-`<style>.editmode .btn { display:none }</style>` för alla konton utan rollen `Administrator`, så ett
-rent Desk-konto ser inga knappar alls i en öppnad order — gammalt beteende, enbart kosmetiskt.)
+**Rollen `Desk` används inte** och finns inte på något testkonto. Alla som arbetar i systemet och
+ska kunna ändra något har `Administrator` — vilket också är vad `ChalmersILL.cshtml` kräver för att
+visa knapparna i en öppnad order (`<style>.editmode .btn { display:none }</style>` för alla utan
+den rollen).
 
 | Roll | Roller i `members.json` | Orderlista | Ändra order | Inställningar | Kontoadmin |
 |------|-------------------------|------------|-------------|---------------|------------|
-| superadmin | Desk, Administrator, SuperAdmin | ja | ja | ja | ja |
-| admin | Desk, Administrator | ja | ja | ja | nej |
-| desk | Desk | *(används inte längre — testas inte)* | | | |
+| superadmin | Administrator, SuperAdmin | ja | ja | ja | ja |
+| admin | Administrator | ja | ja | ja | nej |
 | viewer | Viewer | ja (läsa) | nej (stoppas, utom `[AllowViewer]`) | ja (läsa; lösenord är självbetjäning) | nej |
 | roleless | *(inga)* | nej (stoppas helt) | nej | nej | nej |

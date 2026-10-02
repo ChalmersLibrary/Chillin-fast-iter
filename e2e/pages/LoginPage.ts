@@ -25,12 +25,10 @@ export class LoginPage {
   }
 
   /**
-   * Checks that we are actually logged in, by reaching a page that requires it.
-   *
-   * Deliberately not an assertion about where login lands: HandleLogin sends every account with
-   * the Desk role to /disk/ (the page that says the disk app is no longer used), and only
-   * everyone else to the order list. Which of those is right is an open question - see
-   * SCENARIOS.md - and no scenario here should quietly depend on today's answer.
+   * Checks that we are actually logged in, by reaching a page that requires it, rather than by
+   * asserting where the login happened to land. HandleLogin still sends accounts carrying the
+   * Desk role to /disk/; no account here has it (see support/members.ts), but the scenarios stay
+   * independent of that branch either way.
    */
   async expectLoggedIn() {
     await this.page.goto("/bestaellningar/", { waitUntil: "load" });
