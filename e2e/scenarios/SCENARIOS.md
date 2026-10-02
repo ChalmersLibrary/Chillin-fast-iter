@@ -7,17 +7,46 @@ körbara Playwright-test i `e2e/tests/`, och därefter körs de utan Claude (`np
 ## Så skriver du ett scenario
 
 ```
-- [ ] ORD-012  Som Desk: när jag byter ordertyp syns den nya typen i listan direkt.
+- [ ] ORD-012  Som Administrator: när jag byter ordertyp syns den nya typen i listan direkt.
 ```
 
-- **ID:** prefix efter område (`SMOKE`, `ORD`, `LOCK`, `ROLE`, `SET` …) + löpnummer. Återanvänd aldrig
-  ett ID; stryk en rad (`~~…~~`) om den inte längre gäller.
-- **Roll:** börja med vem som gör det (`Som Desk`, `Som Viewer`, `Som två användare`). Finns: superadmin,
-  admin, desk, viewer, roleless (se roll-tabellen längst ned).
+- **ID:** prefix efter område (se [Områden](#områden)) + löpnummer. Återanvänd aldrig ett ID; stryk
+  en rad (`~~…~~`) om den inte längre gäller.
+- **Roll:** börja med vem som gör det (`Som Administrator`, `Som Viewer`, `Som två användare`). Finns:
+  superadmin, admin, viewer, roleless (se roll-tabellen längst ned).
 - **Förväntat resultat** i en mening. Skriv gärna *varför* om felet är ett tidigare fel du hittat
   (”regression för 0762fd9”) — då vet vi att raden inte får tas bort.
 - `[ ]` = ännu inte automatiserad, `[x]` = automatiserad (filen och testets ID står i kolumnen nedan).
 - Du behöver inte veta om det går att testa. Skriv det du vill veta; Claude säger till om något inte går.
+
+## Områden
+
+Prefixen följer appens ytor. De är inte heliga — hittar du en bättre indelning när du skriver, så
+ändrar vi.
+
+| Prefix | Vad som hör hit | Var i appen |
+|--------|-----------------|-------------|
+| `SMOKE` | Att appen alls lever: inloggning funkar, orderlistan renderar, inga 404 på script/CSS | `/ChalmersILLLoginPage`, `/bestaellningar` |
+| `ORD` | En enskild order: typ, status, referens, leveransbibliotek, inköpsbibliotek, beställardata, logganteckning, kopia, anonymisering | panelen som fälls ut när du klickar en rad (`Chalmers.ILL.OrderItem.cshtml` + ~20 `OrderItem*SurfaceController`) |
+| `LIST` | Orderlistan *som lista*: fritextsök, statusfilter, biblioteksfilter, sortering på typ/status, sidbrytning vid >50 ordrar, siffrorna i filterknapparna | `ChalmersILLOrderListPage.cshtml`, `OrderItemSearchSurfaceController` |
+| `LOCK` | Samtidighet: vem som håller låset, vad andra ser, överta lås, lås som släpps | `EditedBy`, `LockOrderItem`/`UnlockOrderItem`, `RequiresOrderLockFilter` |
+| `ROLE` | Behörighet: vad varje roll får se och göra, och att servern faktiskt stoppar — inte bara att knappen är dold | `ViewerReadOnlyFilter`, `[AllowViewer]`, globala `[Authorize]` |
+| `MAIL` | Utgående mail: mallar, signatur, historik, att rätt mail skickas vid rätt leveranstyp | `Chalmers.ILL.Action.Mail.cshtml`, `Partials/DeliveryType/*` (7 leveranstyper), `OrderItemMailSurfaceController` |
+| `DELIV` | Leveransflödet: ta emot bok, lämna ut, återsända, kräva, återlämningsdatum för låntagare och leverantör | `Action.ReceiveBook`/`Return`/`Claim`/`PatronReturnDate`/`ProviderReturnDate` |
+| `SET` | Inställningssidan: mallar, chillin-texter, leverantörsdata, byt lösenord, kontoadministration | `ChalmersILLSettingsPage.cshtml`, `Partials/Settings/*` |
+| `STAT` | Statistiksidan: urval, datumintervall, exporter | `ChalmersILLStatisticsPage.cshtml`, `StatisticsSurfaceController` |
+| `IMPORT` | Uppladdning av dokument till en order | `ImportDocumentSurfaceController`, `MediaItemSurfaceController` |
+| `API` | Maskin-till-maskin, utan inloggad användare: QR-skanning vid ut-/återlämning och data till Sierra | `BookCirculationSurfaceController` (`Loaned`/`Returned`), `PublicDataSurfaceController` — de två som fas 0a släppte ur globala `[Authorize]` |
+| `RT` | Realtid: att en ändring i ett fönster syns i ett annat via SignalR | `notificationHub`, `updateStream` i `chalmers.ill.js` |
+
+Två ytor är medvetet utelämnade:
+
+- **`ChalmersILLDiskPage`** är en återvändsgränd — sidan säger bara ”Diskapp används ej längre”.
+- **Desk-rollen** används inte längre, se roll-tabellen längst ned.
+
+Och en sak att veta om `RT`: `Notifier` skickar via `Clients.All`, vilket bara når klienter anslutna
+till *samma* instans. Ett RT-scenario bevisar alltså att realtid funkar inom en instans — vilket är
+allt som gäller så länge appen körs på en enda instans, men inte mer än så.
 
 ## Automatiserade
 
