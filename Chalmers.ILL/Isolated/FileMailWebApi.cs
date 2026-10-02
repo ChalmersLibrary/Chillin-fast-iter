@@ -162,8 +162,52 @@ namespace Chalmers.ILL.Isolated
             }
         }
 
+        // In real operation Chillin's own mailbox is both sender and recipient for a new order: the
+        // "NY BESTÄLLNING!"-form on the start page sends a mail *to Chillin*, which then arrives in
+        // the same inbox and becomes an order at the next poll (the chilli icon at the bottom left,
+        // or the cron server). Here, without a mail server in the loop, a self-addressed message
+        // would just land in sentitems and never be seen again - so deliver it to the inbox too.
+        // It is written in addition to, not instead of, the outbox copy: the mail really was sent.
+        private bool IsChillinsOwnMailbox(string to)
+        {
+            if (string.IsNullOrWhiteSpace(to) || IsPlaceholder(to)) return false;
+
+            return string.Equals(to, _config.ChalmersIllSenderAddress, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(to, _config.MicrosoftGraphApiUserId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Same convention as IsolationGuard: appsettings.json uses these as explicit
+        // not-filled-in markers, and every unset address would otherwise compare equal to
+        // every other unset address - which would loop *all* outgoing mail back in.
+        private static bool IsPlaceholder(string value) => value == "******" || value == "xxx";
+
+        private void DeliverToInbox(string subject, string bodyHtml)
+        {
+            Directory.CreateDirectory(InboxDirectory);
+
+            var id = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ") + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+            File.WriteAllText(Path.Combine(InboxDirectory, id + ".html"), bodyHtml);
+
+            var meta = new IncomingMailMeta
+            {
+                To = _config.MicrosoftGraphApiUserId,
+                From = _config.ChalmersIllSenderAddress,
+                Sender = "Chillin",
+                // The subject carries the routing marker the poller keys off (#new for a new order,
+                // #cthb-… for a reply), so it has to survive the round trip.
+                Subject = subject,
+                DateTimeReceived = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+            };
+            File.WriteAllText(Path.Combine(InboxDirectory, id + ".meta.json"), JsonConvert.SerializeObject(meta, Formatting.Indented));
+        }
+
         private void WriteOutgoingMessage(string to, string subject, string bodyHtml, string orderId, IDictionary<string, byte[]> attachments)
         {
+            if (IsChillinsOwnMailbox(to))
+            {
+                DeliverToInbox(subject, bodyHtml);
+            }
+
             var stamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ") + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
             var messageDirectory = Path.Combine(OutboxDirectory, stamp);
             Directory.CreateDirectory(messageDirectory);

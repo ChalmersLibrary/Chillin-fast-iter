@@ -72,6 +72,15 @@ export async function startApp(label: string): Promise<RunningApp> {
       Chillin__Isolated: "true",
       Chillin__DataPath: dataPath,
       Chillin__BaseUrl: baseUrl + "/",
+      // The start page's "NY BESTÄLLNING!"-form and the poll button (the chilli icon at the
+      // bottom left) are how an order is created through the real path: mail -> inbox -> poll.
+      // They are hidden unless this is on, and appsettings.json leaves it off.
+      Chillin__ShowManualMailFetchingTools: "true",
+      // Must be a real value, not appsettings.json's "******" placeholder: it is what marks a
+      // message as addressed to Chillin's own mailbox, which is what FileMailWebApi delivers
+      // back to the inbox instead of only filing under sentitems.
+      Chillin__ChalmersIllSenderAddress: "chillin@isolated.invalid",
+      Chillin__MicrosoftGraphApiUserId: "chillin@isolated.invalid",
     },
   });
 

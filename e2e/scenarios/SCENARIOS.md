@@ -58,11 +58,18 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | ORD-001 | Byte av ordertyp (Bok → Artikel) syns i orderlistan efter omladdning (regression 0762fd9) | `tests/orders.spec.ts` |
 | ORD-002 | Ändrad Referens sparas och visas i listan (regression 556b30c) | `tests/orders.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
+| INBOX-001 | Ett beställningsmail blir en order med status Ny när pollningen körs | `tests/inbox.spec.ts` |
 
 ## Att automatisera (börja skriva här)
 
 Allt nedanför är mina förslag, inte dina önskemål — stryk fritt. De är sorterade per område och
 ordnade ungefär efter hur mycket de är värda i förhållande till vad de kostar att skriva.
+
+**Så får ett scenario en egen order:** `createOrderThroughMail(page, "etikett")` i
+`pages/StartPage.ts` fyller i ”NY BESTÄLLNING!”-formuläret på startsidan och klickar på
+pollningsknappen (chilli-ikonen nere till vänster) — samma väg som en riktig beställning tar.
+Den returnerar orderns referens. Använd den tillsammans med `ownApp`-fixturen, eftersom
+pollningen också kör det dagliga underhållet.
 
 ### SMOKE — att appen lever
 
@@ -155,7 +162,6 @@ ordnade ungefär efter hur mycket de är värda i förhållande till vad de kost
 
 ### INBOX — inkommande beställningar
 
-- [ ] INBOX-001  Ett nytt beställningsmail i inkorgen blir en order med status Ny när mailhämtningen körs.
 - [ ] INBOX-002  Ursprunglig beställning sparas på ordern och går att läsa under ”Beställning”.
 - [ ] INBOX-003  Ett mail som inte går att tolka ger inte en halvskapad order.
 

@@ -17,10 +17,27 @@ export { expect };
 export class Guard {
   private problems: string[] = [];
   private allowed: RegExp[] = [];
-  constructor(private origin: string) {}
+  private origins: string[] = [];
+  constructor(origin: string) {
+    this.origins.push(origin);
+  }
 
   allow(pattern: RegExp) {
     this.allowed.push(pattern);
+  }
+
+  /** A test that starts its own app (see `ownApp`) adds its origin so it is watched too. */
+  watchOrigin(origin: string) {
+    if (!this.origins.includes(origin)) this.origins.push(origin);
+  }
+
+  private ours(url: string) {
+    return this.origins.some((o) => url.startsWith(o));
+  }
+
+  private strip(url: string) {
+    const origin = this.origins.find((o) => url.startsWith(o));
+    return origin ? url.slice(origin.length) : url;
   }
 
   watch(page: Page) {
@@ -35,14 +52,14 @@ export class Guard {
       this.add(`[${where()}] console.error: ${m.text()}`);
     });
     page.on("response", (r) => {
-      if (r.status() >= 400 && r.url().startsWith(this.origin)) {
-        this.add(`[${where()}] ${r.status()} ${r.request().method()} ${r.url().slice(this.origin.length)}`);
+      if (r.status() >= 400 && this.ours(r.url())) {
+        this.add(`[${where()}] ${r.status()} ${r.request().method()} ${this.strip(r.url())}`);
       }
     });
     // Same-origin only: external hosts (CDNs, fonts) are unreachable from the sandbox by design.
     page.on("requestfailed", (r) => {
-      if (r.url().startsWith(this.origin) && !(r.failure()?.errorText ?? "").includes("ERR_ABORTED")) {
-        this.add(`[${where()}] request failed ${r.method()} ${r.url().slice(this.origin.length)}: ${r.failure()?.errorText}`);
+      if (this.ours(r.url()) && !(r.failure()?.errorText ?? "").includes("ERR_ABORTED")) {
+        this.add(`[${where()}] request failed ${r.method()} ${this.strip(r.url())}: ${r.failure()?.errorText}`);
       }
     });
     // A dialog blocks headless Chromium forever unless dismissed, so always dismiss - but record it.
@@ -73,6 +90,16 @@ type TestFixtures = {
   guard: Guard;
   /** Opens an additional, independent browser session (own cookies) - for multi-user scenarios. */
   newSession: (role: Role | "anonymous") => Promise<Page>;
+  /**
+   * Starts an app that belongs to this test alone and returns a logged-in page on it.
+   *
+   * For scenarios whose side effects reach past their own order: polling the mailbox
+   * (`/SystemSurface/Update`) also runs the daily housekeeping - it converts orders whose
+   * follow-up date has passed and anonymises old ones - so on the shared app it would quietly
+   * rewrite other scenarios' orders. Costs a couple of seconds; worth it over a test whose
+   * result depends on what ran before it.
+   */
+  ownApp: (role?: Role) => Promise<{ app: RunningApp; page: Page }>;
 };
 
 type WorkerFixtures = {
@@ -177,6 +204,31 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     },
     { auto: true },
   ],
+
+  ownApp: async ({ browser, guard }, use, testInfo) => {
+    const started: RunningApp[] = [];
+    const contexts: BrowserContext[] = [];
+
+    await use(async (role: Role = "superadmin") => {
+      const app = await startApp(`own${started.length}-${testInfo.workerIndex}`);
+      started.push(app);
+      guard.watchOrigin(app.baseUrl);
+
+      const ctx = tune(
+        await browser.newContext({
+          baseURL: app.baseUrl,
+          viewport: { width: 1280, height: 900 },
+          storageState: await login(browser, app, role),
+        })
+      );
+      contexts.push(ctx);
+      ctx.on("page", (p) => guard.watch(p));
+      return { app, page: await ctx.newPage() };
+    });
+
+    await Promise.all(contexts.map((c) => c.close()));
+    await Promise.all(started.map((a) => a.stop()));
+  },
 
   newSession: async ({ browser, app, loginState, guard }, use) => {
     const contexts: BrowserContext[] = [];
