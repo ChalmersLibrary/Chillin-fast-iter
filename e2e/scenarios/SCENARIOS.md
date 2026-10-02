@@ -85,6 +85,9 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | RT-001 | Ändring i ett fönster syns i ett annat utan omladdning | `tests/realtime.spec.ts` |
 | RT-002 | Räknaren i menyn följer en inkommande order | `tests/realtime.spec.ts` |
 | RT-003 | Realtiden kommer tillbaka av sig själv efter serveromstart | `tests/realtime.spec.ts` |
+| MAIL-001 | Mail till låntagaren hamnar verkligen i utkorgen, med ordernumret i ämnet | `tests/mail.spec.ts` |
+| MAIL-002 | En mall fylls i med orderns egna uppgifter, inga platshållare kvar (täcker även SET-003) | `tests/mail.spec.ts` |
+| MAIL-003 | Mailet går inte att skicka utan vald status, och inget skickas | `tests/mail.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -154,11 +157,6 @@ pollningen också kör det dagliga underhållet.
 
 ### MAIL — utgående mail
 
-- [ ] MAIL-001  Som Administrator: ”Skicka mail” med en mall fyller i ämne och text, och det skickade
-  mailet hamnar i utkorgen (`DataPath/mail/sentitems`).
-- [ ] MAIL-002  Mallvariablerna expanderas — låntagarens namn och ordernumret står i mailet, inte
-  platshållare.
-- [ ] MAIL-003  Min kontosignatur kommer med i mailet.
 - [ ] MAIL-004  Ursprunglig beställning / historik går att bifoga och följer med i mailet.
 - [ ] MAIL-005  Automatiskt utskick: en order med status Utlånad och återlämning om exakt fem dagar ger
   ett artighetsmeddelande när utskicket körs.
@@ -188,7 +186,6 @@ pollningen också kör det dagliga underhållet.
 
 ### SET — inställningar
 
-- [ ] SET-003  En ändrad mall slår igenom i nästa mailutskick.
 - [ ] SET-006  En ny leverantör går att lägga till och kan väljas under ”Beställning”.
 - [ ] SET-008  Ändrade roller på ett konto slår igenom direkt vid nästa inloggning.
 - [ ] SET-010  Ett fel i kontoadmin släpper busy-animationen i stället för att låsa sidan
@@ -226,6 +223,9 @@ pollningen också kör det dagliga underhållet.
   anonymt måste ligga under `test.use({ role: "anonymous" })`. Utan det körs det som testets roll,
   och ett behörighetsprov blir grönt utan att bevisa något. Det fick mig att tro att orderlistan
   och QR-endpointen var öppna — de är de inte.
+- **Mailvyns mallista är tom i isolerat läge.** De 13 seedade systemmallarna är alla `Automatic`,
+  och mailvyn visar bara manuella (`GetManualTemplates`). Den som provar testservern för hand möter
+  alltså en tom lista tills någon skapar en mall under Inställningar. MAIL-002 skapar sin egen.
 - **Låsrutorna är på engelska** (”Took over lock.”, ”… took lock from you.”) i ett i övrigt svenskt
   gränssnitt.
 

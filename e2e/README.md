@@ -46,6 +46,10 @@ uppskattning av hur lång tid något *ska* ta.
 
 ## Konventioner
 
+- **Bootstrap-undermenyer (`.dropdown-submenu`) öppnas med `:hover`, inte klick.** Ett klick på
+  undermenyns rubrik gör ingenting; valen under den finns i DOM:en men är aldrig synliga. Det
+  gäller statusmenyns ”Annullerad”/”Inköpt”, logganteckningens statusmeny och mallistan i
+  mailvyn — `OrderListPage.chooseFromMenu` markerar ett sådant steg med `open: true`.
 - **Element hittas via `data-testid`** (satta i Razor-vyerna), inte via text eller CSS. Text används bara
   när texten *är* det som testas. Ändras HTML:en måste `data-testid` följa med — annars säger testet
   tydligt vilket element som saknas.

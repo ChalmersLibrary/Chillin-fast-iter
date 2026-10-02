@@ -10,10 +10,10 @@
                 <label for="">Mall</label>
                 <div>
                     <div class="btn-group">
-                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                        <button type="button" class="btn btn-default dropdown-toggle" data-testid="mail-template-toggle" data-toggle="dropdown">
                             <span id="currently-selected-template">Tom</span> <span class="caret"></span>
                         </button>
-                        <ul class="dropdown-menu" id="orderitem-mail-templatelist" role="menu">
+                        <ul class="dropdown-menu" id="orderitem-mail-templatelist" data-testid="mail-template-menu" role="menu">
                             <li><a href="#" onclick="selectTemplate(-1, 'Tom'); event.preventDefault();">Tom</a></li>
                             <li class="dropdown-submenu">
                                 <a href="#">Fjärrlån</a>
@@ -39,7 +39,7 @@
             </div>
             <div class="form-group">
                 <label for="message">Meddelande</label>
-                <textarea class="form-control" rows="12" id="message" name="message">
+                <textarea class="form-control" rows="12" data-testid="mail-message" id="message" name="message">
                 </textarea>
                 <div id="signatureStorage" style="display:none;">
 
@@ -93,7 +93,7 @@
             </div>
             <div class="form-group">
                 <label for="recipientEmail">Mottagande e-postadress</label>
-                <input type="text" class="form-control" id="recipientEmail" name="recipientEmail" value="@Model.OrderItem.PatronEmail">
+                <input type="text" class="form-control" data-testid="mail-recipient-email" id="recipientEmail" name="recipientEmail" value="@Model.OrderItem.PatronEmail">
             </div>
             <div class="form-group">
                 <label for="followUpDate">Följs upp</label>
@@ -172,7 +172,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <button class="btn btn-success" onclick="submitMailDispatch(this); event.preventDefault();">Skicka e-post</button>
+                <button class="btn btn-success" data-testid="mail-send" onclick="submitMailDispatch(this); event.preventDefault();">Skicka e-post</button>
             </div>
         </div>
    </div>

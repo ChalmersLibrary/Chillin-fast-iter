@@ -226,7 +226,7 @@
         {
             <button type="button" class="btn btn-primary" data-testid="order-open-reference" onclick="loadReferenceAction(@Model.OrderItem.NodeId);">Referens</button>
             <button type="button" class="btn btn-primary" data-testid="order-open-patron-data" onclick="loadPatronDataView(@Model.OrderItem.NodeId);">Beställardata</button>
-            <button type="button" class="btn btn-primary" onclick="loadMailAction(@Model.OrderItem.NodeId);">Skicka mail</button>
+            <button type="button" class="btn btn-primary" data-testid="order-open-mail" onclick="loadMailAction(@Model.OrderItem.NodeId);">Skicka mail</button>
         }
         if (Model.OrderItem.Type == "Artikel" || Model.OrderItem.Type == "Bok")
         {
@@ -235,7 +235,7 @@
         <button type="button" class="btn btn-primary" data-testid="order-open-log-entry" onclick="loadLogEntryAction(@Model.OrderItem.NodeId);">Logga</button>
         if (Model.OrderItem.Type == "Artikel")
         {
-            <button type="button" class="btn btn-primary" onclick="loadDeliveryAction(@Model.OrderItem.NodeId);">Leverans <span id="attachment-counter1" class="badge">@Model.OrderItem.AttachmentList.Count</span></button>
+            <button type="button" class="btn btn-primary" data-testid="order-open-delivery" onclick="loadDeliveryAction(@Model.OrderItem.NodeId);">Leverans <span id="attachment-counter1" class="badge">@Model.OrderItem.AttachmentList.Count</span></button>
         }
         if (Model.OrderItem.Type == "Bok")
         {
