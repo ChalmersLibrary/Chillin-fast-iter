@@ -7,7 +7,7 @@ körbara Playwright-test i `e2e/tests/`, och därefter körs de utan Claude (`np
 ## Så skriver du ett scenario
 
 ```
-- [ ] ORD-012  Som Administrator: när jag byter ordertyp syns den nya typen i listan direkt.
+- [ ] ORD-099  Som Administrator: när jag byter ordertyp syns den nya typen i listan direkt.
 ```
 
 - **ID:** prefix efter område (se [Områden](#områden)) + löpnummer. Återanvänd aldrig ett ID; stryk
@@ -37,6 +37,7 @@ Prefixen följer appens ytor. De är inte heliga — hittar du en bättre indeln
 | `STAT` | Statistiksidan: urval, datumintervall, exporter | `ChalmersILLStatisticsPage.cshtml`, `StatisticsSurfaceController` |
 | `IMPORT` | Uppladdning av dokument till en order | `ImportDocumentSurfaceController`, `MediaItemSurfaceController` |
 | `API` | Maskin-till-maskin, utan inloggad användare: QR-skanning vid ut-/återlämning och data till Sierra | `BookCirculationSurfaceController` (`Loaned`/`Returned`), `PublicDataSurfaceController` — de två som fas 0a släppte ur globala `[Authorize]` |
+| `INBOX` | Inkommande beställningar: mail som blir ordrar när mailhämtningen körs | `SystemSurfaceController.Update`, `FileMailWebApi` (inkorgen är `DataPath/mail/inbox` i isolerat läge) |
 | `RT` | Realtid: att en ändring i ett fönster syns i ett annat via SignalR | `notificationHub`, `updateStream` i `chalmers.ill.js` |
 
 Två ytor är medvetet utelämnade:
@@ -60,13 +61,147 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 
 ## Att automatisera (börja skriva här)
 
+Allt nedanför är mina förslag, inte dina önskemål — stryk fritt. De är sorterade per område och
+ordnade ungefär efter hur mycket de är värda i förhållande till vad de kostar att skriva.
+
+### SMOKE — att appen lever
+
+- [ ] SMOKE-003  Som anonym: fel lösenord ger ett felmeddelande på inloggningssidan, inte ett
+  nätverksfel (regression 180134d).
+- [ ] SMOKE-004  Som anonym: en skyddad sida skickar mig till inloggningen i stället för att krascha.
+- [ ] SMOKE-005  Som inloggad: ”Logga ut” loggar ut, och orderlistan går inte längre att nå.
+- [ ] SMOKE-006  Som Administrator: varje sida i menyn (Beställningar, Inställningar, Statistik, Hjälp)
+  renderar utan fel — vakten fångar samtidigt skiftlägesfel på statiska filer (regression c1062c2).
+
+### LIST — orderlistan som lista
+
+- [ ] LIST-001  Fritextsökning på ett låntagarnamn ger bara matchande ordrar, och rubriken visar
+  söksträngen.
+- [ ] LIST-002  Fältsökning (`status:Levererad`) ger bara levererade ordrar.
+- [ ] LIST-003  Statusfilterknapparna filtrerar listan, och siffrorna i knapparna stämmer med antalet
+  rader som syns.
+- [ ] LIST-004  Biblioteksfiltret (Alla / Huvudbiblioteket / Kuggen / Arkitekturbiblioteket) filtrerar
+  listan.
+- [ ] LIST-005  Status- och biblioteksfilter kombinerat ger snittet, inte unionen.
+- [ ] LIST-006  Sortering på Typ respektive Status växlar ordning och vänder pilen.
+- [ ] LIST-007  Med fler än 50 ordrar syns sidbrytningen, och ”Gå till nästa sida” behåller sökningen.
+- [ ] LIST-008  Snabbvalet i sök-dropdownen (`status:"15:Förlorad?"`) ger de förlorade ordrarna.
+- [ ] LIST-009  En sökning utan träffar ger en begriplig tom sida, inte ett fel.
+- [ ] LIST-010  Sökning med kolon i värdet (`\:`) tolkas som text och inte som fältnamn.
+
+### ORD — en enskild order
+
+- [ ] ORD-003  Som Administrator: statusbyte (t.ex. Ny → Åtgärda) syns direkt i listan.
+- [ ] ORD-004  Statusbyte till Annullerad kräver en annulleringsorsak, och orsaken syns på ordern.
+- [ ] ORD-005  Statusbyte till Inköpt kräver inköpt materialtyp.
+- [ ] ORD-006  Byte av leveransbibliotek syns i listans bibliotekskolumn.
+- [ ] ORD-007  För ett inköpsförslag går inköpsbibliotek att sätta, och det syns i typkolumnen.
+- [ ] ORD-008  En logganteckning sparas och syns i händelselistan med rätt datum och användare
+  (regression: datumen kom en gång ut som `/Date(…)/`).
+- [ ] ORD-009  Händelselistan grupperas per datum utan att krascha (regression 5370fa7).
+- [ ] ORD-010  Beställardata visar låntagarens namn, e-post och kortnummer.
+- [ ] ORD-011  ”Skapa kopia” skapar en ny order med samma uppgifter och egen lås-status.
+- [ ] ORD-012  Anonymisering tar bort låntagaruppgifterna men behåller ordern och dess historik.
+- [ ] ORD-013  Ett sparande som misslyckas visar ett fel i stället för att se ut att lyckas
+  (regression 1410e49) — skriv gärna fler sådana; det var den buggklassen som var vanligast.
+- [ ] ORD-014  Orderdetaljvyn renderar utan JS-fel för en order i varje status (regression 279e039).
+
+### LOCK — samtidighet
+
 - [ ] LOCK-002  Som en användare: när jag laddar om sidan efter att ha öppnat en order är ordern inte
   längre låst för andra (regression 556b30c).
 - [ ] LOCK-003  Som två användare: ”Överta låset” flyttar låset, och den förra redaktören får veta det.
+- [ ] LOCK-004  Som två användare: när jag stänger en order släpps låset, och den andra kan öppna den
+  utan ”Låst av”.
+- [ ] LOCK-005  Som två användare: den som *inte* håller låset nekas av servern när hen försöker spara
+  — inte bara av dolda knappar (regression c8d5ad8, `RequiresOrderLockFilter`).
+
+### ROLE — behörighet
+
 - [ ] ROLE-001  Som Viewer: orderlistan går att läsa men ingen knapp som ändrar något syns eller fungerar.
 - [ ] ROLE-002  Som roleless: alla sidor stoppar (ingen orderlista, inga data).
 - [ ] ROLE-003  Som Viewer: Inställningar-sidan är dold/stoppad. Som Administrator: den syns.
-- [ ] ORD-003  Som Administrator: statusbyte (t.ex. Ny → Åtgärda) syns direkt i listan.
+- ~~ROLE-004~~ *(utgick: handlade om desk-rollen)*
+- [ ] ROLE-005  Som Viewer: ett försök att ändra status nekas av servern, inte bara av UI:t.
+- [ ] ROLE-006  Som roleless: jag landar på en riktig åtkomst-nekad-sida som renderar som en vanlig sida
+  (regression 6add6f9).
+- [ ] ROLE-007  Som anonym: inloggningssidan och statiska filer går att nå utan inloggning
+  (regression 6add6f9: `[AllowAnonymous]` gick förlorat i `ViewerReadOnlyFilter`).
+- [ ] ROLE-008  Som Viewer: läs-endpoints märkta `[AllowViewer]` fungerar — orderdetaljer går att öppna.
+- [ ] ROLE-009  Som admin utan SuperAdmin: Konton-fliken i Inställningar syns inte och nekas.
+- [ ] ROLE-010  Som superadmin: Konton-fliken syns och går att använda.
+
+### MAIL — utgående mail
+
+- [ ] MAIL-001  Som Administrator: ”Skicka mail” med en mall fyller i ämne och text, och det skickade
+  mailet hamnar i utkorgen (`DataPath/mail/sentitems`).
+- [ ] MAIL-002  Mallvariablerna expanderas — låntagarens namn och ordernumret står i mailet, inte
+  platshållare.
+- [ ] MAIL-003  Min kontosignatur kommer med i mailet.
+- [ ] MAIL-004  Ursprunglig beställning / historik går att bifoga och följer med i mailet.
+- [ ] MAIL-005  Automatiskt utskick: en order med status Utlånad och återlämning om exakt fem dagar ger
+  ett artighetsmeddelande när utskicket körs.
+- [ ] MAIL-006  Automatiskt utskick: ett missat datum skickas inte retroaktivt.
+
+### DELIV — leveransflödet
+
+- [ ] DELIV-001  ”Ta emot bok” sätter status Mottagen och loggar händelsen.
+- [ ] DELIV-002  Vart och ett av de sju leveranssätten sätter rätt status och skickar rätt mail.
+- [ ] DELIV-003  ”Kräv” loggar kravet och skickar mail till låntagaren.
+- [ ] DELIV-004  ”Retur” sätter status Återsänd.
+- [ ] DELIV-005  Lånetid mot låntagare går att sätta och syns på ordern.
+- [ ] DELIV-006  Lånetid från utlånande bibliotek går att sätta.
+- [ ] DELIV-007  Räknaren på Leverans-knappen visar antalet bifogade filer.
+
+### INBOX — inkommande beställningar
+
+- [ ] INBOX-001  Ett nytt beställningsmail i inkorgen blir en order med status Ny när mailhämtningen körs.
+- [ ] INBOX-002  Ursprunglig beställning sparas på ordern och går att läsa under ”Beställning”.
+- [ ] INBOX-003  Ett mail som inte går att tolka ger inte en halvskapad order.
+
+### IMPORT — uppladdade dokument
+
+- [ ] IMPORT-001  En uppladdad PDF syns i Leverans-listan och går att öppna igen.
+- [ ] IMPORT-002  En för stor fil avvisas med ett begripligt fel (gränsen ska stämma med App Service,
+  se fas 10).
+- [ ] IMPORT-003  Uppladdning kräver lås på ordern.
+
+### SET — inställningar
+
+- [ ] SET-001  Byt lösenord: det nya lösenordet fungerar vid nästa inloggning och det gamla slutar gälla.
+- [ ] SET-002  Fel nuvarande lösenord ger ett felmeddelande.
+- [ ] SET-003  En ändrad mall slår igenom i nästa mailutskick.
+- [ ] SET-004  Mallfliken fungerar även när det inte finns några mallar (regression edbb71f).
+- [ ] SET-005  En ändrad chillin-text syns där den används.
+- [ ] SET-006  En ny leverantör går att lägga till och kan väljas under ”Beställning”.
+- [ ] SET-007  Som superadmin: ett nytt konto går att skapa och kan logga in.
+- [ ] SET-008  Ändrade roller på ett konto slår igenom direkt vid nästa inloggning.
+- [ ] SET-009  Ett borttaget konto kan inte logga in.
+- [ ] SET-010  Ett fel i kontoadmin släpper busy-animationen i stället för att låsa sidan
+  (regression f1bd8bf).
+
+### STAT — statistik
+
+- [ ] STAT-001  ”Antal ordrar” per status ger en tabell vars siffror stämmer med seed-datan.
+- [ ] STAT-002  Medelvärde och median av handläggningstid går att välja och räknas ut.
+- [ ] STAT-003  Ett filter i en variabel begränsar resultatet.
+- [ ] STAT-004  ”Ladda ner som CSV” ger en fil med samma siffror som tabellen.
+
+### API — maskin-till-maskin
+
+- [ ] API-001  QR-skanning vid utlåning (`BookCirculationSurface/Loaned`) sätter Utlånad **utan**
+  inloggning (fas 0a släppte de här två ur globala `[Authorize]`).
+- [ ] API-002  QR-skanning vid återlämning (`Returned`) sätter rätt status.
+- [ ] API-003  Ett okänt ordernummer ger ett vettigt svar, inte en krasch.
+- [ ] API-004  `PublicDataSurface/GetChillinDataForSierraPatron` svarar med låntagarens ordrar.
+
+### RT — realtid
+
+- [ ] RT-001  Som två användare: en statusändring i fönster A syns i fönster B utan omladdning.
+- [ ] RT-002  Räknaren ”Beställningar” i menyn ökar när en ny order kommer in och minskar när den
+  åtgärdas.
+- [ ] RT-003  När WebSocket inte går igenom faller SignalR tillbaka till long polling utan att något
+  går sönder (vakten släpper igenom just den varningen).
 
 *(Lägg till egna rader här. Skriv hellre för många än för få — det går fort att stryka.)*
 
