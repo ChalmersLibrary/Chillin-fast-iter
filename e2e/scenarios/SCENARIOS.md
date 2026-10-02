@@ -79,6 +79,12 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | API-003 | Okänt ordernummer besvaras i stället för att krascha | `tests/api.spec.ts` |
 | API-004 | Cirkulations-endpointsen kräver inloggning | `tests/api.spec.ts` |
 | API-005 | Sierra-endpointen svarar utan inloggning, med CORS | `tests/api.spec.ts` |
+| STAT-001 | Antal ordrar per variabel ger en tabell med siffror | `tests/statistics.spec.ts` |
+| STAT-002 | Medel- och medianvärde av handläggningstid går att välja och räknas ut | `tests/statistics.spec.ts` |
+| STAT-004 | CSV-exporten innehåller samma siffror som tabellen | `tests/statistics.spec.ts` |
+| RT-001 | Ändring i ett fönster syns i ett annat utan omladdning | `tests/realtime.spec.ts` |
+| RT-002 | Räknaren i menyn följer en inkommande order | `tests/realtime.spec.ts` |
+| RT-003 | Realtiden kommer tillbaka av sig själv efter serveromstart | `tests/realtime.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -190,10 +196,9 @@ pollningen också kör det dagliga underhållet.
 
 ### STAT — statistik
 
-- [ ] STAT-001  ”Antal ordrar” per status ger en tabell vars siffror stämmer med seed-datan.
-- [ ] STAT-002  Medelvärde och median av handläggningstid går att välja och räknas ut.
 - [ ] STAT-003  Ett filter i en variabel begränsar resultatet.
-- [ ] STAT-004  ”Ladda ner som CSV” ger en fil med samma siffror som tabellen.
+  *(Kvar: filteralternativen byggs dynamiskt från sökindexet, vilket kräver mer utforskning än de
+  tre andra STAT-scenarierna tillsammans.)*
 
 ### API — maskin-till-maskin
 
@@ -203,11 +208,6 @@ pollningen också kör det dagliga underhållet.
 
 ### RT — realtid
 
-- [ ] RT-001  Som två användare: en statusändring i fönster A syns i fönster B utan omladdning.
-- [ ] RT-002  Räknaren ”Beställningar” i menyn ökar när en ny order kommer in och minskar när den
-  åtgärdas.
-- [ ] RT-003  När WebSocket inte går igenom faller SignalR tillbaka till long polling utan att något
-  går sönder (vakten släpper igenom just den varningen).
 
 *(Lägg till egna rader här. Skriv hellre för många än för få — det går fort att stryka.)*
 

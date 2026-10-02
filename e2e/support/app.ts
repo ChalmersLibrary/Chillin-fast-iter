@@ -15,6 +15,12 @@ export interface RunningApp {
   /** Per-run throwaway data root: orders/, members.json, mail outbox etc. Safe to read in tests. */
   dataPath: string;
   stop(): Promise<void>;
+  /**
+   * Stops and starts the app again on the same port and the same data, leaving browser windows
+   * open. For the reconnect half of the SignalR check: SignalR's withAutomaticReconnect should
+   * pick the connection back up on its own.
+   */
+  restart(): Promise<void>;
 }
 
 function freePort(): Promise<number> {
@@ -53,10 +59,14 @@ async function waitUntilReady(baseUrl: string, proc: ChildProcess, logFile: stri
  */
 export async function startApp(label: string): Promise<RunningApp> {
   const port = await freePort();
+  return startAppOnPort(label, port);
+}
+
+async function startAppOnPort(label: string, port: number, existingDataPath?: string): Promise<RunningApp> {
   // Must be "localhost": ChalmersILL.cshtml/ChalmersILLLoginPage.cshtml redirect any other host to
   // https://<LiveServer> (see the isNotLocalhost check). 127.0.0.1 gets you a 302 to "https://xxx".
   const baseUrl = `http://localhost:${port}`;
-  const dataPath = fs.mkdtempSync(path.join(os.tmpdir(), `chillin-e2e-${label}-`));
+  const dataPath = existingDataPath ?? fs.mkdtempSync(path.join(os.tmpdir(), `chillin-e2e-${label}-`));
   writeMembersFile(dataPath);
 
   const logFile = path.join(dataPath, "app.log");
@@ -87,19 +97,31 @@ export async function startApp(label: string): Promise<RunningApp> {
   const app: RunningApp = {
     baseUrl,
     dataPath,
+    async restart() {
+      await stopProcess();
+      // Same port, same data, same members: to the open browser windows this is the one server
+      // going away and coming back, which is what the reconnect check needs.
+      const again = await startAppOnPort(label, port, dataPath);
+      app.stop = again.stop;
+      app.restart = again.restart;
+    },
     async stop() {
-      if (proc.exitCode === null && proc.pid) {
-        try {
-          process.kill(-proc.pid, "SIGTERM");
-        } catch {
-          /* already gone */
-        }
-        await new Promise((r) => setTimeout(r, 500));
-      }
-      fs.closeSync(log);
+      await stopProcess();
       if (!process.env.E2E_KEEP_DATA) fs.rmSync(dataPath, { recursive: true, force: true });
     },
   };
+
+  async function stopProcess() {
+    if (proc.exitCode === null && proc.pid) {
+      try {
+        process.kill(-proc.pid, "SIGTERM");
+      } catch {
+        /* already gone */
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    fs.closeSync(log);
+  }
 
   try {
     await waitUntilReady(baseUrl, proc, logFile, 90_000);

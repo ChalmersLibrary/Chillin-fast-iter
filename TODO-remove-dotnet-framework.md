@@ -2823,7 +2823,7 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   `ChalmersILLStartPage.cshtml` verifierade 2026-09-22 — båda renderar med navbar. Femte vyn,
   `ChalmersILLLogoutPage.cshtml`, gör `Response.Redirect("/")` innan något markup hinner skickas
   (se koden), så dess `Layout`-tilldelning är i praktiken aldrig i spel — inget att verifiera där.
-- [ ] **SignalR-realtidsuppdateringar.** Öppna orderlistan i två webbläsarfönster, ändra en order i det
+- [x] **SignalR-realtidsuppdateringar.** Öppna orderlistan i två webbläsarfönster, ändra en order i det
   ena och kontrollera att det andra uppdateras. Detta fångar både PascalCase/camelCase-problemet i
   payloaden och att `withAutomaticReconnect` fungerar. Testa även återanslutning genom att starta om
   servern med fönstren öppna.
@@ -2834,6 +2834,23 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   att köra i den här sessionen - två samtidigt inloggade Chromium-sidor är för tungt för den här
   devcontainerns enda CPU-kärna (`nproc` = 1), se [[chillin-puppeteer-sandbox-limitation]]. Kräver
   antingen en maskin med fler kärnor eller den riktiga devcontainern/Azure.
+
+  **Klart 2026-10-02, automatiserat.** Maskinen har numera 2 kärnor, vilket räcker för två
+  samtidigt inloggade Chromium-sidor. Täcks nu av `e2e/tests/realtime.spec.ts`, som körs i varje
+  testomgång i stället för att vara ett engångsprov:
+  - **RT-001** — två fönster, två olika konton, samma order: en typändring i det ena syns i det
+    andra utan omladdning.
+  - **RT-002** — ett fönster står still på orderlistan medan en annan session skickar in en ny
+    beställning och pollar brevlådan; räknaren i menyn räknar upp av sig själv.
+  - **RT-003** — återanslutningen: `RunningApp.restart()` stoppar och startar appen på samma port
+    och samma datamapp med fönstren öppna. Testet kräver både att `withAutomaticReconnect` får
+    tillbaka anslutningen (`state === "Connected"`) och att en ändring gjord *efter* omstarten
+    fortfarande når det andra fönstret — bara det förra hade kunnat bli grönt medan notiserna i
+    praktiken var döda.
+
+  Vad de **inte** bevisar: `Notifier` skickar via `Clients.All`, som bara når klienter anslutna
+  till samma instans. Testerna säger alltså ingenting om flerinstansdrift, vilket är i linje med
+  designbeslutet om en enda instans men värt att minnas om det någonsin omprövas.
   **PascalCase/camelCase-misstanken ovan avskriven för själva hub-payloaden** - den är redan fixad
   (fas 5, `Program.cs`s `PayloadSerializerOptions.PropertyNamingPolicy = null`) och verifierat
   intakt 2026-09-22. **En annan, verklig bugg i exakt samma kodväg hittades och fixades i stället**

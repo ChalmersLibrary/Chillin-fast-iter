@@ -58,7 +58,7 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="var-name">Variabelnamn</label>
-                                        <input type="text" class="form-control" id="var-name" name="var-name" value="" placeholder="Beskrivande namn för ny datavariabel">
+                                        <input type="text" class="form-control" data-testid="stat-var-name" id="var-name" name="var-name" value="" placeholder="Beskrivande namn för ny datavariabel">
                                     </div>
                                 </div>
                             </div>
@@ -79,7 +79,7 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-12">
-                                    <button type="button" class="btn btn-success" style="margin-top: 0.5cm; margin-bottom: 0.5cm;" onclick="addStatisticsVariable(); return false;">Spara variabel</button>
+                                    <button type="button" class="btn btn-success" data-testid="stat-save-variable" style="margin-top: 0.5cm; margin-bottom: 0.5cm;" onclick="addStatisticsVariable(); return false;">Spara variabel</button>
                                 </div>
                             </div>
                             <div class="row">
@@ -104,18 +104,18 @@
                 </div>
                 <div class="panel-body">
                     <div class="col-md-12" style="margin-bottom:0.5cm;">
-                        <button type="button" class="btn btn-success" onclick="fetchStatistics(); return false;">Skapa tabell</button>
+                        <button type="button" class="btn btn-success" data-testid="stat-build-table" onclick="fetchStatistics(); return false;">Skapa tabell</button>
                     </div>
                     <div id="stat-variable-list" class="col-md-12" style="min-height:600px;">
  
                     </div>
                     <div class="col-md-12">
-                        <button type="button" class="btn btn-success" onclick="fetchStatistics(); return false;">Skapa tabell</button>
+                        <button type="button" class="btn btn-success" data-testid="stat-build-table" onclick="fetchStatistics(); return false;">Skapa tabell</button>
                     </div>
                 </div>
             </div>
         </div>
-        <div id="stat-data-view" class="col-md-12" style="display:none;">
+        <div id="stat-data-view" class="col-md-12" data-testid="stat-data-view" style="display:none;">
             <div class="panel panel-default">
                 <div class="panel-body">
                     <div class="col-md-12" style="margin-top:20px; margin-bottom:20px;">
@@ -129,7 +129,7 @@
                                 <label for="export-filename">Filnamn</label>
                                 <input type="text" class="form-control" id="export-filename" name="export-filename" value="data">
                             </div>
-                            <button type="button" class="btn btn-default" onclick="exportTableToCsv(); return false;">Ladda ner som CSV</button>
+                            <button type="button" class="btn btn-default" data-testid="stat-export-csv" onclick="exportTableToCsv(); return false;">Ladda ner som CSV</button>
                         </div>
                     </div>
                 </div>
