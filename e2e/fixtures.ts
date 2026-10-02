@@ -99,7 +99,7 @@ type TestFixtures = {
    * rewrite other scenarios' orders. Costs a couple of seconds; worth it over a test whose
    * result depends on what ran before it.
    */
-  ownApp: (role?: Role) => Promise<{ app: RunningApp; page: Page }>;
+  ownApp: (role?: Role) => Promise<{ app: RunningApp; page: Page; newSession: (role: Role) => Promise<Page> }>;
 };
 
 type WorkerFixtures = {
@@ -214,16 +214,23 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       started.push(app);
       guard.watchOrigin(app.baseUrl);
 
-      const ctx = tune(
-        await browser.newContext({
-          baseURL: app.baseUrl,
-          viewport: { width: 1280, height: 900 },
-          storageState: await login(browser, app, role),
-        })
-      );
-      contexts.push(ctx);
-      ctx.on("page", (p) => guard.watch(p));
-      return { app, page: await ctx.newPage() };
+      // One login per role on this app, reused - the same bargain the shared app's fixture makes.
+      const logins = new Map<Role, Promise<any>>();
+      const sessionFor = async (as: Role) => {
+        if (!logins.has(as)) logins.set(as, login(browser, app, as));
+        const ctx = tune(
+          await browser.newContext({
+            baseURL: app.baseUrl,
+            viewport: { width: 1280, height: 900 },
+            storageState: await logins.get(as)!,
+          })
+        );
+        contexts.push(ctx);
+        ctx.on("page", (p) => guard.watch(p));
+        return ctx.newPage();
+      };
+
+      return { app, page: await sessionFor(role), newSession: sessionFor };
     });
 
     await Promise.all(contexts.map((c) => c.close()));

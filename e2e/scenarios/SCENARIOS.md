@@ -63,6 +63,10 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | ORD-006 | Byte av leveransbibliotek syns i listans bibliotekskolumn | `tests/orders.spec.ts` |
 | ORD-007 | Inköpsförslag kan få inköpsbibliotek, som syns i typkolumnen | `tests/orders.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
+| LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
+| LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
+| LOCK-004 | Att stänga en order släpper dess lås | `tests/locks.spec.ts` |
+| LOCK-005 | Servern nekar en ändring från den som inte håller låset (regression c8d5ad8) | `tests/locks.spec.ts` |
 | INBOX-001 | Ett beställningsmail blir en order med status Ny när pollningen körs | `tests/inbox.spec.ts` |
 | SMOKE-003 | Fel lösenord ger ett felmeddelande på inloggningssidan (regression 180134d) | `tests/smoke.spec.ts` |
 | SMOKE-004 | Anonym besökare skickas till inloggningen från en skyddad sida | `tests/smoke.spec.ts` |
@@ -116,16 +120,6 @@ pollningen också kör det dagliga underhållet.
 - [ ] ORD-013  Ett sparande som misslyckas visar ett fel i stället för att se ut att lyckas
   (regression 1410e49) — skriv gärna fler sådana; det var den buggklassen som var vanligast.
 - [ ] ORD-014  Orderdetaljvyn renderar utan JS-fel för en order i varje status (regression 279e039).
-
-### LOCK — samtidighet
-
-- [ ] LOCK-002  Som en användare: när jag laddar om sidan efter att ha öppnat en order är ordern inte
-  längre låst för andra (regression 556b30c).
-- [ ] LOCK-003  Som två användare: ”Överta låset” flyttar låset, och den förra redaktören får veta det.
-- [ ] LOCK-004  Som två användare: när jag stänger en order släpps låset, och den andra kan öppna den
-  utan ”Låst av”.
-- [ ] LOCK-005  Som två användare: den som *inte* håller låset nekas av servern när hen försöker spara
-  — inte bara av dolda knappar (regression c8d5ad8, `RequiresOrderLockFilter`).
 
 ### ROLE — behörighet
 

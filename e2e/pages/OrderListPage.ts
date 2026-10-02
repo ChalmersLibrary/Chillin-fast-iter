@@ -92,6 +92,13 @@ function exactly(label: string): RegExp {
 export class OrderRow {
   constructor(readonly page: Page, readonly root: Locator) {}
 
+  /** The order's node id - the row's own element id, and what the Surface endpoints take. */
+  async nodeId(): Promise<string> {
+    const id = await this.root.getAttribute("id");
+    expect(id, "the row should carry its node id").toBeTruthy();
+    return id!;
+  }
+
   get reference() { return this.root.getByTestId("order-reference"); }
   get type() { return this.root.getByTestId("order-type"); }
   get status() { return this.root.getByTestId("order-status"); }
@@ -102,6 +109,12 @@ export class OrderRow {
   async open() {
     await this.reference.click();
     await expect(this.details).toBeVisible();
+  }
+
+  /** Clicks the open row again, which closes it and releases the lock it took. */
+  async close() {
+    await this.reference.click();
+    await expect(this.details).toHaveCount(0);
   }
 
   /**
