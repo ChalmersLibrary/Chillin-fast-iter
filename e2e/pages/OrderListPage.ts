@@ -13,6 +13,20 @@ export class OrderListPage {
     await expect(this.page.getByTestId("order-row").first()).toBeVisible();
   }
 
+  /**
+   * Searches for one order and waits for its row. Needed for any order that has left the default
+   * list: that list only holds the pending statuses, so an order set to Annullerad, Inköpt,
+   * Levererad and so on is reachable only through a search.
+   *
+   * The reference is quoted because it contains hyphens, which the query parser reads as NOT.
+   */
+  async find(reference: string): Promise<OrderRow> {
+    await this.page.goto(`/bestaellningar?query=${encodeURIComponent('"' + reference + '"')}`, { waitUntil: "domcontentloaded" });
+    const row = this.row(reference);
+    await expect(row.root).toBeVisible();
+    return row;
+  }
+
   /** Like goto(), but for a search that is expected to find nothing. */
   async gotoExpectingNoHits(query: string) {
     await this.page.goto(`/bestaellningar?query=${encodeURIComponent(query)}`, { waitUntil: "domcontentloaded" });
@@ -70,6 +84,11 @@ export class OrderListPage {
   }
 }
 
+/** Matches an element whose whole text is `label`, with surrounding whitespace ignored. */
+function exactly(label: string): RegExp {
+  return new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`);
+}
+
 export class OrderRow {
   constructor(readonly page: Page, readonly root: Locator) {}
 
@@ -85,18 +104,88 @@ export class OrderRow {
     await expect(this.details).toBeVisible();
   }
 
-  /** Changes the order type through the real dropdown and waits for the server to confirm it. */
-  async setType(typeName: string) {
-    const menu = this.details.getByTestId("order-type-menu");
-    const saved = this.page.waitForResponse((r) => r.url().includes("/OrderItemTypeSurface/SetOrderItemType"));
-    // Opening an order takes its lock, and the resulting SignalR notification makes the page
-    // re-render the details - which closes a dropdown that was just opened. The retry covers
-    // that (and slow machines) by starting over whenever the menu vanishes underneath the click.
+  /**
+   * Picks an item out of one of the order panel's dropdowns and waits for the server to confirm.
+   *
+   * Opening an order takes its lock, and the resulting SignalR notification makes the page
+   * re-render the details - which closes a dropdown that was just opened. The retry covers that
+   * (and slow machines) by starting over whenever the menu vanishes underneath the click.
+   *
+   * `path` is the chain of items to walk inside the menu; the status menu nests a submenu under
+   * "Annullerad" and "Inköpt", everything else is one level. A submenu step is marked `open`,
+   * because .dropdown-submenu opens on hover in CSS - clicking its parent does nothing.
+   */
+  private async chooseFromMenu(
+    what: { toggle: string; menu: string; confirms: string },
+    path: { testId: string; label: string; open?: boolean }[]
+  ) {
+    const menu = this.details.getByTestId(what.menu);
+    const saved = this.page.waitForResponse((r) => r.url().includes(what.confirms));
     await expect(async () => {
-      if (!(await menu.isVisible())) await this.details.getByTestId("order-type-toggle").click({ timeout: 10_000 });
-      await menu.getByTestId("order-type-option").filter({ hasText: typeName }).click({ timeout: 5_000 });
+      if (!(await menu.isVisible())) await this.details.getByTestId(what.toggle).click({ timeout: 10_000 });
+      for (const step of path) {
+        // Exact text, not substring: "Bok" would otherwise also match "E-bok" in the
+        // purchased-material submenu, and the click would fail on two matches.
+        const item = menu.getByTestId(step.testId).filter({ hasText: exactly(step.label) });
+        if (step.open) await item.hover({ timeout: 5_000 });
+        else await item.click({ timeout: 5_000 });
+      }
     }).toPass({ timeout: 60_000 });
     expect((await saved).ok()).toBeTruthy();
+  }
+
+  /** Changes the order type through the real dropdown and waits for the server to confirm it. */
+  async setType(typeName: string) {
+    await this.chooseFromMenu(
+      { toggle: "order-type-toggle", menu: "order-type-menu", confirms: "/OrderItemTypeSurface/SetOrderItemType" },
+      [{ testId: "order-type-option", label: typeName }]
+    );
+  }
+
+  /** Changes the status. Only the statuses the app currently allows are in the menu. */
+  async setStatus(statusLabel: string) {
+    await this.chooseFromMenu(
+      { toggle: "order-status-toggle", menu: "order-status-menu", confirms: "/OrderItemStatusSurface/SetOrderItemStatus" },
+      [{ testId: "order-status-option", label: statusLabel }]
+    );
+  }
+
+  /** "Annullerad" is a submenu: the status cannot be set without saying why. */
+  async cancelWithReason(reason: string) {
+    await this.chooseFromMenu(
+      { toggle: "order-status-toggle", menu: "order-status-menu", confirms: "SetOrderItemStatus?orderNodeId=" },  // ...&cancellationReasonId=, same endpoint as a plain status change
+      [{ testId: "order-status-submenu", label: "Annullerad", open: true }, { testId: "order-cancellation-reason-option", label: reason }]
+    );
+  }
+
+  /** "Inköpt" is a submenu too: it needs the kind of material that was bought. */
+  async markPurchased(material: string) {
+    await this.chooseFromMenu(
+      { toggle: "order-status-toggle", menu: "order-status-menu", confirms: "SetOrderItemStatus?orderNodeId=" },  // ...&purchasedMaterialId=, same endpoint as a plain status change
+      [{ testId: "order-status-submenu", label: "Inköpt", open: true }, { testId: "order-purchased-material-option", label: material }]
+    );
+  }
+
+  async setDeliveryLibrary(libraryName: string) {
+    await this.chooseFromMenu(
+      {
+        toggle: "order-delivery-library-toggle",
+        menu: "order-delivery-library-menu",
+        confirms: "/OrderItemDeliveryLibrarySurface/SetOrderItemDeliveryLibrary",
+      },
+      [{ testId: "order-delivery-library-option", label: libraryName }]
+    );
+  }
+
+  async setPurchaseLibrary(libraryName: string) {
+    await this.chooseFromMenu(
+      {
+        toggle: "order-purchase-library-toggle",
+        menu: "order-purchase-library-menu",
+        confirms: "/OrderItemPurchaseLibrarySurface/SetOrderItemPurchaseLibrary",
+      },
+      [{ testId: "order-purchase-library-option", label: libraryName }]
+    );
   }
 
   /** Opens "Referens", replaces the text and saves, waiting for the server to confirm. */

@@ -70,10 +70,10 @@
         {
             <!-- Status button -->
             <div class="btn-group">
-                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">
+                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" data-testid="order-status-toggle">
                     Status <span class="caret"></span>
                 </button>
-                <ul class="dropdown-menu" id="orderitem-statuslist" role="menu">
+                <ul class="dropdown-menu" id="orderitem-statuslist" role="menu" data-testid="order-status-menu">
                     @{
                         var allowedStatusValues = new List<String>() { "Annullerad", "Åtgärda", "Inköpt" };
 
@@ -114,7 +114,7 @@
                                         }
                                         else
                                         {
-                                            <a href="#">@statusLabel</a>
+                                            <a href="#" data-testid="order-status-submenu">@statusLabel</a>
                                         }
                                         <ul class="dropdown-menu">
                                             @foreach (var cancellationReason in Model.AvailableCancellationReasons)
@@ -125,7 +125,7 @@
                                                 }
                                                 else
                                                 {
-                                                    <li><a href="#" onclick="setOrderItemStatusAndCancellationReason(@Model.OrderItem.NodeId, @status.Id, @cancellationReason.Id); event.preventDefault();">@cancellationReason.Value</a></li>
+                                                    <li><a href="#" data-testid="order-cancellation-reason-option" onclick="setOrderItemStatusAndCancellationReason(@Model.OrderItem.NodeId, @status.Id, @cancellationReason.Id); event.preventDefault();">@cancellationReason.Value</a></li>
                                                 }
                                             }
                                         </ul>
@@ -140,7 +140,7 @@
                                         }
                                         else
                                         {
-                                            <a href="#">@statusLabel</a>
+                                            <a href="#" data-testid="order-status-submenu">@statusLabel</a>
                                         }
                                         <ul class="dropdown-menu">
                                             @foreach (var purchasedMaterial in Model.AvailablePurchasedMaterials)
@@ -151,7 +151,7 @@
                                                 }
                                                 else
                                                 {
-                                                    <li><a href="#" onclick="setOrderItemStatusAndPurchasedMaterial(@Model.OrderItem.NodeId, @status.Id, @purchasedMaterial.Id); event.preventDefault();">@purchasedMaterial.Value</a></li>
+                                                    <li><a href="#" data-testid="order-purchased-material-option" onclick="setOrderItemStatusAndPurchasedMaterial(@Model.OrderItem.NodeId, @status.Id, @purchasedMaterial.Id); event.preventDefault();">@purchasedMaterial.Value</a></li>
                                                 }
                                             }
                                         </ul>
@@ -165,7 +165,7 @@
                                     }
                                     else
                                     {
-                                        <li><a href="#" onclick="setOrderItemStatus(@Model.OrderItem.NodeId, @status.Id); event.preventDefault();">@statusLabel</a></li>
+                                        <li><a href="#" data-testid="order-status-option" onclick="setOrderItemStatus(@Model.OrderItem.NodeId, @status.Id); event.preventDefault();">@statusLabel</a></li>
                                     }
                                 }
                             }
@@ -177,10 +177,10 @@
 
             <!-- Delivery Library button -->
             <div class="btn-group">
-                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">
+                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" data-testid="order-delivery-library-toggle">
                     Leveransbibliotek <span class="caret"></span>
                 </button>
-                <ul class="dropdown-menu" id="orderitem-deliverylibrarylist" role="menu">
+                <ul class="dropdown-menu" id="orderitem-deliverylibrarylist" role="menu" data-testid="order-delivery-library-menu">
                     @{
                         foreach (var library in Model.AvailableDeliveryLibraries)
                         {
@@ -190,7 +190,7 @@
                             }
                             else
                             {
-                                <li><a href="#" onclick="setOrderItemDeliveryLibrary(@Model.OrderItem.NodeId, @library.Id); event.preventDefault();">@( library.Value == "Lindholmenbiblioteket" ? "Kuggen" : library.Value )</a></li>
+                                <li><a href="#" data-testid="order-delivery-library-option" onclick="setOrderItemDeliveryLibrary(@Model.OrderItem.NodeId, @library.Id); event.preventDefault();">@( library.Value == "Lindholmenbiblioteket" ? "Kuggen" : library.Value )</a></li>
                             }
                         }
                     }
@@ -200,10 +200,10 @@
             {
                 <!-- Purchase Library button -->
                 <div class="btn-group">
-                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">
+                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" data-testid="order-purchase-library-toggle">
                         Inköpsbibliotek <span class="caret"></span>
                     </button>
-                    <ul class="dropdown-menu" id="orderitem-purchaselibrarylist" role="menu">
+                    <ul class="dropdown-menu" id="orderitem-purchaselibrarylist" role="menu" data-testid="order-purchase-library-menu">
                         @{
                             foreach (var library in Enum.GetValues(typeof(OrderItemModel.PurchaseLibraries)).Cast<OrderItemModel.PurchaseLibraries>())
                             {
@@ -213,7 +213,7 @@
                                 }
                                 else
                                 {
-                                    <li><a href="#" onclick="setOrderItemPurchaseLibrary(@Model.OrderItem.NodeId, @Convert.ToInt32(library)); event.preventDefault();">@library.ToString()</a></li>
+                                    <li><a href="#" data-testid="order-purchase-library-option" onclick="setOrderItemPurchaseLibrary(@Model.OrderItem.NodeId, @Convert.ToInt32(library)); event.preventDefault();">@library.ToString()</a></li>
                                 }
                             }
                         }
@@ -225,14 +225,14 @@
         if (Model.OrderItem.TypeId > 0)
         {
             <button type="button" class="btn btn-primary" data-testid="order-open-reference" onclick="loadReferenceAction(@Model.OrderItem.NodeId);">Referens</button>
-            <button type="button" class="btn btn-primary" onclick="loadPatronDataView(@Model.OrderItem.NodeId);">Beställardata</button>
+            <button type="button" class="btn btn-primary" data-testid="order-open-patron-data" onclick="loadPatronDataView(@Model.OrderItem.NodeId);">Beställardata</button>
             <button type="button" class="btn btn-primary" onclick="loadMailAction(@Model.OrderItem.NodeId);">Skicka mail</button>
         }
         if (Model.OrderItem.Type == "Artikel" || Model.OrderItem.Type == "Bok")
         {
             <button type="button" class="btn btn-primary" onclick="loadProviderAction(@Model.OrderItem.NodeId);">Beställning</button>
         }
-        <button type="button" class="btn btn-primary" onclick="loadLogEntryAction(@Model.OrderItem.NodeId);">Logga</button>
+        <button type="button" class="btn btn-primary" data-testid="order-open-log-entry" onclick="loadLogEntryAction(@Model.OrderItem.NodeId);">Logga</button>
         if (Model.OrderItem.Type == "Artikel")
         {
             <button type="button" class="btn btn-primary" onclick="loadDeliveryAction(@Model.OrderItem.NodeId);">Leverans <span id="attachment-counter1" class="badge">@Model.OrderItem.AttachmentList.Count</span></button>
@@ -261,11 +261,11 @@
         }
         <!-- Misc actions -->
         <div class="btn-group">
-            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown">
+            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" data-testid="order-misc-toggle">
                 Misc <span class="caret"></span>
             </button>
             <ul class="dropdown-menu" id="orderitem-misclist" role="menu">
-                <li><a href="#" class="disabled-link" onclick="makeDuplicate(@Model.OrderItem.NodeId); event.preventDefault();">Skapa kopia</a></li>
+                <li><a href="#" class="disabled-link" data-testid="order-make-duplicate" onclick="makeDuplicate(@Model.OrderItem.NodeId); event.preventDefault();">Skapa kopia</a></li>
             </ul>
         </div>
     }

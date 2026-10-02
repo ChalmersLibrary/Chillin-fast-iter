@@ -57,6 +57,11 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | SMOKE-002 | Orderlistan har rubrik och de förväntade demo-ordrarna | `tests/smoke.spec.ts` |
 | ORD-001 | Byte av ordertyp (Bok → Artikel) syns i orderlistan efter omladdning (regression 0762fd9) | `tests/orders.spec.ts` |
 | ORD-002 | Ändrad Referens sparas och visas i listan (regression 556b30c) | `tests/orders.spec.ts` |
+| ORD-003 | Statusbyte syns direkt i listan | `tests/orders.spec.ts` |
+| ORD-004 | Annullering kräver orsak, och orsaken sparas på ordern | `tests/orders.spec.ts` |
+| ORD-005 | Inköpt kräver materialtyp | `tests/orders.spec.ts` |
+| ORD-006 | Byte av leveransbibliotek syns i listans bibliotekskolumn | `tests/orders.spec.ts` |
+| ORD-007 | Inköpsförslag kan få inköpsbibliotek, som syns i typkolumnen | `tests/orders.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | INBOX-001 | Ett beställningsmail blir en order med status Ny när pollningen körs | `tests/inbox.spec.ts` |
 | SMOKE-003 | Fel lösenord ger ett felmeddelande på inloggningssidan (regression 180134d) | `tests/smoke.spec.ts` |
@@ -84,6 +89,13 @@ pollningsknappen (chilli-ikonen nere till vänster) — samma väg som en riktig
 Den returnerar orderns referens. Använd den tillsammans med `ownApp`-fixturen, eftersom
 pollningen också kör det dagliga underhållet.
 
+**Två fällor som flera scenarier gick i:**
+
+- *En ny order har ingen typ,* och Status-knappen finns inte förrän den fått en. Sätt typ först.
+- *Default-listan visar bara pending-statusar.* En order som sätts till Annullerad, Inköpt,
+  Levererad m.fl. försvinner ur listan och nås bara via sökning — använd `list.find(referens)`,
+  inte `list.reload()`. Att raden är borta betyder alltså inte att ändringen inte sparades.
+
 ### SMOKE — att appen lever
 
 
@@ -95,11 +107,6 @@ pollningen också kör det dagliga underhållet.
 
 ### ORD — en enskild order
 
-- [ ] ORD-003  Som Administrator: statusbyte (t.ex. Ny → Åtgärda) syns direkt i listan.
-- [ ] ORD-004  Statusbyte till Annullerad kräver en annulleringsorsak, och orsaken syns på ordern.
-- [ ] ORD-005  Statusbyte till Inköpt kräver inköpt materialtyp.
-- [ ] ORD-006  Byte av leveransbibliotek syns i listans bibliotekskolumn.
-- [ ] ORD-007  För ett inköpsförslag går inköpsbibliotek att sätta, och det syns i typkolumnen.
 - [ ] ORD-008  En logganteckning sparas och syns i händelselistan med rätt datum och användare
   (regression: datumen kom en gång ut som `/Date(…)/`).
 - [ ] ORD-009  Händelselistan grupperas per datum utan att krascha (regression 5370fa7).
