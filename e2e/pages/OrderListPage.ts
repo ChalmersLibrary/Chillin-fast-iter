@@ -13,9 +13,52 @@ export class OrderListPage {
     await expect(this.page.getByTestId("order-row").first()).toBeVisible();
   }
 
+  /** Like goto(), but for a search that is expected to find nothing. */
+  async gotoExpectingNoHits(query: string) {
+    await this.page.goto(`/bestaellningar?query=${encodeURIComponent(query)}`, { waitUntil: "domcontentloaded" });
+    await expect(this.noOrders).toBeVisible();
+  }
+
   async reload() {
     await this.page.reload({ waitUntil: "domcontentloaded" });
     await expect(this.page.getByTestId("order-row").first()).toBeVisible();
+  }
+
+  get searchHeading() { return this.page.getByTestId("search-heading"); }
+  get noOrders() { return this.page.getByTestId("no-orders"); }
+  /** Every row currently *visible*. The filters hide rows rather than remove them. */
+  get visibleRows() { return this.page.getByTestId("order-row").filter({ visible: true }); }
+
+  /**
+   * A status or library filter button. They are identified by their `value`, which is the CSS
+   * class the client-side filter matches on (".chillin-status-01", ".Huvudbiblioteket", "" for
+   * "Alla") - a stabler handle than the Swedish label next to it.
+   */
+  statusFilter(value: string) {
+    return this.page.getByTestId("status-filter-buttons").locator(`button[value="${value}"]`);
+  }
+
+  libraryFilter(value: string) {
+    return this.page.getByTestId("library-filter-buttons").locator(`button[value="${value}"]`);
+  }
+
+  /** The number in a filter button's badge. */
+  async filterCount(button: Locator): Promise<number> {
+    return Number((await button.locator(".badge").innerText()).trim());
+  }
+
+  /** Clicks a filter and waits for the list to settle (the filter animates rows in and out). */
+  async applyFilter(button: Locator) {
+    await button.click();
+    await expect(button).toHaveClass(/active/);
+    // The slide animation runs for 400ms; without settling, a count can be read mid-flight.
+    await this.page.waitForTimeout(600);
+  }
+
+  /** The references of the rows that are visible right now, in list order. */
+  async visibleReferences(): Promise<string[]> {
+    const texts = await this.visibleRows.getByTestId("order-reference").allInnerTexts();
+    return texts.map((t) => t.trim());
   }
 
   /** The row whose reference contains the given text. Seed orders have unique ones, e.g. "ref-ny-001". */

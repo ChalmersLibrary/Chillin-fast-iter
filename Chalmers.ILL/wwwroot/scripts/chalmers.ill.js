@@ -132,7 +132,11 @@ $(function () {
                 var bType = $(b).find("div[data-column='type']").text();
                 var result = aType < bType ? -1 : (aType > bType ? 1 : 0);
                 if (result == 0) {
-                    result = parseInt($(a).find("div[data-column='createDate']").data("fud")) - parseInt($(b).find("div[data-column='createDate']").data("fud"))
+                    // Tie-break on follow-up date, the same secondary key the server sorts by.
+                    // This read "data-column='createDate'", a column the list has never rendered,
+                    // so the lookup was undefined and the comparison NaN - two orders of the same
+                    // type came out in whatever order the sort happened to leave them in.
+                    result = parseInt($(a).find("div[data-column='status']").data("fud")) - parseInt($(b).find("div[data-column='status']").data("fud"))
                 }
                 return result;
             })
@@ -152,7 +156,13 @@ $(function () {
                     bStatus = parseInt(bStatusMatch[1]);
                 }
                 
-                var sortingWeights = [1, 2, 4, 6, 7, 10, 11, 12, 13, 3, 14, 9, 5, 8, 0, 15, 16];
+                // Must stay identical to GetSortOrderFromOrderItemSearchResult in
+                // ChalmersILLOrderListPage.cshtml, which is what the server sorts the page by -
+                // otherwise clicking "Status" silently re-sorts the list into a different order
+                // than the one it was rendered with. This array used to be missing the 17 at
+                // index 8, so every status from 08 and up got the weight belonging to the next
+                // one, and 17:FOLIO indexed past the end (undefined -> NaN comparisons).
+                var sortingWeights = [1, 2, 4, 6, 7, 10, 11, 12, 17, 13, 3, 14, 9, 5, 8, 0, 15, 16];
 
                 var result = sortingWeights[aStatus] - sortingWeights[bStatus];
                 if (result == 0) {

@@ -59,6 +59,19 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | ORD-002 | Ändrad Referens sparas och visas i listan (regression 556b30c) | `tests/orders.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | INBOX-001 | Ett beställningsmail blir en order med status Ny när pollningen körs | `tests/inbox.spec.ts` |
+| SMOKE-003 | Fel lösenord ger ett felmeddelande på inloggningssidan (regression 180134d) | `tests/smoke.spec.ts` |
+| SMOKE-004 | Anonym besökare skickas till inloggningen från en skyddad sida | `tests/smoke.spec.ts` |
+| SMOKE-005 | Utloggning avslutar sessionen och stänger orderlistan | `tests/smoke.spec.ts` |
+| SMOKE-006 | Alla sidor i menyn renderar (vakten fångar 404 bakom dem) | `tests/smoke.spec.ts` |
+| LIST-001 | Fritextsökning på låntagarnamn ger bara matchande ordrar | `tests/list.spec.ts` |
+| LIST-002 | Fältsökning på status ger bara den statusen | `tests/list.spec.ts` |
+| LIST-003 | Statusfiltret visar rätt rader och badgen stämmer | `tests/list.spec.ts` |
+| LIST-004 | Biblioteksfiltret visar rätt rader | `tests/list.spec.ts` |
+| LIST-005 | Status- och biblioteksfilter ger snittet | `tests/list.spec.ts` |
+| LIST-006 | Sortering på typ och tillbaka på status återställer serverns ordning (regression: klientens viktlista var inte serverns) | `tests/list.spec.ts` |
+| LIST-008 | Sök-dropdownens snabbval hittar de förlorade ordrarna | `tests/list.spec.ts` |
+| LIST-009 | Sökning utan träffar säger det i stället för att fallera | `tests/list.spec.ts` |
+| LIST-010 | Värde med kolon är sökbart inom citattecken | `tests/list.spec.ts` |
 
 ## Att automatisera (börja skriva här)
 
@@ -73,28 +86,12 @@ pollningen också kör det dagliga underhållet.
 
 ### SMOKE — att appen lever
 
-- [ ] SMOKE-003  Som anonym: fel lösenord ger ett felmeddelande på inloggningssidan, inte ett
-  nätverksfel (regression 180134d).
-- [ ] SMOKE-004  Som anonym: en skyddad sida skickar mig till inloggningen i stället för att krascha.
-- [ ] SMOKE-005  Som inloggad: ”Logga ut” loggar ut, och orderlistan går inte längre att nå.
-- [ ] SMOKE-006  Som Administrator: varje sida i menyn (Beställningar, Inställningar, Statistik, Hjälp)
-  renderar utan fel — vakten fångar samtidigt skiftlägesfel på statiska filer (regression c1062c2).
 
 ### LIST — orderlistan som lista
 
-- [ ] LIST-001  Fritextsökning på ett låntagarnamn ger bara matchande ordrar, och rubriken visar
-  söksträngen.
-- [ ] LIST-002  Fältsökning (`status:Levererad`) ger bara levererade ordrar.
-- [ ] LIST-003  Statusfilterknapparna filtrerar listan, och siffrorna i knapparna stämmer med antalet
-  rader som syns.
-- [ ] LIST-004  Biblioteksfiltret (Alla / Huvudbiblioteket / Kuggen / Arkitekturbiblioteket) filtrerar
-  listan.
-- [ ] LIST-005  Status- och biblioteksfilter kombinerat ger snittet, inte unionen.
-- [ ] LIST-006  Sortering på Typ respektive Status växlar ordning och vänder pilen.
 - [ ] LIST-007  Med fler än 50 ordrar syns sidbrytningen, och ”Gå till nästa sida” behåller sökningen.
-- [ ] LIST-008  Snabbvalet i sök-dropdownen (`status:"15:Förlorad?"`) ger de förlorade ordrarna.
-- [ ] LIST-009  En sökning utan träffar ger en begriplig tom sida, inte ett fel.
-- [ ] LIST-010  Sökning med kolon i värdet (`\:`) tolkas som text och inte som fältnamn.
+  *(Kvar: seed-datan har 17 ordrar, och att skapa 34 till genom formuläret ett i taget tar minuter.
+  Behöver troligen en egen app med fler seedade ordrar.)*
 
 ### ORD — en enskild order
 

@@ -138,7 +138,7 @@
     var queryString = Request.Query["query"].ToString() != "" ? "&query=" + Request.Query["query"] : "";
 
     <div class="text-center">
-        <div id="library-filter-buttons" class="btn-group" data-pending-filter-change="0">
+        <div id="library-filter-buttons" class="btn-group" data-testid="library-filter-buttons" data-pending-filter-change="0">
             <button id="library00-button" type="button" value="" class="btn btn-default active" style="border-radius:0;">Alla <span id="allaBibliotek" class="badge">0</span></button>
             <button id="library01-button" type="button" value=".Huvudbiblioteket" class="btn btn-default">Huvudbiblioteket <span id="Huvudbiblioteket" class="badge">0</span></button>
             <button id="library02-button" type="button" value=".Lindholmenbiblioteket" class="btn btn-default">Kuggen <span id="Lindholmenbiblioteket" class="badge">0</span></button>
@@ -148,7 +148,7 @@
 
     <div>
         <h2 id="order-list-title">Beställningar - Alla bibliotek</h2>
-        <div id="filter-buttons" class="btn-group" data-pending-filter-change="0">
+        <div id="filter-buttons" class="btn-group" data-testid="status-filter-buttons" data-pending-filter-change="0">
             <button id="status00-button" type="button" value="" class="btn btn-default active" style="border-radius:0;">Alla <span id="status00-counter" class="badge">0</span></button>
             <button id="status01-button" type="button" value=".chillin-status-01" class="btn btn-default btn-success hidden">Ny <span id="status01-counter" class="badge">0</span></button>
             <button id="status09-button" type="button" value=".chillin-status-09" class="btn btn-default btn-danger hidden">Mottagen <span id="status09-counter" class="badge">0</span></button>
@@ -173,7 +173,7 @@
     {
         theQuery += "query=";
         theQuery += Request.Query["query"];
-        <h3>Beställningar som matchar <strong>@Request.Query["query"]</strong></h3>
+        <h3 data-testid="search-heading">Beställningar som matchar <strong>@Request.Query["query"]</strong></h3>
     }
 
     if (Model.PendingOrderItems.Count > 50)
@@ -187,8 +187,8 @@
         <div class="col-sm-7">Referens</div>
         <div class="col-sm-2">Namn</div>
         <div class="col-sm-1">Bibliotek</div>
-        <div class="col-sm-1"><a id="sort-on-type-link" href="#">Typ </a></div>
-        <div class="col-sm-1"><a id="sort-on-status-link" href="#">Status <span id="sort-icon" class="glyphicon glyphicon-chevron-down"></span></a></div>
+        <div class="col-sm-1"><a id="sort-on-type-link" href="#" data-testid="sort-on-type">Typ </a></div>
+        <div class="col-sm-1"><a id="sort-on-status-link" href="#" data-testid="sort-on-status">Status <span id="sort-icon" class="glyphicon glyphicon-chevron-down"></span></a></div>
     </div>
 
     @if (start > 0)
@@ -218,7 +218,7 @@
 }
 else
 {
-    <h2 style="text-align:center; margin-top:100px;">Hittade inga aktuella ordrar.</h2>
+    <h2 style="text-align:center; margin-top:100px;" data-testid="no-orders">Hittade inga aktuella ordrar.</h2>
 }
 
 @if (Model.ManualAnonymizationItems.Items.Count() > 0)

@@ -3,12 +3,12 @@
 
 @if (Request.Query["error"] == "invalid-member")
 {
-    <div class="alert alert-danger"><strong>Felaktig inloggning.</strong> Ditt login eller lösenord stämmer inte.</div>
+    <div class="alert alert-danger" data-testid="login-error"><strong>Felaktig inloggning.</strong> Ditt login eller lösenord stämmer inte.</div>
 }
 
 @if (Request.Query["error"] == "invalid-model")
 {
-    <div class="alert alert-danger"><strong>Värden saknas.</strong> Du måste fylla i fälten.</div>
+    <div class="alert alert-danger" data-testid="login-error"><strong>Värden saknas.</strong> Du måste fylla i fälten.</div>
 }
 @using (Html.BeginForm("HandleLogin", "LoginSurface", FormMethod.Post, new { @role = "form" }))
 {
