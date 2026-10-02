@@ -67,6 +67,15 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
 | LOCK-004 | Att stänga en order släpper dess lås | `tests/locks.spec.ts` |
 | LOCK-005 | Servern nekar en ändring från den som inte håller låset (regression c8d5ad8) | `tests/locks.spec.ts` |
+| ROLE-001 | Viewer kan läsa orderlistan men ingen ändringsknapp är användbar | `tests/roles.spec.ts` |
+| ROLE-002 | Konto utan roller nekas på alla sidor | `tests/roles.spec.ts` |
+| ROLE-003 | Viewer når Inställningar men kan inte ändra något där | `tests/roles.spec.ts` |
+| ROLE-005 | Servern nekar en statusändring från Viewer | `tests/roles.spec.ts` |
+| ROLE-006 | Åtkomst-nekad-sidan renderar, och utloggning fungerar därifrån (regression 6add6f9) | `tests/roles.spec.ts` |
+| ROLE-007 | Inloggningssida och statiska filer nås utan inloggning (regression 6add6f9) | `tests/roles.spec.ts` |
+| ROLE-008 | Viewer kan öppna en order och läsa detaljerna (`[AllowViewer]`) | `tests/roles.spec.ts` |
+| ROLE-009 | Administrator utan SuperAdmin ser inte och når inte Konton | `tests/roles.spec.ts` |
+| ROLE-010 | SuperAdmin ser Konton och får listan | `tests/roles.spec.ts` |
 | INBOX-001 | Ett beställningsmail blir en order med status Ny när pollningen körs | `tests/inbox.spec.ts` |
 | SMOKE-003 | Fel lösenord ger ett felmeddelande på inloggningssidan (regression 180134d) | `tests/smoke.spec.ts` |
 | SMOKE-004 | Anonym besökare skickas till inloggningen från en skyddad sida | `tests/smoke.spec.ts` |
@@ -120,21 +129,6 @@ pollningen också kör det dagliga underhållet.
 - [ ] ORD-013  Ett sparande som misslyckas visar ett fel i stället för att se ut att lyckas
   (regression 1410e49) — skriv gärna fler sådana; det var den buggklassen som var vanligast.
 - [ ] ORD-014  Orderdetaljvyn renderar utan JS-fel för en order i varje status (regression 279e039).
-
-### ROLE — behörighet
-
-- [ ] ROLE-001  Som Viewer: orderlistan går att läsa men ingen knapp som ändrar något syns eller fungerar.
-- [ ] ROLE-002  Som roleless: alla sidor stoppar (ingen orderlista, inga data).
-- [ ] ROLE-003  Som Viewer: Inställningar-sidan är dold/stoppad. Som Administrator: den syns.
-- ~~ROLE-004~~ *(utgick: handlade om desk-rollen)*
-- [ ] ROLE-005  Som Viewer: ett försök att ändra status nekas av servern, inte bara av UI:t.
-- [ ] ROLE-006  Som roleless: jag landar på en riktig åtkomst-nekad-sida som renderar som en vanlig sida
-  (regression 6add6f9).
-- [ ] ROLE-007  Som anonym: inloggningssidan och statiska filer går att nå utan inloggning
-  (regression 6add6f9: `[AllowAnonymous]` gick förlorat i `ViewerReadOnlyFilter`).
-- [ ] ROLE-008  Som Viewer: läs-endpoints märkta `[AllowViewer]` fungerar — orderdetaljer går att öppna.
-- [ ] ROLE-009  Som admin utan SuperAdmin: Konton-fliken i Inställningar syns inte och nekas.
-- [ ] ROLE-010  Som superadmin: Konton-fliken syns och går att använda.
 
 ### MAIL — utgående mail
 
@@ -226,7 +220,8 @@ ofarlig.
 ## Roll × område (utkast, granska!)
 
 Detta är min läsning av `ViewerReadOnlyFilter` m.fl. — rätta det som är fel, så blir det ett
-automatiskt test (ROLE-xxx).
+automatiskt test (ROLE-xxx). ROLE-001..010 är nu skrivna, och tabellen stämmer med dem —
+~~ROLE-004~~ utgick när desk-rollen togs bort.
 
 **Desk-rollen testas inte** — den används inte längre. Kontot finns kvar i `members.json` så att
 det går att logga in som ett rent Desk-konto om frågan skulle dyka upp, men inga scenarier använder
@@ -239,5 +234,5 @@ rent Desk-konto ser inga knappar alls i en öppnad order — gammalt beteende, e
 | superadmin | Desk, Administrator, SuperAdmin | ja | ja | ja | ja |
 | admin | Desk, Administrator | ja | ja | ja | nej |
 | desk | Desk | *(används inte längre — testas inte)* | | | |
-| viewer | Viewer | ja (läsa) | nej (stoppas, utom `[AllowViewer]`) | nej | nej |
+| viewer | Viewer | ja (läsa) | nej (stoppas, utom `[AllowViewer]`) | ja (läsa; lösenord är självbetjäning) | nej |
 | roleless | *(inga)* | nej (stoppas helt) | nej | nej | nej |
