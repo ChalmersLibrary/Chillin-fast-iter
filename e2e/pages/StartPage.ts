@@ -48,6 +48,32 @@ export class StartPage {
  *
  * The caller must declare the form's confirmation dialog: `guard.allow(/Successfully sent new order/)`.
  */
+/**
+ * Sends many order mails at once, without re-rendering the form for each one, and polls once.
+ *
+ * It posts to the same endpoint the form posts to, so the orders are made the same way - this is
+ * about not spending three seconds per order when a scenario needs fifty of them.
+ */
+export async function createManyOrdersThroughMail(page: Page, label: string, count: number): Promise<void> {
+  const start = new StartPage(page);
+  await start.goto();
+
+  for (let i = 0; i < count; i++) {
+    const response = await page.request.post("/OrderItemMailSurface/SendMailForNewOrder", {
+      form: {
+        message: `${label}-${i}`,
+        name: `Massa Massasson ${i}`,
+        mail: `massa${i}@example.invalid`,
+        libraryCardNumber: "1000000" + i,
+        deliveryLibrary: "Z",
+      },
+    });
+    expect(response.ok(), `order ${i} was not sent`).toBeTruthy();
+  }
+
+  await start.pollMail();
+}
+
 export async function createOrderThroughMail(
   page: Page,
   label: string,

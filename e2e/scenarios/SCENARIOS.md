@@ -98,6 +98,10 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | SET-008 | Ändrade roller gäller vid kontots nästa inloggning | `tests/settings.spec.ts` |
 | SET-010 | Ett fel i kontoadmin släpper busy-overlayen (regression f1bd8bf) | `tests/settings.spec.ts` |
 | DELIV-006 | Lånetid från utlånande bibliotek sparas och finns kvar | `tests/providers.spec.ts` |
+| LIST-007 | Fler än 50 ordrar ger sidbrytning, och sökningen gäller på nästa sida | `tests/list.spec.ts` |
+| MAIL-004 | Tom mall tar med signatur och ursprunglig beställning | `tests/mail.spec.ts` |
+| DELIV-007 | Räknaren på Leverans-knappen visar antalet bifogade filer | `tests/import.spec.ts` |
+| STAT-003 | Ett filter på en variabel smalnar av resultatet (regression: filtren matchade inget alls) | `tests/statistics.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -151,9 +155,6 @@ pollningen också kör det dagliga underhållet.
 
 ### LIST — orderlistan som lista
 
-- [ ] LIST-007  Med fler än 50 ordrar syns sidbrytningen, och ”Gå till nästa sida” behåller sökningen.
-  *(Kvar: seed-datan har 17 ordrar, och att skapa 34 till genom formuläret ett i taget tar minuter.
-  Behöver troligen en egen app med fler seedade ordrar.)*
 
 ### ORD — en enskild order
 
@@ -161,7 +162,6 @@ pollningen också kör det dagliga underhållet.
 
 ### MAIL — utgående mail
 
-- [ ] MAIL-004  Ursprunglig beställning / historik går att bifoga och följer med i mailet.
 - [ ] MAIL-005  Automatiskt utskick: en order med status Utlånad och återlämning om exakt fem dagar ger
   ett artighetsmeddelande när utskicket körs.
 - [ ] MAIL-006  Automatiskt utskick: ett missat datum skickas inte retroaktivt.
@@ -174,7 +174,6 @@ pollningen också kör det dagliga underhållet.
   hårdkodad gräns i `Chalmers.ILL.OrderItem.cshtml`. Funktionerna är alltså oåtkomliga för varje
   order som beställts de senaste fyra åren, i drift såväl som i test. Avsiktligt eller kvarglömt?)*
 - ~~DELIV-005~~ *(samma datumspärr som DELIV-003.)*
-- [ ] DELIV-007  Räknaren på Leverans-knappen visar antalet bifogade filer.
 
 ### INBOX — inkommande beställningar
 
@@ -190,9 +189,6 @@ pollningen också kör det dagliga underhållet.
 
 ### STAT — statistik
 
-- [ ] STAT-003  Ett filter i en variabel begränsar resultatet.
-  *(Kvar: filteralternativen byggs dynamiskt från sökindexet, vilket kräver mer utforskning än de
-  tre andra STAT-scenarierna tillsammans.)*
 
 ### API — maskin-till-maskin
 
@@ -220,6 +216,19 @@ pollningen också kör det dagliga underhållet.
   anonymt måste ligga under `test.use({ role: "anonymous" })`. Utan det körs det som testets roll,
   och ett behörighetsprov blir grönt utan att bevisa något. Det fick mig att tro att orderlistan
   och QR-endpointen var öppna — de är de inte.
+- **Efter en serveromstart försökte ett fönster som bara betraktar listan ta ett lås.** Sett en
+  gång, i en full svitkörning under last, aldrig i tre isolerade körningar: bevakarfönstret
+  (`admin`) larmade två gånger med ”Ordern är redan låst av en annan användare” om det lås som
+  redigeringsfönstret (`superadmin`) höll. Bevakaren öppnar aldrig ordern i RT-003, så vad som
+  fick den att försöka låsa är oklart. Deklarerat i testet med den förklaringen, inte tystat.
+  Kräver instrumentering för att komma vidare — och en serveromstart med öppna fönster är
+  precis vad som händer vid en driftsättning.
+- **Statistikens filter matchade ingenting alls** — åtgärdat 2026-10-05, men värt en kontroll mot
+  det riktiga Elasticsearch-indexet före driftsättning. Filtren byggde sin fråga av nycklarna
+  `Status`, `Type`, `ProviderName` … med versal, medan indexet känner fälten vid sina
+  camelCase-namn och Lucene är skiftlägeskänsligt — varje filtrerad siffra blev noll. Slutsatsen om
+  indexets namn är dragen ur appens övriga frågor (`status:`, `providerName:`, `followUpDate:`),
+  inte observerad mot ett riktigt index. Koden var identisk på `master`.
 - **Ett behandlat mail blir kvar i inkorgen om `ChalmersIllArchiveProcessedMails` är `false`, och
   nästa pollning gör en till order av det.** Standardvärdet i `appsettings.json` är `false`, och
   den riktiga Graph-implementationen läser hela inkorgen utan att filtrera på oläst — precis som

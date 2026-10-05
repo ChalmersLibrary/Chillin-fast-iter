@@ -46,6 +46,11 @@ uppskattning av hur lång tid något *ska* ta.
 
 ## Konventioner
 
+- **Playwrights `hasText` är delsträngsmatchning.** Det har bitit tre gånger: ”Bok” matchade även
+  ”E-bok” i materialtypsmenyn, ”Typ” matchade panelen ”P-Typ” på statistiksidan, och ”Fjärrlån”
+  matchade undermenyns rubrik. Felet blir inte rött — testet mäter bara fel sak. Använd ett
+  ankrat regexp (`/^\s*Typ\s*$/`) när namnet ska vara exakt; `OrderListPage` har hjälparen
+  `exactly()` för menyval.
 - **Bootstrap-undermenyer (`.dropdown-submenu`) öppnas med `:hover`, inte klick.** Ett klick på
   undermenyns rubrik gör ingenting; valen under den finns i DOM:en men är aldrig synliga. Det
   gäller statusmenyns ”Annullerad”/”Inköpt”, logganteckningens statusmeny och mallistan i

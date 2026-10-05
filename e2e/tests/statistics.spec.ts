@@ -81,3 +81,39 @@ test.describe("statistics", () => {
     }
   });
 });
+
+test.describe("statistics, filtered", () => {
+  test("STAT-003: a filter on a variable narrows the result", async ({ page }) => {
+    await page.goto(STATS, { waitUntil: "load" });
+
+    // The filter panels are built from whatever values the search index actually holds, so wait
+    // for them rather than assuming which ones exist. The heading has to match exactly: the
+    // panels are "P-Typ", "Status", "Typ", "Ägandebibliotek", "Annulleringsorsak" and "Inköpt
+    // Material", and a substring match on "Typ" picks "P-Typ", whose only value is "0".
+    const typeFilter = page
+      .locator("#stat-variable-options .col-md-4")
+      .filter({ has: page.locator(".panel-heading", { hasText: /^\s*Typ\s*$/ }) });
+    await expect(typeFilter).toBeVisible();
+
+    // One variable counting everything...
+    await addVariable(page, "E2E alla");
+
+    // ...and one counting only books.
+    await typeFilter.locator(".panel-body li button", { hasText: "Bok" }).first().click();
+    await addVariable(page, "E2E bara bok");
+
+    const fetched = page.waitForResponse((r) => r.url().includes("/StatisticsSurface/GetData"));
+    await page.getByTestId("stat-build-table").first().click();
+    const data = await (await fetched).json();
+    expect(data.Success).toBeTruthy();
+
+    const all = data.StatisticsData.find((v: any) => v.Name === "E2E alla");
+    const books = data.StatisticsData.find((v: any) => v.Name === "E2E bara bok");
+    expect(all, "the unfiltered variable is missing").toBeTruthy();
+    expect(books, "the filtered variable is missing").toBeTruthy();
+
+    const sum = (v: any) => (v.Values as number[]).reduce((a, b) => a + b, 0);
+    expect(sum(books), "a filter must not widen the result").toBeLessThan(sum(all));
+    expect(sum(books), "the filter removed everything, so it proves nothing").toBeGreaterThan(0);
+  });
+});

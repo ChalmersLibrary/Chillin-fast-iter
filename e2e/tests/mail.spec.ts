@@ -134,3 +134,26 @@ test.describe("mail", () => {
     expect(sentMails(app).filter((m) => m.body.includes("Utan status"))).toHaveLength(0);
   });
 });
+
+test.describe("mail, what goes into the message", () => {
+  test("MAIL-004: the empty template brings the signature and the original order along", async ({ ownApp, guard }) => {
+    guard.allow(/Successfully sent new order/);
+    const { page } = await ownApp();
+    const reference = await createOrderThroughMail(page, "e2e-mail-004");
+
+    const list = new OrderListPage(page);
+    await list.goto();
+    const row = list.row(reference);
+    await row.open();
+    await row.setType("Artikel");
+    await openMail(page, row);
+
+    // "Tom" is the no-template choice: it still fills the message with the signature and the
+    // order as the patron sent it in, which is what staff reply on top of.
+    await page.getByTestId("mail-template-toggle").click();
+    await page.getByTestId("mail-template-menu").locator("a", { hasText: "Tom" }).first().click();
+
+    // The original order is the text the patron wrote - here, the reference we sent in.
+    await expect(page.getByTestId("mail-message")).toHaveValue(new RegExp(reference));
+  });
+});

@@ -73,6 +73,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
                 foreach (var k in req.Keys) {
                     var keyValues = new KeyValues();
                     keyValues.Key = k;
+                    keyValues.QueryField = GetQueryField(k);
                     SetPrettyName(keyValues);
                     keyValues.AvailableValues = allOrders
                         .Select(x => GetFieldValue(x, k))
@@ -96,6 +97,20 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         #region Private
+
+        /// <summary>
+        /// The search-index name for a filter key. The index stores the camelCased JSON property
+        /// names (see how the app's own queries elsewhere read status:, providerName:,
+        /// followUpDate:), while the keys here are C# property names - and two of them are not
+        /// top-level properties at all. Lucene field names are case sensitive, so filtering on
+        /// "Status:" or "Type:" matched nothing at all and every filtered figure came out zero.
+        /// </summary>
+        private static string GetQueryField(string key)
+        {
+            if (key == "pType") return "sierraInfo.ptype";
+            if (key == "HomeLibrary") return "sierraInfo.home_library";
+            return char.ToLowerInvariant(key[0]) + key.Substring(1);
+        }
 
         private static string GetFieldValue(OrderItemModel item, string key)
         {

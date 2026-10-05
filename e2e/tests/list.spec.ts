@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures";
 import { OrderListPage } from "../pages/OrderListPage";
+import { createManyOrdersThroughMail } from "../pages/StartPage";
 
 // Scenario IDs refer to e2e/scenarios/SCENARIOS.md.
 //
@@ -133,5 +134,39 @@ test.describe("list", () => {
     for (const status of await list.visibleRows.getByTestId("order-status").allInnerTexts()) {
       expect(status.trim()).toBe("Levererad");
     }
+  });
+});
+
+test.describe("list, with more orders than fit on a page", () => {
+  test("LIST-007: past fifty orders the list paginates, and the search is kept across pages", async ({ ownApp, guard }) => {
+    const { page } = await ownApp();
+    const label = "e2e-list-007";
+    // 50 rows per page, and the "Visar ordrar …" heading only appears when the hit count is
+    // *greater* than 50 - so 50 matching orders would fill the page exactly and show nothing.
+    await createManyOrdersThroughMail(page, label, 55);
+
+    const list = new OrderListPage(page);
+    await list.goto(label);
+
+    // The heading says how many there are in total, and the first page holds fifty.
+    await expect(page.getByRole("heading", { name: /Visar ordrar/ })).toBeVisible();
+    await expect(list.visibleRows).toHaveCount(50);
+
+    const firstPage = await list.visibleReferences();
+    const next = page.getByRole("link", { name: "Gå till nästa sida med ordrar." });
+    await expect(next).toBeVisible();
+    await next.click();
+
+    // The next page holds the rest, none of them repeated from the first...
+    await expect(list.visibleRows.first()).toBeVisible();
+    const secondPage = await list.visibleReferences();
+    expect(secondPage.length).toBeGreaterThan(0);
+    expect(secondPage.filter((r) => firstPage.includes(r)), "the pages overlap").toHaveLength(0);
+
+    // ...and the search is still in force: every row still matches it.
+    for (const reference of secondPage) {
+      expect(reference).toContain(label);
+    }
+    await expect(page.getByRole("link", { name: "Gå till föregående sida med ordrar." })).toBeVisible();
   });
 });

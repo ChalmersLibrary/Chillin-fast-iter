@@ -82,3 +82,41 @@ test.describe("import", () => {
     expect(body.Message).toContain("låst av");
   });
 });
+
+test.describe("import, several documents", () => {
+  test("DELIV-007: the counter on the Leverans button shows how many files are attached", async ({ ownApp, guard }) => {
+    guard.allow(/Successfully sent new order/);
+    const { page } = await ownApp();
+    const reference = await createOrderThroughMail(page, "e2e-deliv-007");
+
+    const list = new OrderListPage(page);
+    await list.goto();
+    const row = list.row(reference);
+    await row.open();
+    await row.setType("Artikel");
+    await row.details.getByTestId("order-open-delivery").click();
+    await expect(page.getByTestId("deliver-now")).toBeVisible();
+    await page.locator("#delivery-type-dropdown").first().click();
+    await page.locator('a[data-delivery-type="epost"]').first().click();
+    await expect(page.locator("#hidden-file-upload")).toBeAttached();
+
+    for (const name of ["e2e-ett.pdf", "e2e-tva.pdf"]) {
+      const uploaded = page.waitForResponse((r) => r.url().includes("/ImportDocumentSurface/ImportFromData"));
+      await page.locator("#hidden-file-upload").setInputFiles({ name, mimeType: "application/pdf", buffer: A_TINY_PDF });
+      expect((await uploaded).ok()).toBeTruthy();
+    }
+
+    // Two distinct attachments, and the counter agrees - after a fresh render, not just in the
+    // number the client incremented locally.
+    await list.goto();
+    const again = list.row(reference);
+    await again.open();
+    await expect(again.details.getByTestId("order-open-delivery")).toContainText("2");
+    await again.details.getByTestId("order-open-delivery").click();
+    // The reopened view defaults back to "via post", which has no attachments group at all.
+    await page.locator("#delivery-type-dropdown").first().click();
+    await page.locator('a[data-delivery-type="epost"]').first().click();
+    await expect(page.locator(".btn-attach-attachment", { hasText: "e2e-ett" })).toBeVisible();
+    await expect(page.locator(".btn-attach-attachment", { hasText: "e2e-tva" })).toBeVisible();
+  });
+});
