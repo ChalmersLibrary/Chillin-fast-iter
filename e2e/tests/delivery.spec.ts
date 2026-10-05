@@ -80,3 +80,47 @@ test.describe("delivery", () => {
   });
 
 });
+
+test.describe("delivery, receiving a book", () => {
+  test("DELIV-001: receiving a book for ordinary loan sets the order to FOLIO and logs it", async ({ ownApp, guard }) => {
+    guard.allow(/Successfully sent new order/);
+    // The flow asks before going ahead when FOLIO knows nothing about the patron, and again after
+    // the book slip is printed. Both are the app being careful; say yes to them.
+    guard.accept(/konto är aktivt saknas/);
+    guard.accept(/Skrevs bokslippen ut korrekt/);
+
+    const { page } = await ownApp();
+    // window.print() is a browser function, not app logic, and would stall a headless run.
+    await page.addInitScript(() => { (window as any).print = () => {}; });
+
+    const reference = await createOrderThroughMail(page, "e2e-deliv-001");
+    const list = new OrderListPage(page);
+    await list.goto();
+    const row = list.row(reference);
+    await row.open();
+    await row.setType("Bok");
+
+    await row.details.getByTestId("order-open-receive-book").click();
+    await expect(page.getByTestId("receive-for-loan")).toBeVisible();
+
+    // Filling these in is what a librarian does, and it also means the "you haven't changed …"
+    // confirmations never come up - the flow asks about each field left untouched.
+    await page.getByTestId("receive-title").fill("Mottagen titel åäö");
+    await page.getByTestId("receive-barcode").fill("30000000123456");
+    await page.getByTestId("receive-provider-info").fill("Levererad av E2E-biblioteket");
+
+    const received = page.waitForResponse((r) =>
+      r.url().includes("/OrderItemReceiveBookSurface/SetOrderItemDeliveryReceived")
+    );
+    await page.getByTestId("receive-for-loan").click();
+    const response = await received;
+    expect(response.ok()).toBeTruthy();
+    expect((await response.json()).Success, "receiving the book was refused").toBeTruthy();
+
+    // 17:FOLIO is what receiving for an ordinary loan sets.
+    const after = await list.find(reference);
+    await expect(after.status).toHaveText("FOLIO");
+    await after.open();
+    await expect(page.locator(".editmode")).toContainText("30000000123456");
+  });
+});

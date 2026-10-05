@@ -8,11 +8,11 @@
     <div class="col-md-6">
         <div class="form-group">
             <label for="titleToFolio">Kort titelinformation + [befintlig infotext till MyAccount]</label><br/>
-            <textarea class="form-control" cols="80" rows="5" id="titleToFolio" onchange="titleToFolioHasBeenEdited()" name="titleToFolio">@Model.TitleInformation</textarea>
+            <textarea class="form-control" data-testid="receive-title" cols="80" rows="5" id="titleToFolio" onchange="titleToFolioHasBeenEdited()" name="titleToFolio">@Model.TitleInformation</textarea>
         </div>
         <div class="form-group">
             <label for="bookId">Inklistrad streckkod för fjärrlån</label>
-            <input type="text" class="form-control" id="bookId" onchange="barcodeToFolioHasBeenEdited()" name="bookId" value="@Model.OrderItem.BookId">
+            <input type="text" class="form-control" data-testid="receive-barcode" id="bookId" onchange="barcodeToFolioHasBeenEdited()" name="bookId" value="@Model.OrderItem.BookId">
         </div>
         <div class="row">
             <div class="form-group col-sm-12">
@@ -23,12 +23,12 @@
     <div class="col-md-6">
         <div class="form-group">
             <label for="providerInformation">Leverantörsinformation</label><br />
-            <textarea class="form-control" cols="80" rows="5" id="providerInformation" name="providerInformation" onchange="providerInfoHasBeenEdited();">@Model.OrderItem.ProviderInformation</textarea>
+            <textarea class="form-control" data-testid="receive-provider-info" cols="80" rows="5" id="providerInformation" name="providerInformation" onchange="providerInfoHasBeenEdited();">@Model.OrderItem.ProviderInformation</textarea>
         </div>
         <div class="form-group">
             <label for="dueDate">Utlånande biblioteks förfallodatum</label>
             <div class="input-group date datetimepicker">
-                <input type="text" class="form-control" id="dueDate" name="dueDate" value="@Model.OrderItem.ProviderDueDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture)">
+                <input type="text" class="form-control" data-testid="receive-due-date" id="dueDate" name="dueDate" value="@Model.OrderItem.ProviderDueDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture)">
                 <span class="input-group-addon">
                     <span class="glyphicon glyphicon-calendar"></span>
                 </span>
@@ -59,7 +59,7 @@
         </div>
     </div>
     <div class="col-md-12">
-        <button class="btn btn-success" onclick="sendToFolio(false, true, @(Model.OrderItem.SierraInfo.active.HasValue ? Model.OrderItem.SierraInfo.active.Value.ToString().ToLowerInvariant() : "undefined"), '@(Model.OrderItem.SierraInfo.mblock)')" @(Model.OrderItem.Status == "17:FOLIO" ? "disabled" : "") >Ta emot för vanligt lån</button>
+        <button class="btn btn-success" data-testid="receive-for-loan" onclick="sendToFolio(false, true, @(Model.OrderItem.SierraInfo.active.HasValue ? Model.OrderItem.SierraInfo.active.Value.ToString().ToLowerInvariant() : "undefined"), '@(Model.OrderItem.SierraInfo.mblock)')" @(Model.OrderItem.Status == "17:FOLIO" ? "disabled" : "") >Ta emot för vanligt lån</button>
         <button class="btn btn-success" onclick="sendToFolio(true, true, @(Model.OrderItem.SierraInfo.active.HasValue ? Model.OrderItem.SierraInfo.active.Value.ToString().ToLowerInvariant() : "undefined"), '@(Model.OrderItem.SierraInfo.mblock)')" @(Model.OrderItem.Status == "17:FOLIO" ? "disabled" : "")>Ta emot för läsesalslån</button>
     </div>
 </div>

@@ -102,6 +102,9 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | MAIL-004 | Tom mall tar med signatur och ursprunglig beställning | `tests/mail.spec.ts` |
 | DELIV-007 | Räknaren på Leverans-knappen visar antalet bifogade filer | `tests/import.spec.ts` |
 | STAT-003 | Ett filter på en variabel smalnar av resultatet (regression: filtren matchade inget alls) | `tests/statistics.spec.ts` |
+| DELIV-001 | Mottagning av bok för vanligt lån sätter FOLIO och loggar streckkoden | `tests/delivery.spec.ts` |
+| MAIL-005 | Lån som förfaller om fem dagar får sitt artighetsmeddelande | `tests/mail.spec.ts` |
+| MAIL-006 | Lån utan någon triggerdag får ingenting — inget skickas retroaktivt | `tests/mail.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -162,13 +165,9 @@ pollningen också kör det dagliga underhållet.
 
 ### MAIL — utgående mail
 
-- [ ] MAIL-005  Automatiskt utskick: en order med status Utlånad och återlämning om exakt fem dagar ger
-  ett artighetsmeddelande när utskicket körs.
-- [ ] MAIL-006  Automatiskt utskick: ett missat datum skickas inte retroaktivt.
 
 ### DELIV — leveransflödet
 
-- [ ] DELIV-001  ”Ta emot bok” sätter status Mottagen och loggar händelsen.
 - ~~DELIV-003~~ *(går inte att skriva mot en ny order, och det är ett fynd i sig: ”Kräv”-knappen —
   och ”Lånetid mot låntagare” — visas bara om `Model.OrderItem.CreateDate <= 2021-05-16`, en
   hårdkodad gräns i `Chalmers.ILL.OrderItem.cshtml`. Funktionerna är alltså oåtkomliga för varje
@@ -240,6 +239,10 @@ pollningen också kör det dagliga underhållet.
   Samma regel i både den isolerade sökmotorn och Elasticsearch-varianten.
 - **”Kräv” och ”Lånetid mot låntagare” är spärrade för allt beställt efter 2021-05-16** av en
   hårdkodad datumjämförelse i orderpanelen. Ingen ny order kan nå dem.
+- **Systemmallarnas innehåll är platshållartext i isolerat läge.** Ett automatiskt
+  artighetsmeddelande går ut med texten ”[Platshållartext för CourtesyNoticeMailTemplate …]”.
+  Förväntat — seedern skapar de 13 obligatoriska mallarna med platshållare — men värt att minnas
+  när man läser utkorgen på testservern.
 - **Mailvyns mallista är tom i isolerat läge.** De 13 seedade systemmallarna är alla `Automatic`,
   och mailvyn visar bara manuella (`GetManualTemplates`). Den som provar testservern för hand möter
   alltså en tom lista tills någon skapar en mall under Inställningar. MAIL-002 skapar sin egen.

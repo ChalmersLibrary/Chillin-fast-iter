@@ -239,7 +239,7 @@
         }
         if (Model.OrderItem.Type == "Bok")
         {
-            <button type="button" class="btn btn-primary" onclick="loadReceiveBookAction(@Model.OrderItem.NodeId);">Ta emot bok</button>
+            <button type="button" class="btn btn-primary" data-testid="order-open-receive-book" onclick="loadReceiveBookAction(@Model.OrderItem.NodeId);">Ta emot bok</button>
             @*<button type="button" class="btn btn-primary" onclick="loadProviderReturnDateAction(@Model.OrderItem.NodeId);">Lånetid leverantör</button>*@
             <div class="btn-group">
                 <button class="btn btn-primary dropdown-toggle" type="button" data-testid="order-loan-period-toggle" data-toggle="dropdown" aria-expanded="false">

@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { expect, test } from "../fixtures";
 import { OrderListPage, OrderRow } from "../pages/OrderListPage";
-import { createOrderThroughMail } from "../pages/StartPage";
+import { StartPage, createOrderThroughMail } from "../pages/StartPage";
 import { RunningApp } from "../support/app";
 
 // Scenario IDs refer to e2e/scenarios/SCENARIOS.md.
@@ -155,5 +155,99 @@ test.describe("mail, what goes into the message", () => {
 
     // The original order is the text the patron wrote - here, the reference we sent in.
     await expect(page.getByTestId("mail-message")).toHaveValue(new RegExp(reference));
+  });
+});
+
+test.describe("mail, the automatic sending", () => {
+  /** Receives a book with the given due date and lends it out, leaving the order in Utlånad. */
+  async function lendOutWithDueDate(page: import("@playwright/test").Page, reference: string, dueDate: string) {
+    const list = new OrderListPage(page);
+    await list.goto();
+    const row = list.row(reference);
+    await row.open();
+    await row.setType("Bok");
+    const nodeId = await row.nodeId();
+
+    await row.details.getByTestId("order-open-receive-book").click();
+    await expect(page.getByTestId("receive-for-loan")).toBeVisible();
+    await page.getByTestId("receive-title").fill("Automatutskick åäö");
+    await page.getByTestId("receive-barcode").fill("30000000999999");
+    await page.getByTestId("receive-provider-info").fill("E2E");
+    await page.getByTestId("receive-due-date").fill(dueDate);
+
+    const received = page.waitForResponse((r) =>
+      r.url().includes("/OrderItemReceiveBookSurface/SetOrderItemDeliveryReceived")
+    );
+    await page.getByTestId("receive-for-loan").click();
+    expect((await received).ok()).toBeTruthy();
+
+    // The QR scan at the desk is what puts it on loan.
+    const loaned = await page.request.post(`/BookCirculationSurface/Loaned?nodeId=${nodeId}`);
+    expect((await loaned.json()).Success).toBeTruthy();
+    return nodeId;
+  }
+
+  const inDays = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} 12:00`;
+  };
+
+  test("MAIL-005: a loan due in five days gets its courtesy notice when the automatic send runs", async ({ ownApp, guard }) => {
+    guard.allow(/Successfully sent new order/);
+    guard.accept(/konto är aktivt saknas/);
+    guard.accept(/Skrevs bokslippen ut korrekt/);
+    // The button reports by alerting the whole JSON answer - noisy, but it is the app's own
+    // confirmation, not a failure.
+    guard.allow(/Successfully processed all the pending mail operations/);
+    const { app, page } = await ownApp();
+    await page.addInitScript(() => { (window as any).print = () => {}; });
+
+    const reference = await createOrderThroughMail(page, "e2e-mail-005", {
+      name: "Artig Artigsson",
+      email: "artig@example.invalid",
+    });
+    await lendOutWithDueDate(page, reference, inDays(5));
+
+    const before = sentMails(app).filter((m) => m.to === "artig@example.invalid").length;
+
+    // The button sits on the start page, next to the new-order form.
+    await new StartPage(page).goto();
+    const sent = page.waitForResponse((r) => r.url().includes("/SystemSurface/SendOutAutomaticMailsThatAreDue"));
+    await page.getByTestId("send-automatic-mails").click();
+    expect((await sent).ok()).toBeTruthy();
+
+    const after = sentMails(app).filter((m) => m.to === "artig@example.invalid");
+    expect(after.length, "no courtesy notice was sent").toBeGreaterThan(before);
+  });
+
+  test("MAIL-006: a loan due far off gets nothing - missed dates are not sent retroactively", async ({ ownApp, guard }) => {
+    guard.allow(/Successfully sent new order/);
+    guard.accept(/konto är aktivt saknas/);
+    guard.accept(/Skrevs bokslippen ut korrekt/);
+    // The button reports by alerting the whole JSON answer - noisy, but it is the app's own
+    // confirmation, not a failure.
+    guard.allow(/Successfully processed all the pending mail operations/);
+    const { app, page } = await ownApp();
+    await page.addInitScript(() => { (window as any).print = () => {}; });
+
+    const reference = await createOrderThroughMail(page, "e2e-mail-006", {
+      name: "Tyst Tystsson",
+      email: "tyst@example.invalid",
+    });
+    // Twenty days out: past every one of the engine's exact-day triggers (-5, +1, +5, +10) and
+    // short of the +17 catch-all, so nothing is due today for this order.
+    await lendOutWithDueDate(page, reference, inDays(20));
+
+    const before = sentMails(app).filter((m) => m.to === "tyst@example.invalid").length;
+
+    // The button sits on the start page, next to the new-order form.
+    await new StartPage(page).goto();
+    const sent = page.waitForResponse((r) => r.url().includes("/SystemSurface/SendOutAutomaticMailsThatAreDue"));
+    await page.getByTestId("send-automatic-mails").click();
+    expect((await sent).ok()).toBeTruthy();
+
+    expect(sentMails(app).filter((m) => m.to === "tyst@example.invalid").length,
+      "a notice went out on a day nothing was due").toBe(before);
   });
 });
