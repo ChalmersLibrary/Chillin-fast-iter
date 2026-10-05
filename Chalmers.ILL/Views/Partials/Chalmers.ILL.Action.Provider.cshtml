@@ -7,8 +7,8 @@
         <div class="col-md-6">
             <div class="form-group">
                 <label for="providerName">Leverantör</label>
-                <input type="text" class="form-control" id="providerName" name="providerName" placeholder="Leverantörens namn" value="@Model.OrderItem.ProviderName">
-                <div id="provider-list" class="list-group" style="height: 175px; overflow: auto; background: #ebebeb;">
+                <input type="text" class="form-control" data-testid="provider-name" id="providerName" name="providerName" placeholder="Leverantörens namn" value="@Model.OrderItem.ProviderName">
+                <div id="provider-list" data-testid="provider-list" class="list-group" style="height: 175px; overflow: auto; background: #ebebeb;">
                     @foreach (var providerName in Model.Providers)
                     {
                         <a href="#" onclick="$('#providerName').val($(this).text()); updateFollowUpDate($(this).text()); event.preventDefault();" class="list-group-item">@providerName</a>

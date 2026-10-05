@@ -230,7 +230,7 @@
         }
         if (Model.OrderItem.Type == "Artikel" || Model.OrderItem.Type == "Bok")
         {
-            <button type="button" class="btn btn-primary" onclick="loadProviderAction(@Model.OrderItem.NodeId);">Beställning</button>
+            <button type="button" class="btn btn-primary" data-testid="order-open-provider" onclick="loadProviderAction(@Model.OrderItem.NodeId);">Beställning</button>
         }
         <button type="button" class="btn btn-primary" data-testid="order-open-log-entry" onclick="loadLogEntryAction(@Model.OrderItem.NodeId);">Logga</button>
         if (Model.OrderItem.Type == "Artikel")
@@ -242,7 +242,7 @@
             <button type="button" class="btn btn-primary" onclick="loadReceiveBookAction(@Model.OrderItem.NodeId);">Ta emot bok</button>
             @*<button type="button" class="btn btn-primary" onclick="loadProviderReturnDateAction(@Model.OrderItem.NodeId);">Lånetid leverantör</button>*@
             <div class="btn-group">
-                <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-testid="order-loan-period-toggle" data-toggle="dropdown" aria-expanded="false">
                     Lånetid <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu" role="menu">
@@ -250,7 +250,7 @@
                     {
                         <li><a href="#" onclick="loadPatronReturnDateAction(@Model.OrderItem.NodeId); event.preventDefault();">Mot låntagare</a></li>
                     }
-                    <li><a href="#" onclick="loadProviderReturnDateAction(@Model.OrderItem.NodeId); event.preventDefault();">Från utlånande bibliotek</a></li>
+                    <li><a href="#" data-testid="order-open-provider-due-date" onclick="loadProviderReturnDateAction(@Model.OrderItem.NodeId); event.preventDefault();">Från utlånande bibliotek</a></li>
                 </ul>
             </div>
             if ((Model.OrderItem.StatusString == "Utlånad" || Model.OrderItem.StatusString == "Krävd" || Model.OrderItem.StatusString == "Åtgärda") && Model.OrderItem.CreateDate <= DateTime.Parse("2021-05-16"))

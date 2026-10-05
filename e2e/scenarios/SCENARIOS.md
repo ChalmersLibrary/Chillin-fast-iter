@@ -94,6 +94,10 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | INBOX-003 | Ett mail som inte är en beställning blir ingen halvskapad order | `tests/inbox.spec.ts` |
 | IMPORT-001 | Uppladdat dokument bifogas ordern och räknas | `tests/import.spec.ts` |
 | IMPORT-003 | Uppladdning kräver orderns lås | `tests/import.spec.ts` |
+| SET-006 | Ett leverantörsnamn som använts på en order erbjuds på nästa | `tests/providers.spec.ts` |
+| SET-008 | Ändrade roller gäller vid kontots nästa inloggning | `tests/settings.spec.ts` |
+| SET-010 | Ett fel i kontoadmin släpper busy-overlayen (regression f1bd8bf) | `tests/settings.spec.ts` |
+| DELIV-006 | Lånetid från utlånande bibliotek sparas och finns kvar | `tests/providers.spec.ts` |
 | LOCK-001 | En order som en användare öppnat visas som låst för en annan, med ”Överta låset” och utan åtgärdsknappar (regression c8d5ad8, e412340) | `tests/locks.spec.ts` |
 | LOCK-002 | Omladdning släpper de lås sessionen håller (regression 556b30c) | `tests/locks.spec.ts` |
 | LOCK-003 | ”Överta låset” flyttar låset, och den förra redaktören får veta det | `tests/locks.spec.ts` |
@@ -170,7 +174,6 @@ pollningen också kör det dagliga underhållet.
   hårdkodad gräns i `Chalmers.ILL.OrderItem.cshtml`. Funktionerna är alltså oåtkomliga för varje
   order som beställts de senaste fyra åren, i drift såväl som i test. Avsiktligt eller kvarglömt?)*
 - ~~DELIV-005~~ *(samma datumspärr som DELIV-003.)*
-- [ ] DELIV-006  Lånetid från utlånande bibliotek går att sätta.
 - [ ] DELIV-007  Räknaren på Leverans-knappen visar antalet bifogade filer.
 
 ### INBOX — inkommande beställningar
@@ -184,10 +187,6 @@ pollningen också kör det dagliga underhållet.
 
 ### SET — inställningar
 
-- [ ] SET-006  En ny leverantör går att lägga till och kan väljas under ”Beställning”.
-- [ ] SET-008  Ändrade roller på ett konto slår igenom direkt vid nästa inloggning.
-- [ ] SET-010  Ett fel i kontoadmin släpper busy-animationen i stället för att låsa sidan
-  (regression f1bd8bf).
 
 ### STAT — statistik
 
@@ -221,6 +220,15 @@ pollningen också kör det dagliga underhållet.
   anonymt måste ligga under `test.use({ role: "anonymous" })`. Utan det körs det som testets roll,
   och ett behörighetsprov blir grönt utan att bevisa något. Det fick mig att tro att orderlistan
   och QR-endpointen var öppna — de är de inte.
+- **Ett behandlat mail blir kvar i inkorgen om `ChalmersIllArchiveProcessedMails` är `false`, och
+  nästa pollning gör en till order av det.** Standardvärdet i `appsettings.json` är `false`, och
+  den riktiga Graph-implementationen läser hela inkorgen utan att filtrera på oläst — precis som
+  filvarianten. Upptäckt av att SET-006 skapade två ordrar på samma app och den andra pollningen
+  återimporterade den första. Testriggen sätter flaggan till `true`. Är den satt i produktionens
+  App Settings? Och ska den isolerade testservern ha den på?
+- **Leverantörslistan är inte bara aggregerad.** TIB, Libris och Subito ligger fast; därutöver
+  bidrar bara ordrar som lämnat Ny, Annullerad, Inköpt och Överförd med sina leverantörsnamn.
+  Samma regel i både den isolerade sökmotorn och Elasticsearch-varianten.
 - **”Kräv” och ”Lånetid mot låntagare” är spärrade för allt beställt efter 2021-05-16** av en
   hårdkodad datumjämförelse i orderpanelen. Ingen ny order kan nå dem.
 - **Mailvyns mallista är tom i isolerat läge.** De 13 seedade systemmallarna är alla `Automatic`,

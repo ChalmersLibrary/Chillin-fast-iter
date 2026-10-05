@@ -138,3 +138,83 @@ test.describe("settings, accounts", () => {
     await expect(login.error, "a deleted account must not get in").toContainText("Felaktig inloggning");
   });
 });
+
+test.describe("settings, accounts in use", () => {
+  test("SET-008: changed roles take effect at the account's next login", async ({ ownApp, guard }) => {
+    guard.allow(/Lyckades|Skapade|Sparade/);
+    const { page } = await ownApp();
+    await page.goto(SETTINGS, { waitUntil: "load" });
+    await page.locator("#member-settings-link").click();
+
+    // A read-only account to begin with.
+    const created = page.waitForResponse((r) => r.url().includes("/MemberAdminSurface/CreateMember"));
+    await page.getByTestId("new-member-login").fill("e2e-befordrad");
+    await page.getByTestId("new-member-password").fill("e2e-password");
+    await page.getByTestId("new-member-roles").fill("Viewer");
+    await page.getByTestId("create-member").click();
+    expect((await created).ok()).toBeTruthy();
+
+    // As a Viewer it may not change an order - asked straight out, past the hidden buttons.
+    const viewer = await page.context().browser()!.newContext({ baseURL: page.url().split("/bestaellningar")[0] });
+    const viewerPage = await viewer.newPage();
+    const viewerLogin = new LoginPage(viewerPage);
+    await viewerLogin.goto();
+    await viewerLogin.submit("e2e-befordrad", "e2e-password");
+    const asViewer = await viewerPage.request.get(
+      "/OrderItemStatusSurface/SetOrderItemStatus?orderNodeId=1&statusId=1",
+      { maxRedirects: 0 }
+    );
+    expect(asViewer.status(), "a Viewer must not be able to change a status").toBe(302);
+    await viewer.close();
+
+    // Promote the account.
+    await page.goto(SETTINGS, { waitUntil: "load" });
+    await page.locator("#member-settings-link").click();
+    const row = page.locator('#member-admin-table tr[data-login="e2e-befordrad"]');
+    const rolesSaved = page.waitForResponse((r) => r.url().includes("/MemberAdminSurface/SetMemberRoles"));
+    await row.locator(".member-roles-input").fill("Administrator");
+    await row.getByTestId("save-member-roles").click();
+    expect((await rolesSaved).ok()).toBeTruthy();
+
+    // The same account, logging in afresh, now gets through.
+    const admin = await page.context().browser()!.newContext({ baseURL: page.url().split("/bestaellningar")[0] });
+    const adminPage = await admin.newPage();
+    const adminLogin = new LoginPage(adminPage);
+    await adminLogin.goto();
+    await adminLogin.submit("e2e-befordrad", "e2e-password");
+    await adminLogin.expectLoggedIn();
+    const asAdmin = await adminPage.request.get("/OrderItemSurface/GetOrderItem?nodeId=1", { maxRedirects: 0 });
+    expect(asAdmin.status(), "the promoted account should be let in").toBe(200);
+    await admin.close();
+  });
+
+  test("SET-010: an error in account admin releases the busy overlay (regression f1bd8bf)", async ({ ownApp, guard }) => {
+    guard.allow(/Lyckades|Skapade/);
+    const { page } = await ownApp();
+    await page.goto(SETTINGS, { waitUntil: "load" });
+    await page.locator("#member-settings-link").click();
+
+    // Creating an account that already exists is refused by the server. The bug was that the
+    // overlay put up before the request was never taken down again, leaving the page dead.
+    const complaints: string[] = [];
+    page.on("dialog", (d) => complaints.push(d.message()));
+    guard.allow(/finns redan|existerar|Error/i);
+
+    const refused = page.waitForResponse((r) => r.url().includes("/MemberAdminSurface/CreateMember"));
+    await page.getByTestId("new-member-login").fill("superadmin"); // already there
+    await page.getByTestId("new-member-password").fill("e2e-password");
+    await page.getByTestId("create-member").click();
+    const response = await refused;
+    expect(response.ok()).toBeTruthy();
+    expect((await response.json()).Success, "creating a duplicate account should be refused").toBeFalsy();
+
+    // The user is told...
+    await expect(async () => {
+      expect(complaints.join("\n"), "nothing told the user it failed").not.toBe("");
+    }).toPass({ timeout: 15_000 });
+
+    // ...and the page is usable again.
+    await expect(page.locator("#lockscreen")).toBeHidden();
+    await expect(page.getByTestId("create-member")).toBeEnabled();
+  });
+});

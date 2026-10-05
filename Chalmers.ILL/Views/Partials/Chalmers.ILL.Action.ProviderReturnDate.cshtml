@@ -9,14 +9,14 @@
             <div class="form-group">
                 <label for="dueDate">Återlämningsdatum</label>
                 <div class="input-group date datetimepicker">
-                    <input type="text" class="form-control" id="providerDueDate" name="providerDueDate" value="@Model.OrderItem.ProviderDueDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture)">
+                    <input type="text" class="form-control" data-testid="provider-due-date" id="providerDueDate" name="providerDueDate" value="@Model.OrderItem.ProviderDueDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture)">
                     <span class="input-group-addon">
                         <span class="glyphicon glyphicon-calendar"></span>
                     </span>
                 </div>
             </div>
             <div class="form-group">
-                <button class="btn btn-success" onclick="changeProviderReturnDate()">Ändra</button>
+                <button class="btn btn-success" data-testid="provider-due-date-save" onclick="changeProviderReturnDate()">Ändra</button>
             </div>
         </div>
         <div class="col-md-6">
