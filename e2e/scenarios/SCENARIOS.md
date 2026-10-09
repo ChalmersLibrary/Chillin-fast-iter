@@ -229,12 +229,13 @@ pollningen också kör det dagliga underhållet.
   camelCase-namn och Lucene är skiftlägeskänsligt — varje filtrerad siffra blev noll. Slutsatsen om
   indexets namn är dragen ur appens övriga frågor (`status:`, `providerName:`, `followUpDate:`),
   inte observerad mot ett riktigt index. Koden var identisk på `master`.
-- **Ett behandlat mail blir kvar i inkorgen om `ChalmersIllArchiveProcessedMails` är `false`, och
-  nästa pollning gör en till order av det.** Standardvärdet i `appsettings.json` är `false`, och
-  den riktiga Graph-implementationen läser hela inkorgen utan att filtrera på oläst — precis som
-  filvarianten. Upptäckt av att SET-006 skapade två ordrar på samma app och den andra pollningen
-  återimporterade den första. Testriggen sätter flaggan till `true`. Är den satt i produktionens
-  App Settings? Och ska den isolerade testservern ha den på?
+- ~~Ett behandlat mail blir kvar i inkorgen~~ **Åtgärdat 2026-10-09:**
+  `ChalmersIllArchiveProcessedMails` är `true` som standard nu. Den var `false` i den incheckade
+  konfigurationen (och i `Web.config` på `master`), vilket produktionen alltid överred — men varje
+  annan miljö fick dubbletter vid varje pollning, eftersom ett mail som *lyckas* bli en order är
+  det enda pollaren annars inte städar bort: ett UNKNOWN-mail vidarebefordras med `delete: true`,
+  ett ERROR-mail lämnas med avsikt. Upptäckt av att SET-006 skapade två ordrar på samma app och
+  den andra pollningen återimporterade den första.
 - **Leverantörslistan är inte bara aggregerad.** TIB, Libris och Subito ligger fast; därutöver
   bidrar bara ordrar som lämnat Ny, Annullerad, Inköpt och Överförd med sina leverantörsnamn.
   Samma regel i både den isolerade sökmotorn och Elasticsearch-varianten.

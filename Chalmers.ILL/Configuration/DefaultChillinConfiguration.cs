@@ -62,6 +62,13 @@ namespace Chalmers.ILL.Configuration
         public string ChalmersIllExchangePassword => Get(nameof(ChalmersIllExchangePassword));
         public string ChalmersIllSenderAddress => Get(nameof(ChalmersIllSenderAddress));
         public string ChalmersIllForwardingAddress => Get(nameof(ChalmersIllForwardingAddress));
+        /// <summary>
+        /// Move a mail out of the inbox once it has become an order. Must be on: a mail that was
+        /// successfully processed is the only kind the poller does not otherwise clean up (an
+        /// UNKNOWN mail is forwarded with delete: true, an ERROR mail is deliberately left), so
+        /// with this off every poll re-imports the same mails and makes duplicate orders.
+        /// The checked-in default was false until 2026-10-09, which production always overrode.
+        /// </summary>
         public bool ChalmersIllArchiveProcessedMails => GetBool(nameof(ChalmersIllArchiveProcessedMails));
         public string ChalmersIllMailSubject => Get(nameof(ChalmersIllMailSubject));
         public string BugFixersMailingList => Get(nameof(BugFixersMailingList));

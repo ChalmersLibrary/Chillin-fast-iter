@@ -91,10 +91,9 @@ async function startAppOnPort(label: string, port: number, existingDataPath?: st
       // back to the inbox instead of only filing under sentitems.
       Chillin__ChalmersIllSenderAddress: "chillin@isolated.invalid",
       Chillin__MicrosoftGraphApiUserId: "chillin@isolated.invalid",
-      // Without this, a processed mail stays in the inbox and the *next* poll turns it into a
-      // second order - every poll re-imports everything still lying there. appsettings.json
-      // defaults it to false, which is why two createOrderThroughMail() calls on the same app
-      // produced a duplicate of the first order. See SCENARIOS.md, "Öppna frågor".
+      // The default is true since 2026-10-09, but set explicitly: without it a processed mail
+      // stays in the inbox and the next poll turns it into a second order, and these tests would
+      // then fail in a way that points at the wrong thing.
       Chillin__ChalmersIllArchiveProcessedMails: "true",
     },
   });
