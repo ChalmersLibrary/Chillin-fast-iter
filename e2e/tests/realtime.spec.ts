@@ -68,8 +68,10 @@ test.describe("realtime, across a restart", () => {
     // Seen once, in a full suite run under load, never in three isolated runs: the watching
     // window (admin) alerted "Ordern är redan låst av en annan användare" for the lock the
     // editing window (superadmin) holds - twice. The watcher never opens the order here, so what
-    // made it try to lock is not understood; it is declared rather than silenced, and written up
-    // under "Öppna frågor" in SCENARIOS.md so it can be chased with proper instrumentation.
+    // made it try to lock is not understood; it is declared rather than silenced. Written up as a
+    // fas 11 item in TODO-remove-dotnet-framework.md ("Ett betraktande fönster försökte ta ett
+    // lås efter en serveromstart") - remove this allow() once the cause is known, so that it
+    // fails again if it comes back.
     guard.allow(/redan låst av en annan användare/);
 
     const { app, page, newSession } = await ownApp();

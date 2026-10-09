@@ -2823,6 +2823,36 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   `ChalmersILLStartPage.cshtml` verifierade 2026-09-22 — båda renderar med navbar. Femte vyn,
   `ChalmersILLLogoutPage.cshtml`, gör `Response.Redirect("/")` innan något markup hinner skickas
   (se koden), så dess `Layout`-tilldelning är i praktiken aldrig i spel — inget att verifiera där.
+- [ ] **Ett betraktande fönster försökte ta ett lås efter en serveromstart.** 🔍 **Kräver
+  instrumentering.** Sett en gång, 2026-10-05, i en full e2e-körning under last; återkom inte i tre
+  isolerade körningar av samma scenario.
+
+  **Vad som observerades.** `RT-003` (`e2e/tests/realtime.spec.ts`) har två inloggade fönster mot
+  samma app: `superadmin` som redigerar och `admin` som bara står på orderlistan. Testet startar om
+  servern med båda fönstren öppna. I den körningen larmade **bevakarfönstret** två gånger med
+  ”Ordern är redan låst av en annan användare (medlems-id 1962372120)”. Id:t är `superadmin`
+  (`StableMemberId` av inloggningsnamnet), alltså redigeraren. Meddelandet kommer från
+  `OrderItemSurfaceController.LockOrderItem` och når användaren via den inline-skriptsnutt som
+  `Chalmers.ILL.OrderItem.cshtml` renderar när `EditedBy == ""`. Bevakaren öppnar aldrig ordern i
+  det scenariot, och lås tas bara när en order öppnas.
+
+  **Varför det spelar roll.** En serveromstart med öppna webbläsarfönster är precis vad en
+  driftsättning innebär. Om ett fönster som bara betraktar listan kan ta lås i det läget kan två
+  bibliotekarier låsa ut varandra utan att ha rört något — och låset syns för den andre som
+  ”Låst av X”, utan att X vet om det.
+
+  **Hypotes, obevisad.** Något i återanslutningen får klienten att rendera om en orderpanel som
+  inte var öppen, varpå partialens inline-skript kör `LockOrderItem`. Kandidater att titta på:
+  `updateStream`-hanterarens gren `if ($("#" + value.NodeId).hasClass("open") …)` i
+  `chalmers.ill.js`, och vad `withAutomaticReconnect([5000])` gör när omstarten tar längre än de
+  fem sekunder som är det enda återförsöket.
+
+  **Förslag på angreppssätt.** Logga varje `LockOrderItem`-anrop på klientsidan med
+  `new Error().stack` innan `$.getJSON`, kör `npm test` i `e2e/` i loop tills det återkommer, och
+  läs stacken. `RT-003` deklarerar rutan med `guard.allow(/redan låst av en annan användare/)` och
+  en kommentar som pekar hit — ta bort den deklarationen när orsaken är känd, så att det fälls
+  igen om det kommer tillbaka.
+
 - [x] **SignalR-realtidsuppdateringar.** Öppna orderlistan i två webbläsarfönster, ändra en order i det
   ena och kontrollera att det andra uppdateras. Detta fångar både PascalCase/camelCase-problemet i
   payloaden och att `withAutomaticReconnect` fungerar. Testa även återanslutning genom att starta om

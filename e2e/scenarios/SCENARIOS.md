@@ -220,8 +220,9 @@ pollningen också kör det dagliga underhållet.
   (`admin`) larmade två gånger med ”Ordern är redan låst av en annan användare” om det lås som
   redigeringsfönstret (`superadmin`) höll. Bevakaren öppnar aldrig ordern i RT-003, så vad som
   fick den att försöka låsa är oklart. Deklarerat i testet med den förklaringen, inte tystat.
-  Kräver instrumentering för att komma vidare — och en serveromstart med öppna fönster är
-  precis vad som händer vid en driftsättning.
+  Uppskriven som en punkt i fas 11 i [TODO-remove-dotnet-framework.md](../../TODO-remove-dotnet-framework.md),
+  med hypotes och förslag på angreppssätt — en serveromstart med öppna fönster är precis vad som
+  händer vid en driftsättning.
 - **Statistikens filter matchade ingenting alls** — åtgärdat 2026-10-05, men värt en kontroll mot
   det riktiga Elasticsearch-indexet före driftsättning. Filtren byggde sin fråga av nycklarna
   `Status`, `Type`, `ProviderName` … med versal, medan indexet känner fälten vid sina
