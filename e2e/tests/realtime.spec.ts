@@ -65,13 +65,14 @@ test.describe("realtime, across a restart", () => {
     // The connection drops when the server goes away; SignalR says so on the console before
     // withAutomaticReconnect takes over.
     guard.allow(/notificationHub|SignalR|WebSocket|Server timeout|connection was lost|ERR_CONNECTION/i);
-    // Seen once, in a full suite run under load, never in three isolated runs: the watching
-    // window (admin) alerted "Ordern är redan låst av en annan användare" for the lock the
-    // editing window (superadmin) holds - twice. The watcher never opens the order here, so what
-    // made it try to lock is not understood; it is declared rather than silenced. Written up as a
-    // fas 11 item in TODO-remove-dotnet-framework.md ("Ett betraktande fönster försökte ta ett
-    // lås efter en serveromstart") - remove this allow() once the cause is known, so that it
-    // fails again if it comes back.
+    // Seen once, in a full suite run under load: "Ordern är redan låst av en annan användare
+    // (medlems-id 1962372120)", twice. Understood as of 2026-10-09 - it is the *editing* window
+    // colliding with its own lock, not the watcher: opening an order renders the pane twice (the
+    // lock's own SignalR broadcasts re-render it before the lock response sets
+    // data-locked-by-memberid), and under load the second render can still see the order unlocked
+    // and re-issue LockOrderItem. The id in the message is the caller's, not the holder's. See the
+    // fas 11 item "En orderpanel tar om sitt eget lås och krockar med sig själv" in
+    // TODO-remove-dotnet-framework.md - remove this allow() once that is fixed.
     guard.allow(/redan låst av en annan användare/);
 
     const { app, page, newSession } = await ownApp();

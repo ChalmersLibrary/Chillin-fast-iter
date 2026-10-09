@@ -84,6 +84,39 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.IsNull(orderItemManager.LastEditedByMemberId);
         }
 
+        // Characterization of two defects on the already-locked path, both found while chasing the
+        // fas 11 item "Ett betraktande fönster försökte ta ett lås efter en serveromstart". They are
+        // what made that observation unreadable: the alert text names the *caller*, so the member id
+        // in it was read as the lock holder's and the alert attributed to the wrong window.
+        [TestMethod]
+        public void LockOrderItem_WhenAlreadyLocked_MessageNamesTheCallerInsteadOfTheHolder()
+        {
+            var controller = MakeController(out var orderItemManager, out _);
+            orderItemManager.EditedBy = "5";
+            orderItemManager.EditedByMemberName = "Holder";
+            SetHttpContext(controller);
+
+            var json = (controller.LockOrderItem(42) as JsonResult)?.Value as ResultResponse;
+
+            Assert.IsFalse(json.Success);
+            StringAssert.Contains(json.Message, "medlems-id 1");
+            Assert.IsFalse(json.Message.Contains("5"), "the holder's id is nowhere in the message");
+        }
+
+        [TestMethod]
+        public void LockOrderItem_WhenAlreadyLocked_StillBroadcastsTheCallerAsEditedBy()
+        {
+            var controller = MakeController(out var orderItemManager, out var notifier);
+            orderItemManager.EditedBy = "5";
+            orderItemManager.EditedByMemberName = "Holder";
+            SetHttpContext(controller);
+
+            controller.LockOrderItem(42);
+
+            Assert.AreEqual("1", notifier.LastEditedBy);
+            Assert.AreEqual("Test User", notifier.LastEditedByMemberName);
+        }
+
         [TestMethod]
         public void UnlockOrderItem_WhenLockedByCurrentMember_Unlocks()
         {
@@ -144,10 +177,11 @@ namespace Chalmers.ILL.Tests.Controllers
         class StubOrderItemManager : IOrderItemManager
         {
             public string EditedBy = "";
+            public string EditedByMemberName = "";
             public string LastEditedByMemberId;
             public string LastEditedByMemberName;
 
-            public OrderItemModel GetOrderItem(int nodeId) => new OrderItemModel { NodeId = nodeId, EditedBy = EditedBy };
+            public OrderItemModel GetOrderItem(int nodeId) => new OrderItemModel { NodeId = nodeId, EditedBy = EditedBy, EditedByMemberName = EditedByMemberName };
             public OrderItemModel GetOrderItem(string orderId) => null;
             public IEnumerable<OrderItemModel> GetLockedOrderItems(string memberId) => new List<OrderItemModel>();
             public List<LogItem> GetLogItems(int nodeId) => new List<LogItem>();

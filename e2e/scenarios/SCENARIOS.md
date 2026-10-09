@@ -215,14 +215,13 @@ pollningen också kör det dagliga underhållet.
   anonymt måste ligga under `test.use({ role: "anonymous" })`. Utan det körs det som testets roll,
   och ett behörighetsprov blir grönt utan att bevisa något. Det fick mig att tro att orderlistan
   och QR-endpointen var öppna — de är de inte.
-- **Efter en serveromstart försökte ett fönster som bara betraktar listan ta ett lås.** Sett en
-  gång, i en full svitkörning under last, aldrig i tre isolerade körningar: bevakarfönstret
-  (`admin`) larmade två gånger med ”Ordern är redan låst av en annan användare” om det lås som
-  redigeringsfönstret (`superadmin`) höll. Bevakaren öppnar aldrig ordern i RT-003, så vad som
-  fick den att försöka låsa är oklart. Deklarerat i testet med den förklaringen, inte tystat.
-  Uppskriven som en punkt i fas 11 i [TODO-remove-dotnet-framework.md](../../TODO-remove-dotnet-framework.md),
-  med hypotes och förslag på angreppssätt — en serveromstart med öppna fönster är precis vad som
-  händer vid en driftsättning.
+- **En orderpanel tar om sitt eget lås och krockar med sig själv** — utrett 2026-10-09, rättning
+  återstår. Larmet ”Ordern är redan låst av en annan användare” i RT-003 kom från
+  redigeringsfönstret, inte från bevakaren som först antogs: `LockOrderItem` skriver ut
+  *anroparens* medlems-id, inte innehavarens. Att öppna en order renderar panelen två gånger, och
+  under last hinner den andra renderingen se ordern olåst och begära låset en gång till.
+  Reproducerat; se punkten i fas 11 i [TODO-remove-dotnet-framework.md](../../TODO-remove-dotnet-framework.md)
+  för mekanism och förslag på rättning. Deklarerat i testet, inte tystat.
 - **Statistikens filter matchade ingenting alls** — åtgärdat 2026-10-05, men värt en kontroll mot
   det riktiga Elasticsearch-indexet före driftsättning. Filtren byggde sin fråga av nycklarna
   `Status`, `Type`, `ProviderName` … med versal, medan indexet känner fälten vid sina

@@ -2823,35 +2823,60 @@ i [TODO-remove-umbraco.md](TODO-remove-umbraco.md)) — de är fortfarande overi
   `ChalmersILLStartPage.cshtml` verifierade 2026-09-22 — båda renderar med navbar. Femte vyn,
   `ChalmersILLLogoutPage.cshtml`, gör `Response.Redirect("/")` innan något markup hinner skickas
   (se koden), så dess `Layout`-tilldelning är i praktiken aldrig i spel — inget att verifiera där.
-- [ ] **Ett betraktande fönster försökte ta ett lås efter en serveromstart.** 🔍 **Kräver
-  instrumentering.** Sett en gång, 2026-10-05, i en full e2e-körning under last; återkom inte i tre
-  isolerade körningar av samma scenario.
+- [ ] **En orderpanel tar om sitt eget lås och krockar med sig själv.** Utrett 2026-10-09;
+  mekanismen är reproducerad, rättningen återstår. Låg tidigare här som ”ett betraktande fönster
+  försökte ta ett lås efter en serveromstart” — den beskrivningen var fel, se nedan.
 
   **Vad som observerades.** `RT-003` (`e2e/tests/realtime.spec.ts`) har två inloggade fönster mot
-  samma app: `superadmin` som redigerar och `admin` som bara står på orderlistan. Testet startar om
-  servern med båda fönstren öppna. I den körningen larmade **bevakarfönstret** två gånger med
-  ”Ordern är redan låst av en annan användare (medlems-id 1962372120)”. Id:t är `superadmin`
-  (`StableMemberId` av inloggningsnamnet), alltså redigeraren. Meddelandet kommer från
-  `OrderItemSurfaceController.LockOrderItem` och når användaren via den inline-skriptsnutt som
-  `Chalmers.ILL.OrderItem.cshtml` renderar när `EditedBy == ""`. Bevakaren öppnar aldrig ordern i
-  det scenariot, och lås tas bara när en order öppnas.
+  samma app: `superadmin` som redigerar och `admin` som bara står på orderlistan. 2026-10-05, i en
+  full svitkörning under last, larmades det två gånger med ”Ordern är redan låst av en annan
+  användare (medlems-id 1962372120)”.
 
-  **Varför det spelar roll.** En serveromstart med öppna webbläsarfönster är precis vad en
-  driftsättning innebär. Om ett fönster som bara betraktar listan kan ta lås i det läget kan två
-  bibliotekarier låsa ut varandra utan att ha rört något — och låset syns för den andre som
-  ”Låst av X”, utan att X vet om det.
+  **Vad som faktiskt hände.** Larmet kom från **redigeringsfönstret**, inte bevakaren.
+  `LockOrderItem` skriver ut `memberId` — den **anropande** medlemmen, inte den som håller låset.
+  1962372120 är `superadmin`, alltså anroparen själv. Den ursprungliga anteckningen läste id:t som
+  låsinnehavarens och drog slutsatsen att det var bevakaren som larmade. `Guard` i `fixtures.ts`
+  taggar dessutom bara med *pathname*, och båda fönstren står på `/bestaellningar` — vilket fönster
+  som larmade gick aldrig att utläsa ur den sparade utdatan.
 
-  **Hypotes, obevisad.** Något i återanslutningen får klienten att rendera om en orderpanel som
-  inte var öppen, varpå partialens inline-skript kör `LockOrderItem`. Kandidater att titta på:
-  `updateStream`-hanterarens gren `if ($("#" + value.NodeId).hasClass("open") …)` i
-  `chalmers.ill.js`, och vad `withAutomaticReconnect([5000])` gör när omstarten tar längre än de
-  fem sekunder som är det enda återförsöket.
+  Mekanismen är en kapplöpning mellan rendering och låsning i *ett* fönster:
 
-  **Förslag på angreppssätt.** Logga varje `LockOrderItem`-anrop på klientsidan med
-  `new Error().stack` innan `$.getJSON`, kör `npm test` i `e2e/` i loop tills det återkommer, och
-  läs stacken. `RT-003` deklarerar rutan med `guard.allow(/redan låst av en annan användare/)` och
-  en kommentar som pekar hit — ta bort den deklarationen när orsaken är känd, så att det fälls
-  igen om det kommer tillbaka.
+  1. Att öppna en order renderar panelen **två** gånger, inte en. Första renderingen (`EditedBy == ""`)
+     bäddar in låsskriptet; `LockOrderItem` broadcastar sedan två gånger (en gång via `Flush` →
+     `ReportNewOrderItemUpdate`, en gång via `UpdateOrderItemUpdate`) *innan* HTTP-svaret skickas.
+     `updateStream`-hanterarens else-gren ser att vi ännu inte satt `data-locked-by-memberid` — det
+     sätts först i `$.getJSON`-callbacken — och kör `loadOrderItemDetails` igen.
+     Mätt i webbläsaren: en öppning ger sekvensen `render → LOCK → render`.
+  2. Hinner den andra renderingen läsa ordern **innan** låsskrivningen landat ser den `EditedBy == ""`
+     och bäddar in låsskriptet en gång till. `GetOrderItem`/`LoadForRead` tar inget lås, så det
+     fönstret är öppet så länge skrivningen pågår — och breddas av last och långsam rendering.
+  3. Det andra låsanropet möter då sitt eget lås och larmar ”redan låst av **en annan användare**
+     (medlems-id *du själv*)”. Verifierat med två överlappande `RenderOrderItem` följda av två
+     `LockOrderItem` mot den riktiga appen: meddelandet blir ordagrant det observerade.
+
+  Serveromstarten är alltså inte orsaken, bara last. Två larm = tre renderingar, eller två tillfällen.
+
+  **En andra defekt på samma rad.** `LockOrderItem` kör `_notifier.UpdateOrderItemUpdate(nodeId,
+  memberId, …)` **ovillkorligt**, även när låsningen misslyckades. Ett misslyckat försök talar alltså
+  om för alla andra klienter att anroparen nu håller låset. Den *verklige* innehavaren, som har
+  ordern öppen, träffar då grenen `ownLockAttr != value.EditedBy` i `chalmers.ill.js` och får
+  ”X har tagit över låset på den här ordern från dig” — fast ingenting har hänt. Båda defekterna är
+  karaktäriserade i `OrderItemSurfaceControllerTest`
+  (`LockOrderItem_WhenAlreadyLocked_MessageNamesTheCallerInsteadOfTheHolder`,
+  `..._StillBroadcastsTheCallerAsEditedBy`).
+
+  **Varför det spelar roll.** Ingen av delarna är testartefakter. En bibliotekarie som öppnar en order
+  medan servern är upptagen kan få ett larm om att ordern är låst av ”en annan användare” som är hen
+  själv, och ett misslyckat låsförsök kan rycka låsvisningen ur händerna på den som faktiskt redigerar.
+
+  **Förslag på rättning.**
+  - Låt bara den uttryckliga öppna-klicken ta lås: `loadOrderItemDetails(id, cb, takeLock)` och
+    låsskriptet i `Chalmers.ILL.OrderItem.cshtml` renderas bara när `takeLock` begärts. Alla övriga
+    ~30 anropsställen är omrenderingar av en redan öppen panel och ska inte ta om låset.
+  - Namnge innehavaren i meddelandet (`orderItem.EditedBy`/`EditedByMemberName`), inte anroparen.
+  - Broadcasta inte på felgrenen i `LockOrderItem`.
+  - Lägg ett regressionstest i `tests/locks.spec.ts` på att en öppning ger exakt ett `LockOrderItem`-anrop.
+  - Ta bort `guard.allow(/redan låst av en annan användare/)` i `RT-003` när detta är rättat.
 
 - [x] **SignalR-realtidsuppdateringar.** Öppna orderlistan i två webbläsarfönster, ändra en order i det
   ena och kontrollera att det andra uppdateras. Detta fångar både PascalCase/camelCase-problemet i
