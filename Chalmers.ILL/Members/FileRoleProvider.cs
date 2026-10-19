@@ -17,6 +17,10 @@ namespace Chalmers.ILL.Members
         // ViewerReadOnlyFilter and MemberAdminSurfaceController don't each hardcode the string.
         public const string ViewerRole = "Viewer";
 
+        // The only role with write access (orders, settings, members' own data) - every other role
+        // is read-only, see ViewerReadOnlyFilter.
+        public const string AdministratorRole = "Administrator";
+
         private readonly Func<List<MemberAccount>> _loadAccounts;
 
         public FileRoleProvider(Func<List<MemberAccount>> loadAccounts)

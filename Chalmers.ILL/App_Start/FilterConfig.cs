@@ -13,8 +13,8 @@ namespace Chalmers.ILL
         // machine-to-machine endpoints that must stay public - see fas 0a).
         //
         // ViewerReadOnlyFilter adds a second, narrower restriction on top: a logged-in account
-        // with no real role (FileRoleProvider's implicit "Viewer" default) may only reach actions
-        // explicitly marked [AllowViewer] - see that file for the reasoning.
+        // without the "Administrator" role may only reach actions explicitly marked [AllowViewer],
+        // and one with no roles at all reaches nothing - see that file for the reasoning.
         //
         // RequiresOrderLockFilter adds a third, orthogonal restriction: an action explicitly
         // marked [RequiresOrderLock] is blocked if the order it targets is locked by a different
