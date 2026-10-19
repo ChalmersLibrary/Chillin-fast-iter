@@ -134,7 +134,7 @@ namespace Chalmers.ILL.Tests.ClaudeIntegration
             using var factory = CreateFactory();
             using var client = await LoginAsync(factory, "agneta");
 
-            var start = await PostFormAsync(client, "/Claude", "/Claude/Start", new Dictionary<string, string>
+            var start = await PostFormAsync(client, "/", "/Claude/Start", new Dictionary<string, string>
             {
                 ["title"] = "Exportknapp",
                 ["body"] = "Lägg till en exportknapp på listan",
@@ -163,13 +163,13 @@ namespace Chalmers.ILL.Tests.ClaudeIntegration
         {
             using var factory = CreateFactory();
             using var owner = await LoginAsync(factory, "agneta");
-            var start = await PostFormAsync(owner, "/Claude", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Ett", ["body"] = "a" });
+            var start = await PostFormAsync(owner, "/", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Ett", ["body"] = "a" });
             var conversationUrl = start.Headers.Location.ToString();
             var id = int.Parse(Regex.Match(conversationUrl, @"(\d+)$").Groups[1].Value);
             await WaitForStateAsync(owner, id, "WaitingForOwner");
 
             using var it = await LoginAsync(factory, "ivar");
-            var indexHtml = await (await it.GetAsync("/Claude")).Content.ReadAsStringAsync();
+            var indexHtml = await GetHtmlAsync(it, "/");
             Assert.IsFalse(indexHtml.Contains("claude-start-form"), "IT must not get the start form.");
 
             var reply = await PostFormAsync(it, conversationUrl, $"/Claude/Reply/{id}", new Dictionary<string, string> { ["body"] = "Gör den grön också" });
@@ -185,12 +185,12 @@ namespace Chalmers.ILL.Tests.ClaudeIntegration
         {
             using var factory = CreateFactory();
             using var owner = await LoginAsync(factory, "agneta");
-            var start = await PostFormAsync(owner, "/Claude", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Synligt för alla", ["body"] = "a" });
+            var start = await PostFormAsync(owner, "/", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Synligt för alla", ["body"] = "a" });
             var conversationUrl = start.Headers.Location.ToString();
             var id = int.Parse(Regex.Match(conversationUrl, @"(\d+)$").Groups[1].Value);
 
             using var viewer = await LoginAsync(factory, "viewer");
-            var index = await viewer.GetAsync("/Claude");
+            var index = await viewer.GetAsync("/");
             Assert.AreEqual(HttpStatusCode.OK, index.StatusCode);
             var indexHtml = WebUtility.HtmlDecode(await index.Content.ReadAsStringAsync());
             StringAssert.Contains(indexHtml, "Synligt för alla");
@@ -208,10 +208,10 @@ namespace Chalmers.ILL.Tests.ClaudeIntegration
             Assert.IsFalse(after.Contains("Får inte skrivas"));
         }
 
-        // Claude's status belongs on the integration's own pages, not on every page in Chillin
-        // (Lars 2026-10-19) - elsewhere there's only a plain menu link.
+        // The integration lives on the start page next to the changelog (Lars 2026-10-19) - not
+        // on every page, and not behind a menu link of its own.
         [TestMethod]
-        public async Task Status_IsOnlyShownOnTheIntegrationPages()
+        public async Task Integration_IsOnTheStartPage_AndNowhereElse()
         {
             using var factory = CreateFactory();
             using var viewer = await LoginAsync(factory, "viewer");
@@ -219,11 +219,17 @@ namespace Chalmers.ILL.Tests.ClaudeIntegration
             var orderList = await GetHtmlAsync(viewer, "/bestaellningar/");
             Assert.IsFalse(orderList.Contains("data-testid=\"claude-status\""));
             Assert.IsFalse(orderList.Contains("/scripts/claude.js"));
-            StringAssert.Contains(orderList, "href=\"/Claude\"");
+            Assert.IsFalse(orderList.Contains("href=\"/Claude\""));
 
-            var claudePage = await GetHtmlAsync(viewer, "/Claude");
-            StringAssert.Contains(claudePage, "data-testid=\"claude-status\"");
-            StringAssert.Contains(claudePage, "/scripts/claude.js");
+            var startPage = await GetHtmlAsync(viewer, "/");
+            StringAssert.Contains(startPage, "data-testid=\"claude-section\"");
+            StringAssert.Contains(startPage, "data-testid=\"claude-status\"");
+            StringAssert.Contains(startPage, "/scripts/claude.js");
+            Assert.IsTrue(startPage.IndexOf("claude-section") < startPage.IndexOf("Nytt i Chillin"), "The Claude section sits right above the changelog.");
+
+            var claude = await viewer.GetAsync("/Claude");
+            Assert.AreEqual(HttpStatusCode.Redirect, claude.StatusCode);
+            Assert.AreEqual("/", claude.Headers.Location.ToString());
         }
 
         [TestMethod]
@@ -267,10 +273,13 @@ namespace Chalmers.ILL.Tests.ClaudeIntegration
             using var factory = CreateFactory();
             using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-            var response = await client.GetAsync("/Claude");
+            foreach (var url in new[] { "/Claude", "/Claude/Conversation/1", "/Claude/IndexContent" })
+            {
+                var response = await client.GetAsync(url);
 
-            Assert.AreEqual(HttpStatusCode.Redirect, response.StatusCode);
-            StringAssert.Contains(response.Headers.Location.ToString(), "ChalmersILLLoginPage");
+                Assert.AreEqual(HttpStatusCode.Redirect, response.StatusCode, url);
+                StringAssert.Contains(response.Headers.Location.ToString(), "ChalmersILLLoginPage", url);
+            }
         }
 
         // Characterization of the start page's existing changelog - the integration's entries are

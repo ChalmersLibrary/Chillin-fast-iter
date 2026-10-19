@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Chalmers.ILL.ClaudeIntegration
 {
-    // The integration's pages, at /Claude. Everyone who can see Chillin can read everything here
+    // The integration lives on the start page, next to the changelog ("Nytt i Chillin", see
+    // Views/ChalmersILLStartPage.cshtml and _StartPageSection.cshtml); a conversation opens on its own
+    // page at /Claude/Conversation/{id}. Everyone who can see Chillin can read everything here
     // (claudeborgen-DESIGN.md, "Synlighet"). [AllowViewer] lets the read-only accounts - Viewer and
     // the two Claudeborgen roles, see ViewerReadOnlyFilter - past that filter for the whole
     // controller, including the POSTs: the filter is about Chillin's own data, and every write here
@@ -13,7 +15,8 @@ namespace Chalmers.ILL.ClaudeIntegration
     public class ClaudeController : Controller
     {
         private const string ViewRoot = "~/ClaudeIntegration/Views/";
-        private const string ErrorKey = "ClaudeError";
+        public const string ErrorKey = "ClaudeError";
+        private const string StartPage = "/";
 
         private readonly ClaudeIntegrationService _service;
         private readonly IClaudeIntegrationAccess _access;
@@ -30,12 +33,9 @@ namespace Chalmers.ILL.ClaudeIntegration
         private ClaudeAccess Access => _access.For(User);
         private string Author => User.Identity?.Name ?? "?";
 
+        // Nothing of its own at /Claude - the overview is the start page.
         [HttpGet]
-        public IActionResult Index()
-        {
-            if (IsOff) return NotFound();
-            return View(ViewRoot + "Index.cshtml", BuildModel(includeLayout: true));
-        }
+        public IActionResult Index() => IsOff ? NotFound() : Redirect(StartPage);
 
         [HttpGet]
         public IActionResult Conversation(int id)
@@ -74,7 +74,7 @@ namespace Chalmers.ILL.ClaudeIntegration
             {
                 var conversation = _service.Start(title, body, Author);
                 return RedirectToAction(nameof(Conversation), new { id = conversation.Id });
-            }, () => RedirectToAction(nameof(Index)));
+            }, () => Redirect(StartPage));
         }
 
         [HttpPost]

@@ -1,5 +1,4 @@
 ﻿@model Chalmers.ILL.Models.Page.ChalmersILLModel
-@inject Chalmers.ILL.ClaudeIntegration.ClaudeIntegrationService ClaudeService
 @{
     Layout = null;
     // Fast cache-bustingsträng istället för @@DateTime.Now.Ticks (som gjorde att dessa tre
@@ -119,10 +118,6 @@
                                     <li><a href="/">Hjälp</a></li>
                                     <li><a href="/bestaellningar/instaellningar/">Inställningar</a></li>
                                     <li><a href="@Config.StatisticsUrl">Statistik</a></li>
-                                    @if (ClaudeService.Settings.IsOn)
-                                    {
-                                        <li><a href="/Claude">Claude</a></li>
-                                    }
                                     <li><a href="/ChalmersILLLogoutPage">Logga ut</a></li>
                                 </ul>
                             </li>

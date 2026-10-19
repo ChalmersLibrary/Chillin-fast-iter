@@ -1,0 +1,58 @@
+@inject ClaudeIntegrationService ClaudeService
+@inject IClaudeIntegrationAccess ClaudeAccessProvider
+@* Claudeborgen on the start page, right above "Nytt i Chillin" (claudeborgen-DESIGN.md,
+   "Placering"): Claude's status, what needs IT, the open conversations and - for the object
+   owner - a new conversation. Finished ones land in the changelog below. *@
+@if (ClaudeService.Settings.IsOn)
+{
+    var claude = new ClaudePageModel
+    {
+        Settings = ClaudeService.Settings,
+        Access = ClaudeAccessProvider.For(User),
+        Status = ClaudeService.GetStatus(),
+        NeedingAttention = ClaudeService.NeedingAttention(),
+        Conversations = ClaudeService.All(),
+        Error = TempData[ClaudeController.ErrorKey] as string,
+    };
+
+    <div data-testid="claude-section">
+        <h3>Claude</h3>
+
+        @if (!string.IsNullOrEmpty(claude.Error))
+        {
+            <div class="alert alert-danger" data-testid="claude-error">@claude.Error</div>
+        }
+
+        <div id="claude-live" data-claude-refresh="/Claude/IndexContent">
+            @await Html.PartialAsync("~/ClaudeIntegration/Views/_IndexContent.cshtml", claude)
+        </div>
+
+        @if (claude.Access.CanStartAndClose)
+        {
+            <p>
+                <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#claude-start" aria-expanded="false" data-testid="claude-start-toggle">Nytt samtal med Claude</button>
+            </p>
+            <div class="collapse" id="claude-start">
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <form method="post" action="/Claude/Start" data-testid="claude-start-form">
+                            @Html.AntiForgeryToken()
+                            <div class="form-group">
+                                <label for="claude-title">Rubrik</label>
+                                <input type="text" class="form-control" id="claude-title" name="title" maxlength="200" required placeholder="T.ex. Exportknapp på beställningslistan">
+                            </div>
+                            <div class="form-group">
+                                <label for="claude-body">Vad ska Claude göra?</label>
+                                <textarea class="form-control" id="claude-body" name="body" rows="5" required></textarea>
+                                <p class="help-block">Skriv inga personuppgifter – allt du skriver skickas till Claude.</p>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Starta samtal</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <script src="/scripts/claude.js" type="text/javascript"></script>
+    </div>
+}

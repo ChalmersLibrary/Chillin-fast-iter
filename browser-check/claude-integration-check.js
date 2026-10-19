@@ -1,5 +1,5 @@
 // Claudeborgen (claudeborgen-DESIGN.md) browser check: the Claude integration with FakeClaude in
-// isolated mode - start a conversation as the object owner, watch the status go through the
+// isolated mode - start a conversation as the object owner from the start page, watch the status go through the
 // phases live (no reload), mark it done and find it in the start page changelog; then a [krasch]
 // round, and the IT specialist's "Behöver IT" panel.
 //
@@ -44,7 +44,9 @@ async function login(page, loginName) {
 }
 
 async function startConversation(page, title, body) {
-  await page.goto(baseUrl + "/Claude", { waitUntil: "load", timeout: NAV_TIMEOUT });
+  await page.goto(baseUrl + "/", { waitUntil: "load", timeout: NAV_TIMEOUT });
+  await page.click("[data-testid=claude-start-toggle]");
+  await page.waitForSelector("#claude-title", { visible: true, timeout: NAV_TIMEOUT });
   await page.type("#claude-title", title);
   await page.type("#claude-body", body);
   await Promise.all([
@@ -74,8 +76,8 @@ async function waitForState(page, state, timeoutMs) {
   try {
     // 1. Object owner: a plain round, watched live.
     await login(page, "agneta");
-    await page.goto(baseUrl + "/Claude", { waitUntil: "load", timeout: NAV_TIMEOUT });
-    await shoot(page, "01-index-owner.png");
+    await page.goto(baseUrl + "/", { waitUntil: "load", timeout: NAV_TIMEOUT });
+    await shoot(page, "01-startpage-owner.png");
 
     const id = await startConversation(page, "Exportknapp", "Lägg till en exportknapp på beställningslistan.");
     // The page must update by itself (SignalR ping / poll) - no reloads from here on.
@@ -102,7 +104,7 @@ async function waitForState(page, state, timeoutMs) {
     await shoot(page, "05-crashed.png");
 
     await login(page, "ivar");
-    await page.goto(baseUrl + "/Claude", { waitUntil: "load", timeout: NAV_TIMEOUT });
+    await page.goto(baseUrl + "/", { waitUntil: "load", timeout: NAV_TIMEOUT });
     const attention = await page.$eval("[data-testid=claude-attention]", (el) => el.textContent).catch(() => "");
     if (!attention.includes("Kraschtest")) problem("IT's attention panel does not list the crashed conversation.");
     if (await page.$("[data-testid=claude-start-form]")) problem("IT got the start form.");
