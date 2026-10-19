@@ -80,7 +80,7 @@ En liten ändring tar uppskattningsvis 3–10 minuter från meddelande till synl
 av tiden är driftsättningen.
 
 **Det som behöver uppmärksamhet** visas i integrationen, inte via externa kanaler: samtal där testerna
-förblir röda, varv som kraschat och samtal som markerats klara men ännu inte tagits vidare. Det syns
+förblir röda, varv som kraschat och varv som fastnat för att Claude gick offline mitt i dem. Det syns
 tydligt för `ObjektSpecialistIT`, i anslutning till Claudes status.
 
 **Två testregler.** Varven i samtalen följer "bygget före push, testerna efter" på grenen `test`.
@@ -191,6 +191,45 @@ kostnad och utan att något pushas.
 Den fejkade Claude är också testdubbeln för integrationens characterization-tester, så flödet testas
 utan riktiga Claude även i testsviten.
 
+**Fejkad runner (steg 4).** Fejken i appen testar gränssnittet och tjänstelagret, men inte runnern,
+agent-API:t, tokenen eller hjärtslagen över nätet. När runnern anpassas får den ett fejkläge (`--fake`):
+runnern körs på riktigt, men med en fejkad `claude`, och git-push och bygge fejkas. Snabbtestservern får
+då en inställning som väljer mellan fejken i appen och agent-API:t för en fejkad runner. Fejken i appen
+finns kvar så att flödet går att prova även när ingen runner är igång. Om runnerfejken visar sig räcka
+kan fejken i appen tas bort.
+
+## Så är det byggt i Chillin
+
+- Kod: `Chalmers.ILL/ClaudeIntegration/`. Kärnan (`Model`, `ConversationStore`,
+  `ClaudeIntegrationService`, `FakeClaude`, `ClaudeIntegrationSettings`) är värdoberoende. Limkoden mot
+  Chillin är `Host/ChillinClaudeIntegrationAccess.cs` (rollerna), `ClaudePageModel` (ärver Chillins
+  layoutmodell) och vyerna (Chillins layout). Inkopplingen i Chillin är `Bootstrapper.RegisterClaudeIntegration`,
+  `Program.cs` (SignalR-hubben `/claudeHub`), statusmärket i `Views/ChalmersILL.cshtml` och changelogen i
+  `Views/ChalmersILLStartPage.cshtml`.
+- Sidor: `/Claude` (status, behöver IT, samtal) och `/Claude/Conversation/{id}`. Uppdateras live:
+  `ClaudeHub` skickar bara "något ändrades", och `wwwroot/scripts/claude.js` hämtar om delarna.
+  Dessutom hämtas de om var 15:e sekund, eftersom offline är frånvaron av hjärtslag och inte en händelse.
+- Agent-API: `/api/claude/...` (`ClaudeAgentApiController`), `Authorization: Bearer <token>`. JSON i
+  PascalCase, som resten av Chillin. Därutöver `POST conversations/{id}/crash {Summary}` för kraschade varv.
+- **Rollerna ger ingen skrivrätt till beställningar.** `ObjektSpecialist` och `ObjektSpecialistIT`
+  räknas som skrivskyddade roller i `ViewerReadOnlyFilter`, precis som `Viewer`. Den som också ska arbeta
+  med beställningar får dessutom t.ex. `Desk`. Rolländringar slår igenom vid nästa inloggning, eftersom
+  rollerna ligger i inloggningscookien.
+- Konfiguration (`ClaudeIntegration`-sektionen):
+
+  | Nyckel | Betydelse |
+  |---|---|
+  | `Enabled` | Slår på integrationen utanför isolerat läge (agentläge). Standard `false`. I isolerat läge är den alltid på, med fejkad Claude. |
+  | `AgentTokenSha256` | SHA-256 (hex) av agent-tokenen. Tom = agent-API:t avvisar allt. |
+  | `CommitUrlTemplate` | Länk till en commit, `{0}` = hash. |
+  | `MaxFixAttempts` | Rättningsvarv vid röda tester innan "behöver IT". Standard 2. |
+  | `OfflineAfterSeconds` | Sekunder utan hjärtslag innan Claude visas som offline. Standard 60. |
+  | `FakePhaseDelayMilliseconds` | Fejken: paus per fas. Standard 3000. |
+
+- `IsolationGuard` stoppar uppstarten om isolerat läge kör något annat än fejken, eller om fejken
+  körs utanför isolerat läge.
+- Webbläsarkontroll: `browser-check/claude-integration-check.js`.
+
 ## Gränsen mot värdappen
 
 Byggs från början så att utbrytningen blir mekanisk:
@@ -213,9 +252,11 @@ till och kopplar in med gränssnittet ovan.
 
 1. **Devcontainern för Chillin** från claudeborgen (`projects/chillin/`), så att sessionerna körs i den.
 2. **Integrationen i Chillin** (grenen `claudeborgen`): samtal, status, agent-API, changelog,
-   rollerna `ObjektSpecialist`/`ObjektSpecialistIT`, och fejkad Claude på testservern.
+   rollerna `ObjektSpecialist`/`ObjektSpecialistIT`, och fejkad Claude på testservern. *Första
+   versionen byggd 2026-10-19, se [Så är det byggt i Chillin](#så-är-det-byggt-i-chillin).*
 3. **Chillin på integrerad test** med integrationen påslagen (Lars).
-4. **Runnern** anpassad till samtal: bygge före push, tester efter, `test-green`, markeringen "behöver IT".
+4. **Runnern** anpassad till samtal: bygge före push, tester efter, `test-green`, markeringen "behöver IT",
+   och fejkläget `--fake`.
 5. **CI för `test`** till Chillins isolerade testserver (Chillins fas 10).
 6. **Utbrytning** till ett Razor Class Library när arbetssättet har satt sig.
 

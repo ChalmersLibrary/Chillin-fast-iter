@@ -1,0 +1,50 @@
+@model ClaudePageModel
+@{
+    var status = Model.Status;
+}
+<div class="panel @(status.Activity == ClaudeActivity.Offline ? "panel-default" : status.Activity == ClaudeActivity.Working ? "panel-primary" : "panel-success")" data-testid="claude-status">
+    <div class="panel-heading">
+        <strong>
+            @switch (status.Activity)
+            {
+                case ClaudeActivity.Working:
+                    @:Claude jobbar på <a href="/Claude/Conversation/@status.ConversationId" style="color: inherit; text-decoration: underline;">#@status.ConversationId @status.ConversationTitle</a>
+                    break;
+                case ClaudeActivity.Idle:
+                    @:Claude är ledig
+                    break;
+                default:
+                    @:Claude är offline@(status.LastHeartbeatAt != null ? " sedan " + ClaudeText.Time(status.LastHeartbeatAt) : "")
+                    break;
+            }
+        </strong>
+        @if (status.Activity == ClaudeActivity.Working && !string.IsNullOrEmpty(status.Phase))
+        {
+            <span> · @status.Phase</span>
+        }
+        <span class="pull-right">@status.QueueLength i kö</span>
+    </div>
+    @if (Model.Settings.Mode == ClaudeIntegrationMode.Fake)
+    {
+        <div class="panel-body">
+            <strong>Fejkad Claude.</strong> Det här är snabbtestservern: svaren kommer från en fejk, ingenting ändras eller pushas.
+            Styr den med <code>[röd]</code>, <code>[röd!]</code>, <code>[krasch]</code> eller <code>[offline]</code> i meddelandet.
+        </div>
+    }
+</div>
+
+@if (Model.NeedingAttention.Count > 0)
+{
+    <div class="panel @(Model.Access.IsIt ? "panel-danger" : "panel-warning")" data-testid="claude-attention">
+        <div class="panel-heading"><strong>Behöver IT</strong></div>
+        <ul class="list-group">
+            @foreach (var c in Model.NeedingAttention)
+            {
+                <li class="list-group-item">
+                    <a href="/Claude/Conversation/@c.Id">#@c.Id @c.Title</a>
+                    – @(c.NeedsIt ? c.NeedsItReason : "Claude gick offline mitt i ett varv.")
+                </li>
+            }
+        </ul>
+    </div>
+}

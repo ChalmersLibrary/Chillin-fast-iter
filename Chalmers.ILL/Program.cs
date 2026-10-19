@@ -1,4 +1,5 @@
 using Chalmers.ILL;
+using Chalmers.ILL.ClaudeIntegration;
 using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Isolated;
 using Chalmers.ILL.OrderItems;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -96,6 +98,10 @@ if (app.Services.GetRequiredService<Chalmers.ILL.OrderItems.IOrderItemManager>()
     fileOrderItemManager.SetNotifier(app.Services.GetRequiredService<Chalmers.ILL.SignalR.INotifier>());
 }
 
+// Same late wiring for the Claude integration's live updates (claudeborgen-DESIGN.md).
+app.Services.GetRequiredService<ClaudeIntegrationService>().SetBroadcaster(
+    new SignalRClaudeUpdateBroadcaster(app.Services.GetRequiredService<IHubContext<ClaudeHub>>()));
+
 // Fas 10, "Ordna testdata för utvecklingsmiljön": isolated mode only (local devcontainer or the
 // isolated test server) - never a live DataPath. Isolated.FileTemplateService reads fresh from
 // disk on every call; InMemoryOrderItemSearcher instead holds its snapshot in memory and only
@@ -157,6 +163,7 @@ app.UseAuthorization();
 
 RouteConfig.RegisterRoutes(app);
 app.MapHub<NotificationHub>("/notificationHub");
+app.MapHub<ClaudeHub>("/claudeHub");
 
 app.Run();
 

@@ -17,6 +17,12 @@ namespace Chalmers.ILL.Members
         // ViewerReadOnlyFilter and MemberAdminSurfaceController don't each hardcode the string.
         public const string ViewerRole = "Viewer";
 
+        // Claudeborgen (see claudeborgen-DESIGN.md): the object owner and the IT specialist. Like
+        // Viewer they grant no access to Chillin's own data on their own - only to the Claude
+        // integration - see ViewerReadOnlyFilter.ReadOnlyRoles.
+        public const string ObjektSpecialistRole = "ObjektSpecialist";
+        public const string ObjektSpecialistITRole = "ObjektSpecialistIT";
+
         private readonly Func<List<MemberAccount>> _loadAccounts;
 
         public FileRoleProvider(Func<List<MemberAccount>> loadAccounts)

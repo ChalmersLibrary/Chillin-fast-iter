@@ -1,0 +1,49 @@
+@model ClaudePageModel
+@await Html.PartialAsync("~/ClaudeIntegration/Views/_StatusPanel.cshtml", Model)
+
+@{
+    var open = Model.Conversations.Where(c => c.IsOpen).OrderByDescending(c => c.LastActivityAt).ToList();
+    var closed = Model.Conversations.Where(c => !c.IsOpen).OrderByDescending(c => c.LastActivityAt).ToList();
+}
+
+<h3>Pågående samtal</h3>
+@if (open.Count == 0)
+{
+    <p class="text-muted">Inga pågående samtal.</p>
+}
+else
+{
+    <div class="list-group" data-testid="claude-open-conversations">
+        @foreach (var c in open)
+        {
+            <a class="list-group-item" href="/Claude/Conversation/@c.Id">
+                <span class="label @ClaudeText.StateLabelClass(c.State)">@ClaudeText.State(c.State)</span>
+                @if (c.NeedsIt)
+                {
+                    <span class="label label-danger">Behöver IT</span>
+                }
+                <strong>#@c.Id @c.Title</strong>
+                <span class="text-muted pull-right">@ClaudeText.Time(c.LastActivityAt)</span>
+            </a>
+        }
+    </div>
+}
+
+<h3>Avslutade samtal</h3>
+@if (closed.Count == 0)
+{
+    <p class="text-muted">Inga avslutade samtal.</p>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var c in closed)
+        {
+            <a class="list-group-item" href="/Claude/Conversation/@c.Id">
+                <span class="label @ClaudeText.StateLabelClass(c.State)">@ClaudeText.State(c.State)</span>
+                #@c.Id @c.Title
+                <span class="text-muted pull-right">@ClaudeText.Time(c.DoneAt ?? c.LastActivityAt)</span>
+            </a>
+        }
+    </div>
+}

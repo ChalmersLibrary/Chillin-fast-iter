@@ -1,0 +1,21 @@
+@model ClaudeStatus
+@* Claude's status, visible on every page (nav bar). Re-fetched by claude.js. *@
+@{
+    var label = Model.Activity switch
+    {
+        ClaudeActivity.Working => "label-primary",
+        ClaudeActivity.Idle => "label-success",
+        _ => "label-default"
+    };
+    var text = Model.Activity switch
+    {
+        ClaudeActivity.Working => "Claude jobbar på #" + Model.ConversationId + (string.IsNullOrEmpty(Model.Phase) ? "" : " · " + Model.Phase),
+        ClaudeActivity.Idle => "Claude ledig",
+        _ => "Claude offline"
+    };
+}
+<span class="label @label" data-testid="claude-badge" data-claude-activity="@Model.Activity">@text</span>
+@if (Model.QueueLength > 0)
+{
+    <span class="badge" title="Samtal som väntar på Claude">@Model.QueueLength i kö</span>
+}

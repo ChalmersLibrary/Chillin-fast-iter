@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Chalmers.ILL.ClaudeIntegration;
 using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Connections;
 using Chalmers.ILL.Mail;
@@ -10,6 +11,7 @@ using Chalmers.ILL.Repositories;
 using Chalmers.ILL.Services;
 using Chalmers.ILL.Templates;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Chalmers.ILL.Isolated
 {
@@ -76,6 +78,8 @@ namespace Chalmers.ILL.Isolated
                 }
             }
 
+            VerifyClaudeIntegration(services, config);
+
             if (config.Isolated)
             {
                 var filledInSecrets = SecretKeys
@@ -91,6 +95,34 @@ namespace Chalmers.ILL.Isolated
                         "produktionens App Settings klonats till den här appen - isolerat läge ska aldrig " +
                         "köra med riktiga hemligheter tillgängliga.");
                 }
+            }
+        }
+
+        // Claudeborgen: the real channel (agent API to real Claude) must never be open on the
+        // isolated fast test server, and FakeClaude must never run anywhere else - see
+        // claudeborgen-DESIGN.md, "Kanalen och testservern" / "Fejkad Claude". Not a seam interface
+        // like the ones above (FakeClaude lives with the integration, not in this namespace), so
+        // checked on its own.
+        private static void VerifyClaudeIntegration(IServiceProvider services, IChillinConfiguration config)
+        {
+            var settings = services.GetService<ClaudeIntegrationSettings>();
+            if (settings == null)
+                return;
+
+            var fakeRegistered = services.GetServices<IHostedService>().OfType<FakeClaude>().Any();
+
+            if (config.Isolated && (settings.Mode != ClaudeIntegrationMode.Fake || !fakeRegistered))
+            {
+                throw new InvalidOperationException(
+                    $"Isolerat läge är påslaget men Claude-integrationen är i läge {settings.Mode} " +
+                    (fakeRegistered ? "" : "utan FakeClaude ") +
+                    "- agent-API:t mot riktiga Claude får aldrig vara öppet på den isolerade testservern.");
+            }
+
+            if (!config.Isolated && (settings.Mode == ClaudeIntegrationMode.Fake || fakeRegistered))
+            {
+                throw new InvalidOperationException(
+                    "Isolerat läge är avstängt men Claude-integrationen använder FakeClaude - den ska bara köra i isolerat läge.");
             }
         }
 

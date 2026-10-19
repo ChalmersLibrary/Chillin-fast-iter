@@ -35,8 +35,20 @@ namespace Chalmers.ILL
     // literally zero roles assigned gets no access, per Lars 2026-09-29 ("saknar man roles så får
     // man inte se något"). A user who holds "Viewer" alongside a real role (e.g. "Desk") is
     // unaffected by either tier, same as before this filter existed.
+    //
+    // The Claudeborgen roles (ObjektSpecialist/ObjektSpecialistIT) count as read-only here too:
+    // they're about the Claude integration, which has its own role checks per action, and must not
+    // on their own grant edit access to orders the way any other role does. Someone who should also
+    // work with orders gets e.g. "Desk" as well.
     public class ViewerReadOnlyFilter : IAuthorizationFilter
     {
+        public static readonly string[] ReadOnlyRoles =
+        {
+            FileRoleProvider.ViewerRole,
+            FileRoleProvider.ObjektSpecialistRole,
+            FileRoleProvider.ObjektSpecialistITRole,
+        };
+
         public void OnAuthorization(AuthorizationFilterContext context)
         {
             // [AllowAnonymous] shows up as an AllowAnonymousAttribute (IAllowAnonymous) in
@@ -58,8 +70,8 @@ namespace Chalmers.ILL
                 return;
             }
 
-            var isViewerOnly = roles.All(r => string.Equals(r, FileRoleProvider.ViewerRole, StringComparison.OrdinalIgnoreCase));
-            if (!isViewerOnly) return;
+            var isReadOnly = roles.All(r => ReadOnlyRoles.Contains(r, StringComparer.OrdinalIgnoreCase));
+            if (!isReadOnly) return;
 
             if (context.ActionDescriptor.EndpointMetadata.Any(m => m is AllowViewerAttribute)) return;
 

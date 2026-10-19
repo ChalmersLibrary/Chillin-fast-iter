@@ -1,0 +1,53 @@
+@model ClaudePageModel
+@{
+    Layout = "~/Views/ChalmersILL.cshtml";
+    var c = Model.Conversation;
+}
+
+<p><a href="/Claude">&larr; Alla samtal</a></p>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="alert alert-danger" data-testid="claude-error">@Model.Error</div>
+}
+
+<div id="claude-live" data-claude-refresh="/Claude/ConversationContent/@c.Id">
+    @await Html.PartialAsync("~/ClaudeIntegration/Views/_ConversationContent.cshtml", Model)
+</div>
+
+@* Outside the live-refreshed part, so a half-written message survives a refresh. *@
+@if (c.IsOpen && Model.Access.CanWrite)
+{
+    <form method="post" action="/Claude/Reply/@c.Id" data-testid="claude-reply-form">
+        @Html.AntiForgeryToken()
+        <div class="form-group">
+            <label for="claude-reply">Nästa meddelande till Claude</label>
+            <textarea class="form-control" id="claude-reply" name="body" rows="4" required></textarea>
+            <p class="help-block">Skriv inga personuppgifter – allt du skriver skickas till Claude.</p>
+        </div>
+        <button type="submit" class="btn btn-primary">Skicka</button>
+    </form>
+}
+
+@if (c.IsOpen && Model.Access.CanStartAndClose)
+{
+    <hr />
+    <div class="row">
+        <div class="col-md-8">
+            <form method="post" action="/Claude/Done/@c.Id" class="form-inline" data-testid="claude-done-form">
+                @Html.AntiForgeryToken()
+                <div class="form-group">
+                    <label for="claude-changelog">Text i changelogen</label>
+                    <input type="text" class="form-control" id="claude-changelog" name="changelogText" value="@c.Title" size="50">
+                </div>
+                <button type="submit" class="btn btn-success">Klar</button>
+            </form>
+        </div>
+        <div class="col-md-4 text-right">
+            <form method="post" action="/Claude/Cancel/@c.Id" onsubmit="return confirm('Avbryta samtalet?');" data-testid="claude-cancel-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-default">Avbryt samtalet</button>
+            </form>
+        </div>
+    </div>
+}

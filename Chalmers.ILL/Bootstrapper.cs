@@ -1,3 +1,5 @@
+using Chalmers.ILL.ClaudeIntegration;
+using Chalmers.ILL.ClaudeIntegration.Host;
 using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Connections;
 using Chalmers.ILL.Isolated;
@@ -13,6 +15,7 @@ using Chalmers.ILL.Services;
 using Chalmers.ILL.SignalR;
 using Chalmers.ILL.Templates;
 using Chalmers.ILL.UmbracoApi;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Nest;
@@ -127,12 +130,34 @@ namespace Chalmers.ILL
                 ? (IPatronDataProvider)affiliationDataProvider
                 : new FolioPatronDataProvider(templateService, affiliationDataProvider, folioConnection));
 
+            RegisterClaudeIntegration(services, interim.GetRequiredService<IConfiguration>(), config);
+
             // Räcke 2 (fas 6, isolerat läge steg A): crash rather than run wrong, against the final
             // registration state.
             var final = services.BuildServiceProvider();
             IsolationGuard.Verify(final, config);
 
             LogIsolationBanner(config);
+        }
+
+        // Claudeborgen (see claudeborgen-DESIGN.md). The service is registered as an instance, not
+        // a type, for the same reason as IOrderItemSearcher above: every ServiceProvider built from
+        // this collection must share one instance, or the pages, the agent API and FakeClaude would
+        // each see their own heartbeat state. Mode follows Chillin:Isolated (Fake there, never
+        // Agent) - IsolationGuard checks it.
+        private static void RegisterClaudeIntegration(IServiceCollection services, IConfiguration configuration, IChillinConfiguration config)
+        {
+            var claudeSettings = ClaudeIntegrationSettings.FromConfiguration(configuration, config.Isolated, config.DataPath);
+            var claudeService = new ClaudeIntegrationService(new ConversationStore(claudeSettings.DataDirectory), claudeSettings);
+            services.AddSingleton(claudeSettings);
+            services.AddSingleton(claudeService);
+            services.AddSingleton<IClaudeIntegrationAccess>(new ChillinClaudeIntegrationAccess());
+
+            if (claudeSettings.Mode == ClaudeIntegrationMode.Fake)
+            {
+                services.AddSingleton(_ => new FakeClaude(claudeService));
+                services.AddHostedService(sp => sp.GetRequiredService<FakeClaude>());
+            }
         }
 
         private static void RegisterLiveSeams(IServiceCollection services, IChillinConfiguration config)
@@ -206,6 +231,7 @@ namespace Chalmers.ILL
                     " - IPatronDataProvider/IAffiliationDataProvider/IPersonDataProvider -> Isolated.FilePatronDataProvider\n" +
                     " - IFolioConnection -> Isolated.FakeFolioConnection\n" +
                     " - IFolio*Service/IFolioRepository -> Isolated.FakeFolio\n" +
+                    " - Claude-integrationen -> ClaudeIntegration.FakeClaude (agent-API:t stängt)\n" +
                     "############################################################");
             }
             else

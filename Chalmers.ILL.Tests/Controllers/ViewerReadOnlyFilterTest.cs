@@ -99,6 +99,38 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.IsNull(context.Result);
         }
 
+        // Claudeborgen: the integration roles grant no write access to Chillin's own data on
+        // their own - they're read-only here exactly like Viewer.
+        [TestMethod]
+        public void ClaudeborgenRolesOnly_ActionWithoutAllowViewer_IsForbidden()
+        {
+            var context = MakeContext(RolesOf("ObjektSpecialist", "ObjektSpecialistIT"), hasAllowViewer: false, isAllowAnonymous: false);
+
+            new ViewerReadOnlyFilter().OnAuthorization(context);
+
+            Assert.IsInstanceOfType(context.Result, typeof(ForbidResult));
+        }
+
+        [TestMethod]
+        public void ClaudeborgenRoleOnly_ActionWithAllowViewer_IsNotBlocked()
+        {
+            var context = MakeContext(RolesOf("ObjektSpecialist"), hasAllowViewer: true, isAllowAnonymous: false);
+
+            new ViewerReadOnlyFilter().OnAuthorization(context);
+
+            Assert.IsNull(context.Result);
+        }
+
+        [TestMethod]
+        public void ClaudeborgenRoleAndARealRole_IsNotBlocked()
+        {
+            var context = MakeContext(RolesOf("ObjektSpecialist", "Desk"), hasAllowViewer: false, isAllowAnonymous: false);
+
+            new ViewerReadOnlyFilter().OnAuthorization(context);
+
+            Assert.IsNull(context.Result);
+        }
+
         [TestMethod]
         public void UnauthenticatedUser_IsLeftToTheLoginRequiredFilter()
         {
