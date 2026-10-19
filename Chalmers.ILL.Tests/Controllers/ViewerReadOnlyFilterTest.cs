@@ -15,9 +15,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Chalmers.ILL.Tests.Controllers
 {
-    // Two tiers below "has a real role" (see TODO-remove-dotnet-framework.md, the "Viewer" entry):
-    // an account explicitly assigned only the "Viewer" role may reach actions marked
-    // [AllowViewer]; an account with NO roles at all may reach nothing, [AllowViewer] included.
+    // Only "Administrator" writes (see TODO-remove-dotnet-framework.md, the "Viewer" entry): an
+    // account with any other role(s) may only reach actions marked [AllowViewer]; an account with
+    // NO roles at all may reach nothing, [AllowViewer] included.
     // IsolatedModeSmokeTest has the real end-to-end HTTP version of this; these tests exercise
     // ViewerReadOnlyFilter's own decision logic directly, the same way AuthorizationTest drives
     // the SuperAdmin policy directly.
@@ -77,30 +77,58 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.IsInstanceOfType(context.Result, typeof(ForbidResult));
         }
 
+        // Only Administrator writes (Lars 2026-10-19). Every other role is read-only, Desk included.
         [TestMethod]
-        public void UserWithARealRole_ActionWithoutAllowViewer_IsNotBlocked()
+        public void Administrator_ActionWithoutAllowViewer_IsNotBlocked()
+        {
+            var context = MakeContext(RolesOf("Administrator"), hasAllowViewer: false, isAllowAnonymous: false);
+
+            new ViewerReadOnlyFilter().OnAuthorization(context);
+
+            Assert.IsNull(context.Result);
+        }
+
+        [TestMethod]
+        public void AdministratorAlongsideOtherRoles_IsNotBlocked()
+        {
+            var context = MakeContext(RolesOf("Viewer", "Desk", "Administrator"), hasAllowViewer: false, isAllowAnonymous: false);
+
+            new ViewerReadOnlyFilter().OnAuthorization(context);
+
+            Assert.IsNull(context.Result);
+        }
+
+        [TestMethod]
+        public void DeskWithoutAdministrator_ActionWithoutAllowViewer_IsForbidden()
         {
             var context = MakeContext(RolesOf("Desk"), hasAllowViewer: false, isAllowAnonymous: false);
 
             new ViewerReadOnlyFilter().OnAuthorization(context);
 
-            Assert.IsNull(context.Result);
+            Assert.IsInstanceOfType(context.Result, typeof(ForbidResult));
         }
 
-        // A user who happens to carry "Viewer" alongside a real role is not restricted - only
-        // "Viewer and nothing else" triggers the block.
         [TestMethod]
-        public void UserWithViewerAndARealRole_IsNotBlocked()
+        public void SuperAdminWithoutAdministrator_ActionWithoutAllowViewer_IsForbidden()
         {
-            var context = MakeContext(RolesOf("Viewer", "Desk"), hasAllowViewer: false, isAllowAnonymous: false);
+            var context = MakeContext(RolesOf("SuperAdmin"), hasAllowViewer: false, isAllowAnonymous: false);
+
+            new ViewerReadOnlyFilter().OnAuthorization(context);
+
+            Assert.IsInstanceOfType(context.Result, typeof(ForbidResult));
+        }
+
+        [TestMethod]
+        public void DeskWithoutAdministrator_ActionWithAllowViewer_IsNotBlocked()
+        {
+            var context = MakeContext(RolesOf("Desk"), hasAllowViewer: true, isAllowAnonymous: false);
 
             new ViewerReadOnlyFilter().OnAuthorization(context);
 
             Assert.IsNull(context.Result);
         }
 
-        // Claudeborgen: the integration roles grant no write access to Chillin's own data on
-        // their own - they're read-only here exactly like Viewer.
+        // Claudeborgen: the integration roles grant no write access to Chillin's own data.
         [TestMethod]
         public void ClaudeborgenRolesOnly_ActionWithoutAllowViewer_IsForbidden()
         {
@@ -115,16 +143,6 @@ namespace Chalmers.ILL.Tests.Controllers
         public void ClaudeborgenRoleOnly_ActionWithAllowViewer_IsNotBlocked()
         {
             var context = MakeContext(RolesOf("ObjektSpecialist"), hasAllowViewer: true, isAllowAnonymous: false);
-
-            new ViewerReadOnlyFilter().OnAuthorization(context);
-
-            Assert.IsNull(context.Result);
-        }
-
-        [TestMethod]
-        public void ClaudeborgenRoleAndARealRole_IsNotBlocked()
-        {
-            var context = MakeContext(RolesOf("ObjektSpecialist", "Desk"), hasAllowViewer: false, isAllowAnonymous: false);
 
             new ViewerReadOnlyFilter().OnAuthorization(context);
 

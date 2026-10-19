@@ -194,6 +194,11 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
     — strikare än Viewer, inte samma sak.
   - En användare med någon annan roll (t.ex. "Desk"), med eller utan "Viewer" också, är helt
     opåverkad.
+  **Skärpt 2026-10-19 (Lars):** "De enda som ska ha skrivrätt på ordrar är Administrator." Nu är det
+  bara rollen `Administrator` som är opåverkad; alla andra roller (`Desk`, `SuperAdmin` utan
+  `Administrator`, claudeborgens `ObjektSpecialist`/`ObjektSpecialistIT`) behandlas som "Viewer" ovan.
+  Layouten dolde redan redigeringsknapparna för icke-administratörer (kosmetiskt); nu stämmer servern
+  med det. Diskappen, som `Desk` var till för, används inte längre.
   Medvetet default-deny (spärra allt, öppna upp läsningar) snarare än default-allow (lista alla
   skrivningar), eftersom en ny skrivande action som glöms bort då stannar spärrad istället för att
   tyst bli skrivbar. Alla läsande actions i `Controllers/SurfaceControllers/` (inkl. samtliga

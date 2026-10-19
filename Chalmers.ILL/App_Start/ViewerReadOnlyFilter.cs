@@ -19,36 +19,24 @@ namespace Chalmers.ILL
     {
     }
 
-    // Enforces two tiers below "has a real role" (Desk/Administrator/SuperAdmin/...). Registered
-    // as a global MVC filter (see FilterConfig.RegisterGlobalFilters) alongside the login-required
-    // AuthorizeFilter, which already runs first and handles the "not logged in at all" /
-    // "AllowAnonymous" cases - by the time this filter runs, a request has either already been
-    // redirected/rejected by that filter, or the user is authenticated (or the action is
-    // [AllowAnonymous], which this filter also leaves alone since an anonymous caller has no role
-    // claims to restrict).
+    // Who may write: only "Administrator" (per Lars 2026-10-19: "De enda som ska ha skrivrätt på
+    // ordrar är Administrator" - the layout already hid every edit button for everyone else, this
+    // makes it real server-side). Registered as a global MVC filter (see
+    // FilterConfig.RegisterGlobalFilters) alongside the login-required AuthorizeFilter, which
+    // already runs first and handles the "not logged in at all" / "AllowAnonymous" cases - by the
+    // time this filter runs, a request has either already been redirected/rejected by that filter,
+    // or the user is authenticated (or the action is [AllowAnonymous], which this filter also
+    // leaves alone since an anonymous caller has no role claims to restrict).
     //
-    // Tier 1, "Viewer": every role claim the user carries is "Viewer" - read-only, may reach
-    // actions marked [AllowViewer]. Explicitly assigned (MemberAdminSurfaceController), never a
-    // default - see FileRoleProvider.
-    //
-    // Tier 2, no roles at all: blocked from everything, [AllowViewer] included - an account with
-    // literally zero roles assigned gets no access, per Lars 2026-09-29 ("saknar man roles så får
-    // man inte se något"). A user who holds "Viewer" alongside a real role (e.g. "Desk") is
-    // unaffected by either tier, same as before this filter existed.
-    //
-    // The Claudeborgen roles (ObjektSpecialist/ObjektSpecialistIT) count as read-only here too:
-    // they're about the Claude integration, which has its own role checks per action, and must not
-    // on their own grant edit access to orders the way any other role does. Someone who should also
-    // work with orders gets e.g. "Desk" as well.
+    // - "Administrator" (alone or with other roles): unrestricted.
+    // - Any other role(s) - Viewer, Desk, SuperAdmin without Administrator, the Claudeborgen roles
+    //   ObjektSpecialist/ObjektSpecialistIT: read-only, may reach actions marked [AllowViewer].
+    //   (The Claude integration's own writes are [AllowViewer] past this filter and checked against
+    //   the Claudeborgen roles by the integration itself.)
+    // - No roles at all: blocked from everything, [AllowViewer] included, per Lars 2026-09-29
+    //   ("saknar man roles så får man inte se något").
     public class ViewerReadOnlyFilter : IAuthorizationFilter
     {
-        public static readonly string[] ReadOnlyRoles =
-        {
-            FileRoleProvider.ViewerRole,
-            FileRoleProvider.ObjektSpecialistRole,
-            FileRoleProvider.ObjektSpecialistITRole,
-        };
-
         public void OnAuthorization(AuthorizationFilterContext context)
         {
             // [AllowAnonymous] shows up as an AllowAnonymousAttribute (IAllowAnonymous) in
@@ -70,8 +58,7 @@ namespace Chalmers.ILL
                 return;
             }
 
-            var isReadOnly = roles.All(r => ReadOnlyRoles.Contains(r, StringComparer.OrdinalIgnoreCase));
-            if (!isReadOnly) return;
+            if (roles.Any(r => string.Equals(r, FileRoleProvider.AdministratorRole, StringComparison.OrdinalIgnoreCase))) return;
 
             if (context.ActionDescriptor.EndpointMetadata.Any(m => m is AllowViewerAttribute)) return;
 

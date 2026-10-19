@@ -208,16 +208,22 @@ namespace Chalmers.ILL.Tests.ClaudeIntegration
             Assert.IsFalse(after.Contains("Får inte skrivas"));
         }
 
+        // Claude's status belongs on the integration's own pages, not on every page in Chillin
+        // (Lars 2026-10-19) - elsewhere there's only a plain menu link.
         [TestMethod]
-        public async Task StatusBadge_IsShownInTheNavBar_OnEveryPage()
+        public async Task Status_IsOnlyShownOnTheIntegrationPages()
         {
             using var factory = CreateFactory();
             using var viewer = await LoginAsync(factory, "viewer");
 
-            var html = await (await viewer.GetAsync("/bestaellningar/")).Content.ReadAsStringAsync();
+            var orderList = await GetHtmlAsync(viewer, "/bestaellningar/");
+            Assert.IsFalse(orderList.Contains("data-testid=\"claude-status\""));
+            Assert.IsFalse(orderList.Contains("/scripts/claude.js"));
+            StringAssert.Contains(orderList, "href=\"/Claude\"");
 
-            StringAssert.Contains(html, "data-testid=\"claude-badge\"");
-            StringAssert.Contains(html, "/scripts/claude.js");
+            var claudePage = await GetHtmlAsync(viewer, "/Claude");
+            StringAssert.Contains(claudePage, "data-testid=\"claude-status\"");
+            StringAssert.Contains(claudePage, "/scripts/claude.js");
         }
 
         [TestMethod]

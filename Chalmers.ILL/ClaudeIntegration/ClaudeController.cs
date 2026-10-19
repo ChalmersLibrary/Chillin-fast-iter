@@ -48,13 +48,6 @@ namespace Chalmers.ILL.ClaudeIntegration
 
         // Fragments the page re-fetches when ClaudeHub pings (see wwwroot/scripts/claude.js).
         [HttpGet]
-        public IActionResult Badge()
-        {
-            if (IsOff) return NotFound();
-            return PartialView(ViewRoot + "_Badge.cshtml", _service.GetStatus());
-        }
-
-        [HttpGet]
         public IActionResult IndexContent()
         {
             if (IsOff) return NotFound();

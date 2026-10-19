@@ -1,4 +1,4 @@
-// Claudeborgen: keeps Claude's status and the conversation pages live. ClaudeHub only pings
+// Claudeborgen: keeps the integration's own pages (/Claude) live - included only there. ClaudeHub only pings
 // ("something changed"); every element with data-claude-refresh re-fetches its own fragment.
 // A slow poll on top covers what no ping announces - Claude going offline is the absence of
 // heartbeats, not an event.
@@ -31,7 +31,11 @@
         });
     }
 
-    if (window.signalR) {
+    // Included from the page body, before the layout's signalr.min.js - so wait for "load".
+    window.addEventListener("load", function () {
+        if (!window.signalR) {
+            return;
+        }
         var connection = new signalR.HubConnectionBuilder()
             .withUrl("/claudeHub")
             .withAutomaticReconnect()
@@ -39,7 +43,7 @@
         connection.on("claudeUpdate", refreshAll);
         connection.onreconnected(refreshAll);
         connection.start().catch(function () { /* the poll below still works */ });
-    }
+    });
 
     setInterval(refreshAll, 15 * 1000);
 })();

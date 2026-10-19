@@ -43,7 +43,7 @@ namespace Chalmers.ILL.Tests.Controllers
         // class comment: creating the first account is a one-time manual step, not something to
         // regenerate on every fresh DataPath). Tests that need to log in ask for one here instead,
         // which is the test-only equivalent of that manual step.
-        private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null, bool seedSuperAdminAccount = false, bool seedViewerAccount = false, bool seedRolelessAccount = false)
+        private WebApplicationFactory<Program> CreateFactory(IDictionary<string, string> extraConfig = null, bool seedSuperAdminAccount = false, bool seedViewerAccount = false, bool seedRolelessAccount = false, bool seedDeskAccount = false)
         {
             var dataPath = Path.Combine(Path.GetTempPath(), "chillin-isolated-smoke-" + Guid.NewGuid());
 
@@ -60,6 +60,11 @@ namespace Chalmers.ILL.Tests.Controllers
             if (seedRolelessAccount)
             {
                 SeedRolelessAccount(dataPath);
+            }
+
+            if (seedDeskAccount)
+            {
+                SeedDeskAccount(dataPath);
             }
 
             var config = new Dictionary<string, string>
@@ -340,6 +345,21 @@ namespace Chalmers.ILL.Tests.Controllers
             await LoginAsAsync(client, "viewer", "chillin-dev-viewer");
         }
 
+        // A real role, but not Administrator - read-only since 2026-10-19 (only Administrator writes).
+        private static void SeedDeskAccount(string dataPath)
+        {
+            Directory.CreateDirectory(dataPath);
+
+            var hasher = new PasswordHasher<MemberAccount>(Options.Create(new PasswordHasherOptions
+            {
+                CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2
+            }));
+            var account = new MemberAccount { Login = "desk", Roles = new List<string> { "Desk" } };
+            account.PasswordHash = hasher.HashPassword(account, "chillin-dev-desk");
+
+            MemberFileStore.Save(new List<MemberAccount> { account }, Path.Combine(dataPath, "members.json"));
+        }
+
         private static async Task LoginAsRolelessAsync(HttpClient client)
         {
             await LoginAsAsync(client, "roleless", "chillin-dev-roleless");
@@ -408,6 +428,35 @@ namespace Chalmers.ILL.Tests.Controllers
             Assert.AreNotEqual(HttpStatusCode.OK, response.StatusCode);
             var logItemsJson = await (await client.GetAsync("/LogItemSurface/GetLogItems?nodeId=1")).Content.ReadAsStringAsync();
             Assert.IsFalse(logItemsJson.Contains("Should never be written by a Viewer."), "The write must never have executed.");
+        }
+
+        // Only Administrator writes (Lars 2026-10-19) - a Desk account without Administrator is
+        // blocked exactly like a Viewer.
+        [TestMethod]
+        public async Task DeskWithoutAdministrator_BlockedFromWritingALogItem()
+        {
+            using var factory = CreateFactory(seedDeskAccount: true);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await LoginAsAsync(client, "desk", "chillin-dev-desk");
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/LogItemSurface/WriteLogItem")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["nodeId"] = "1",
+                    ["Type"] = "KOMMENTAR",
+                    ["Message"] = "Should never be written by Desk alone.",
+                    ["newFollowUpDate"] = "",
+                    ["statusId"] = "-1",
+                    ["cancellationReasonId"] = "-1",
+                    ["purchasedMaterialId"] = "-1"
+                })
+            };
+            var response = await client.SendAsync(request);
+
+            Assert.AreNotEqual(HttpStatusCode.OK, response.StatusCode);
+            var logItemsJson = await (await client.GetAsync("/LogItemSurface/GetLogItems?nodeId=1")).Content.ReadAsStringAsync();
+            Assert.IsFalse(logItemsJson.Contains("Should never be written by Desk alone."), "The write must never have executed.");
         }
 
         // The sneakiest category found while designing this fix: several mutating actions are

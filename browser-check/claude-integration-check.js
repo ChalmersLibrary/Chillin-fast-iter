@@ -79,7 +79,7 @@ async function waitForState(page, state, timeoutMs) {
 
     const id = await startConversation(page, "Exportknapp", "Lägg till en exportknapp på beställningslistan.");
     // The page must update by itself (SignalR ping / poll) - no reloads from here on.
-    await page.waitForFunction(() => /jobbar på/.test(document.querySelector("[data-testid=claude-badge]")?.textContent || ""), { timeout: 30000, polling: 250 });
+    await page.waitForFunction(() => /jobbar på/.test(document.querySelector("[data-testid=claude-status]")?.textContent || ""), { timeout: 30000, polling: 250 });
     await shoot(page, "02-claude-working.png");
     await waitForState(page, "WaitingForOwner", 60000);
     await page.waitForFunction(() => /Gröna tester/.test(document.querySelector("[data-testid=claude-rounds]")?.textContent || ""), { timeout: 30000, polling: 250 });

@@ -17,7 +17,7 @@ Avstämda med Lars. Ompröva inte utan ny avstämning.
 |---|---|---|
 | Arbetssätt | Objektägaren driver en uppgift som ett **samtal med Claude**. Varje meddelande ger ett varv: implementation → push → automatisk driftsättning till testservern → Claude svarar med länk. Hela samtalet är en Claude Code-session. | 2026-10-19 |
 | Diskussion och planering | Sker **var man vill** (Teams, IRL …). Claude-integrationen är bara implementationsplaneringen, inget forum. | 2026-10-19 |
-| Placering | **Inbyggt i projektets app**, i anslutning till dess changelog, synligt på valfri sida. Byggs först i Chillin och bryts sedan ut. | 2026-10-19 |
+| Placering | **Inbyggt i projektets app**, på egna sidor (`/Claude`) med en vanlig menylänk, och med changelogen i appens befintliga changelog. Byggs först i Chillin och bryts sedan ut. | 2026-10-19 |
 | Värdinstans | Integrationen körs på **Chillins integrerade testserver**, och senare i produktion. Lars driver ut migreringsgrenen till integrerad test för att det ska gå. | 2026-10-19 |
 | Kanalen och testservern | Den **riktiga** kanalen (agent-API:t mot riktiga Claude) körs **aldrig** på den isolerade testservern som snabbgrenen driftsätts till. Kanalen där fel rapporteras får inte kunna slås ut av en trasig push. | 2026-10-19 |
 | Fejkad Claude | På den isolerade testservern är integrationens gränssnitt **på**, men Claude ersätts av en **fejkad Claude i processen**, på samma sätt som Chillins övriga fejkade integrationer. Agent-API:t är avstängt där. Se [Fejkad Claude](#fejkad-claude). | 2026-10-19 |
@@ -33,7 +33,7 @@ Avstämda med Lars. Ompröva inte utan ny avstämning.
 | Claude körs | Claude Code i devcontainer på egen maskin. All trafik går **utåt** från devcontainern; appen kontaktar aldrig Claude. | 2026-10-14 |
 | Snabbslinga | Claude pushar direkt till snabbgrenen **`test`** → automatisk driftsättning till isolerad testserver med fejkade integrationer. IT tar det vidare till integrerad test och produktion (Lars mergar `test` vidare till andra repon). | 2026-10-14/16 |
 | Taggningar | En Claude Code-session per tråd (samtal), så att Claude minns tidigare svar. | 2026-10-19 |
-| Status | Claudes status (ledig / jobbar på X + fas / offline) visas tydligt för alla som ser integrationen. | 2026-10-14 |
+| Status | Claudes status (ledig / jobbar på X + fas / offline) visas tydligt **på integrationens egna sidor**, inte på appens övriga sidor. | 2026-10-14/19 |
 
 ## Roller
 
@@ -103,8 +103,8 @@ Det finns bara en objektägare per projekt, så runnerns "ett samtal i taget" be
 
 ### Claude-integrationen i appen
 
-- Sidor: samtalen (lista + ett samtal), Claudes status och kö, changelog. Kan visas på valfri sida
-  i appen.
+- Sidor: samtalen (lista + ett samtal), Claudes status och kö. Nås via en menylänk; Claudes status
+  syns bara här, inte på appens övriga sidor.
 - Changelog: samtal som markerats klara visas överst under "Nytt i Chillin" på startsidan
   (`Views/ChalmersILLStartPage.cshtml`). De handskrivna versionsposterna ligger kvar under dem som historik.
 - Liveuppdatering av status och samtal (SignalR). Chillin kör redan SignalR på en instans, och
@@ -204,17 +204,17 @@ kan fejken i appen tas bort.
   `ClaudeIntegrationService`, `FakeClaude`, `ClaudeIntegrationSettings`) är värdoberoende. Limkoden mot
   Chillin är `Host/ChillinClaudeIntegrationAccess.cs` (rollerna), `ClaudePageModel` (ärver Chillins
   layoutmodell) och vyerna (Chillins layout). Inkopplingen i Chillin är `Bootstrapper.RegisterClaudeIntegration`,
-  `Program.cs` (SignalR-hubben `/claudeHub`), statusmärket i `Views/ChalmersILL.cshtml` och changelogen i
+  `Program.cs` (SignalR-hubben `/claudeHub`), menylänken i `Views/ChalmersILL.cshtml` och changelogen i
   `Views/ChalmersILLStartPage.cshtml`.
 - Sidor: `/Claude` (status, behöver IT, samtal) och `/Claude/Conversation/{id}`. Uppdateras live:
   `ClaudeHub` skickar bara "något ändrades", och `wwwroot/scripts/claude.js` hämtar om delarna.
   Dessutom hämtas de om var 15:e sekund, eftersom offline är frånvaron av hjärtslag och inte en händelse.
 - Agent-API: `/api/claude/...` (`ClaudeAgentApiController`), `Authorization: Bearer <token>`. JSON i
   PascalCase, som resten av Chillin. Därutöver `POST conversations/{id}/crash {Summary}` för kraschade varv.
-- **Rollerna ger ingen skrivrätt till beställningar.** `ObjektSpecialist` och `ObjektSpecialistIT`
-  räknas som skrivskyddade roller i `ViewerReadOnlyFilter`, precis som `Viewer`. Den som också ska arbeta
-  med beställningar får dessutom t.ex. `Desk`. Rolländringar slår igenom vid nästa inloggning, eftersom
-  rollerna ligger i inloggningscookien.
+- **Rollerna ger ingen skrivrätt till beställningar.** I Chillin skriver bara `Administrator`
+  (`ViewerReadOnlyFilter`); alla andra roller, `ObjektSpecialist` och `ObjektSpecialistIT` inräknade, är
+  läsroller där. Rolländringar slår igenom vid nästa inloggning, eftersom rollerna ligger i
+  inloggningscookien.
 - Konfiguration (`ClaudeIntegration`-sektionen):
 
   | Nyckel | Betydelse |
