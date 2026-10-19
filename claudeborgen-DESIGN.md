@@ -19,7 +19,9 @@ Avstämda med Lars. Ompröva inte utan ny avstämning.
 | Diskussion och planering | Sker **var man vill** (Teams, IRL …). Claude-integrationen är bara implementationsplaneringen, inget forum. | 2026-10-19 |
 | Placering | **Inbyggt i projektets app**, i anslutning till dess changelog, synligt på valfri sida. Byggs först i Chillin och bryts sedan ut. | 2026-10-19 |
 | Värdinstans | Integrationen körs på **Chillins integrerade testserver**, och senare i produktion. Lars driver ut migreringsgrenen till integrerad test för att det ska gå. | 2026-10-19 |
-| Kanalen och testservern | Claude-integrationen körs **aldrig** på den isolerade testservern som snabbgrenen driftsätts till. Där är den avstängd, på samma sätt som `IsolationGuard`. Kanalen där fel rapporteras får inte kunna slås ut av en trasig push. | 2026-10-19 |
+| Kanalen och testservern | Den **riktiga** kanalen (agent-API:t mot riktiga Claude) körs **aldrig** på den isolerade testservern som snabbgrenen driftsätts till. Kanalen där fel rapporteras får inte kunna slås ut av en trasig push. | 2026-10-19 |
+| Fejkad Claude | På den isolerade testservern är integrationens gränssnitt **på**, men Claude ersätts av en **fejkad Claude i processen**, på samma sätt som Chillins övriga fejkade integrationer. Agent-API:t är avstängt där. Se [Fejkad Claude](#fejkad-claude). | 2026-10-19 |
+| Grenar | `remove-umbraco` ⊂ `remove-dotnet-framework` ⊂ `claudeborgen` → mergas in i **`test`**. Därefter tas övriga grenar bort och allt arbete sker mot `test`. Repot är `ChalmersLibrary/Chillin-fast-iter`; Lars för ändringar vidare till andra repon. | 2026-10-19 |
 | Roller | Rollerna **`ObjektSpecialist`** och **`ObjektSpecialistIT`** i appens rollsystem. Övriga inloggade är läsare; deras önskemål går via objektspecialisten och de kanaler de redan har. | 2026-10-19 |
 | Synlighet | **Ingenting är öppet.** Alla som har inloggning i appen kan se och läsa allt i integrationen; ingen annan ser något. | 2026-10-19 |
 | Lagring | **Filbaserad**, som resten av Chillin: en JSON-fil per samtal under `DataPath/claude/`. Ingen databas (Chillin har ingen sedan fas 7). | 2026-10-19 |
@@ -164,6 +166,31 @@ claudeborgen-sidan, så att Claude inte kan ändra vad som räknas som grönt.
   skrivskyddade och uppdateras bara manuellt efter granskning.
 - **Kostnad:** budgettak per varv (`--max-budget-usd`) och tidstak. Kostnad per varv sparas.
 
+## Fejkad Claude
+
+Syfte: gränssnittet och hela flödet ska gå att prova på snabbtestservern utan riktiga Claude, utan
+kostnad och utan att något pushas.
+
+- **Isolerat läge (`Chillin:Isolated=true`)** registrerar en `FakeClaude` i stället för att öppna
+  agent-API:t. Det följer samma mönster som övriga isolerade fejkar i `Bootstrapper.cs`. Utanför
+  isolerat läge går den inte att slå på; `IsolationGuard` stoppar det.
+- `FakeClaude` är en bakgrundstjänst i appen som **spelar runnerns roll** genom samma tjänstelager
+  som agent-API:t använder. Den skickar hjärtslag, tar samtal som väntar på Claude och går igenom
+  faserna med korta fördröjningar (läser in · implementerar · bygger · pushar · kör tester). Sedan
+  svarar den i samtalet med en kort förberedd text, ett fejkat commit-id och en länk.
+- **Styrbar från meddelandet**, så att även felvägarna går att prova:
+  - `[röd]` ger röda tester → ett rättningsvarv → grönt.
+  - `[röd!]` ger tester som förblir röda → samtalet markeras **behöver IT**.
+  - `[krasch]` gör att varvet kraschar.
+  - `[offline]` stoppar hjärtslagen en stund, så att statusen går till offline.
+  - Utan markering blir varvet grönt och lyckat.
+- Fördröjningarna kan konfigureras (standard några sekunder per fas), så att en demo inte tar
+  minuter men statusbytena ändå hinner synas.
+- Det fejkade commit-id:t och länken är tydligt märkta som fejkade i svaret.
+
+Den fejkade Claude är också testdubbeln för integrationens characterization-tester, så flödet testas
+utan riktiga Claude även i testsviten.
+
 ## Gränsen mot värdappen
 
 Byggs från början så att utbrytningen blir mekanisk:
@@ -174,7 +201,7 @@ Byggs från början så att utbrytningen blir mekanisk:
   är en enda inkoppling: changelog-komponenten på startsidan.
 - Ett litet gränssnitt som värdappen implementerar:
   - vem som är inloggad och vilken roll den har (objektägare / IT / läsare)
-  - om integrationen är på (av på testservern)
+  - om integrationen är på, och i så fall med riktiga eller fejkade Claude (fejkade på testservern)
   - datakatalogen och layouten
 
 Inloggning krävs alltid. Det är inte konfigurerbart.
@@ -186,7 +213,7 @@ till och kopplar in med gränssnittet ovan.
 
 1. **Devcontainern för Chillin** från claudeborgen (`projects/chillin/`), så att sessionerna körs i den.
 2. **Integrationen i Chillin** (grenen `claudeborgen`): samtal, status, agent-API, changelog,
-   rollerna `ObjektSpecialist`/`ObjektSpecialistIT`, avstängd på testservern.
+   rollerna `ObjektSpecialist`/`ObjektSpecialistIT`, och fejkad Claude på testservern.
 3. **Chillin på integrerad test** med integrationen påslagen (Lars).
 4. **Runnern** anpassad till samtal: bygge före push, tester efter, `test-green`, markeringen "behöver IT".
 5. **CI för `test`** till Chillins isolerade testserver (Chillins fas 10).
@@ -194,8 +221,6 @@ till och kopplar in med gränssnittet ovan.
 
 ## Öppna frågor
 
-- Hur förhåller sig `test` till `remove-dotnet-framework` och `claudeborgen`? Vad grenas ut från vad,
-  och vem mergar åt vilket håll?
 - Vilken CI driftsätter snabbgrenen `test` (GitHub Actions?), och hur snabbt kan det gå?
 - Var ska claudeborgens egen kod (devcontainer + runner) bo när repot `claudeborgen-fast-iter` stängs?
 - Budgettak: rimliga nivåer per varv och per månad.
@@ -209,6 +234,8 @@ eftersom produktion fortfarande är Umbraco-versionen och ingen annan instans ka
 filbaserad, eftersom Chillin saknar databas sedan fas 7. Rollerna blev `ObjektSpecialist` och
 `ObjektSpecialistIT`, och allt ligger bakom inloggning. Teams-notiserna togs bort; det som behöver
 uppmärksamhet visas i integrationen. Changelogen kopplas till "Nytt i Chillin" på startsidan.
+Grenstrategin fastställdes (allt mergas in i `test`). En fejkad Claude lades till, så att
+gränssnittet och flödet kan provas på snabbtestservern.
 
 **2026-10-14–18: egen plattform.** Först byggdes en fristående webbapp per projekt (repot
 `ChalmersLibrary/claudeborgen-fast-iter`, grenen `test`): egen inloggning med passkeys och
