@@ -1,0 +1,6 @@
+@model Chalmers.ILL.ClaudeborgenHosting.ChillinClaudePageModel
+@* Chillin's page shell around a Claudeborgen conversation: Chillin's layout, Claudeborgen's content. *@
+@{
+    Layout = "~/Views/ChalmersILL.cshtml";
+}
+@await Html.PartialAsync("~/Views/Claudeborgen/_ConversationPage.cshtml", Model.Claude)

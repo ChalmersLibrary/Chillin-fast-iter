@@ -76,6 +76,13 @@ dotnet build Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj /p:Configuration=Debug
 dotnet test Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal
 ```
 
+**3. Claudeborgen** (`claudeborgen/`, se [claudeborgen/DESIGN.md](claudeborgen/DESIGN.md)) har egna
+tester – paketets .NET-del och runnern:
+```bash
+dotnet test claudeborgen/dotnet/Claudeborgen.Tests/Claudeborgen.Tests.csproj /p:Configuration=Debug /v:minimal
+node --test claudeborgen/runner/
+```
+
 Alla tester ska vara gröna innan arbetet rapporteras klart.
 
 ## Arkitekturnoter

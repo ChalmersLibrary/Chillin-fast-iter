@@ -1,0 +1,92 @@
+@model ClaudePageModel
+@{
+    var c = Model.Conversation;
+}
+@await Html.PartialAsync("~/Views/Claudeborgen/_StatusPanel.cshtml", Model)
+
+<h3>
+    #@c.Id @c.Title
+    <span class="label @ClaudeText.StateLabelClass(c.State)" data-testid="claude-conversation-state" data-state="@c.State">@ClaudeText.State(c.State)</span>
+    @if (c.NeedsIt)
+    {
+        <span class="label label-danger" data-testid="claude-needs-it">Behöver IT</span>
+    }
+</h3>
+<p class="text-muted">Startat av @c.CreatedBy @ClaudeText.Time(c.CreatedAt)</p>
+
+<ul class="list-group" data-testid="claude-messages">
+    @foreach (var m in c.Messages)
+    {
+        var css = m.AuthorKind switch
+        {
+            MessageAuthorKind.Claude => "list-group-item-info",
+            MessageAuthorKind.System => "list-group-item-warning",
+            _ => ""
+        };
+        <li class="list-group-item @css">
+            <div class="text-muted small">
+                <strong>@(m.AuthorKind == MessageAuthorKind.Claude ? "Claude" : m.Author)</strong> @ClaudeText.Time(m.At)
+            </div>
+            <div style="white-space: pre-wrap;">@m.Body</div>
+        </li>
+    }
+</ul>
+
+@if (c.Rounds.Count > 0)
+{
+    <h4>Varv</h4>
+    <table class="table table-condensed" data-testid="claude-rounds">
+        <thead>
+            <tr><th>#</th><th>Startat</th><th>Resultat</th><th>Commits</th><th>Tester</th><th>Länkar</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var r in c.Rounds)
+            {
+                <tr>
+                    <td>@r.Number@(r.IsFixRound ? " (rättning)" : "")</td>
+                    <td>@ClaudeText.Time(r.StartedAt)</td>
+                    <td>
+                        @if (r.Outcome == RoundOutcome.Delivered)
+                        {
+                            <span class="label label-success">Levererat</span>
+                        }
+                        else if (r.Outcome == RoundOutcome.Crashed)
+                        {
+                            <span class="label label-danger">Kraschade</span>
+                        }
+                        else
+                        {
+                            <span class="label label-primary">Pågår</span>
+                        }
+                    </td>
+                    <td>
+                        @foreach (var commit in r.Commits)
+                        {
+                            var url = Model.Settings.CommitUrl(commit);
+                            if (url != null && !commit.StartsWith(FakeClaude.FakeCommitPrefix))
+                            {
+                                <a href="@url" target="_blank" rel="noopener"><code>@ClaudeText.ShortCommit(commit)</code></a>
+                            }
+                            else
+                            {
+                                <code>@ClaudeText.ShortCommit(commit)</code>
+                            }
+                        }
+                    </td>
+                    <td>
+                        @if (r.Outcome == RoundOutcome.Delivered)
+                        {
+                            <span class="label @ClaudeText.TestsLabelClass(r.Tests)" title="@r.TestSummary">@ClaudeText.Tests(r.Tests)</span>
+                        }
+                    </td>
+                    <td>
+                        @foreach (var link in r.Links)
+                        {
+                            <a href="@link" target="_blank" rel="noopener">Prova</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using Chalmers.ILL.ClaudeIntegration;
+using Claudeborgen;
 using Chalmers.ILL.Configuration;
 using Chalmers.ILL.Connections;
 using Chalmers.ILL.Mail;
@@ -78,7 +78,7 @@ namespace Chalmers.ILL.Isolated
                 }
             }
 
-            VerifyClaudeIntegration(services, config);
+            VerifyClaudeborgen(services, config);
 
             if (config.Isolated)
             {
@@ -98,31 +98,36 @@ namespace Chalmers.ILL.Isolated
             }
         }
 
-        // Claudeborgen: the real channel (agent API to real Claude) must never be open on the
-        // isolated fast test server, and FakeClaude must never run anywhere else - see
-        // claudeborgen-DESIGN.md, "Kanalen och testservern" / "Fejkad Claude". Not a seam interface
-        // like the ones above (FakeClaude lives with the integration, not in this namespace), so
-        // checked on its own.
-        private static void VerifyClaudeIntegration(IServiceProvider services, IChillinConfiguration config)
+        // Claudeborgen: the real channel (agent API to a real runner) must never be open on the
+        // isolated fast test server, and the fakes must never run anywhere else - see
+        // claudeborgen/DESIGN.md, "Kanalen och testservern" / "Fejkad Claude". Not a seam interface
+        // like the ones above (the fakes live in the Claudeborgen package, not in this namespace),
+        // so checked on its own.
+        private static void VerifyClaudeborgen(IServiceProvider services, IChillinConfiguration config)
         {
-            var settings = services.GetService<ClaudeIntegrationSettings>();
+            var settings = services.GetService<ClaudeborgenSettings>();
             if (settings == null)
                 return;
 
-            var fakeRegistered = services.GetServices<IHostedService>().OfType<FakeClaude>().Any();
+            var inAppFakeRunning = services.GetServices<IHostedService>().OfType<FakeClaude>().Any();
 
-            if (config.Isolated && (settings.Mode != ClaudeIntegrationMode.Fake || !fakeRegistered))
+            if (config.Isolated && !settings.IsFake)
             {
                 throw new InvalidOperationException(
-                    $"Isolerat läge är påslaget men Claude-integrationen är i läge {settings.Mode} " +
-                    (fakeRegistered ? "" : "utan FakeClaude ") +
-                    "- agent-API:t mot riktiga Claude får aldrig vara öppet på den isolerade testservern.");
+                    $"Isolerat läge är påslaget men Claudeborgen är i läge {settings.Mode} - agent-API:t mot en " +
+                    "riktig runner får aldrig vara öppet på den isolerade testservern.");
             }
 
-            if (!config.Isolated && (settings.Mode == ClaudeIntegrationMode.Fake || fakeRegistered))
+            if (!config.Isolated && settings.IsFake)
             {
                 throw new InvalidOperationException(
-                    "Isolerat läge är avstängt men Claude-integrationen använder FakeClaude - den ska bara köra i isolerat läge.");
+                    $"Isolerat läge är avstängt men Claudeborgen är i fejkläget {settings.Mode} - fejkerna ska bara köra i isolerat läge.");
+            }
+
+            if (inAppFakeRunning != (settings.Mode == ClaudeborgenMode.InAppFake))
+            {
+                throw new InvalidOperationException(
+                    $"Claudeborgen är i läge {settings.Mode} men FakeClaude {(inAppFakeRunning ? "körs" : "körs inte")} i appen.");
             }
         }
 

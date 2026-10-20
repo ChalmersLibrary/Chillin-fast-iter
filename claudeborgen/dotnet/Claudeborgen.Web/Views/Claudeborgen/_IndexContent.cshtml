@@ -1,0 +1,31 @@
+@model ClaudePageModel
+@* The live part of the start page's Claude section. Finished conversations show up in the
+   changelog right below, so only the open ones are listed here. *@
+@await Html.PartialAsync("~/Views/Claudeborgen/_StatusPanel.cshtml", Model)
+
+@{
+    var open = Model.Conversations.Where(c => c.IsOpen).OrderByDescending(c => c.LastActivityAt).ToList();
+}
+
+<h4>Pågående samtal</h4>
+@if (open.Count == 0)
+{
+    <p class="text-muted">Inga pågående samtal.</p>
+}
+else
+{
+    <div class="list-group" data-testid="claude-open-conversations">
+        @foreach (var c in open)
+        {
+            <a class="list-group-item" href="/Claude/Conversation/@c.Id">
+                <span class="label @ClaudeText.StateLabelClass(c.State)">@ClaudeText.State(c.State)</span>
+                @if (c.NeedsIt)
+                {
+                    <span class="label label-danger">Behöver IT</span>
+                }
+                <strong>#@c.Id @c.Title</strong>
+                <span class="text-muted pull-right">@ClaudeText.Time(c.LastActivityAt)</span>
+            </a>
+        }
+    </div>
+}

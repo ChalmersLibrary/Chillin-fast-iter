@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Claudeborgen's .NET app side (see claudeborgen/DESIGN.md): conversations, storage, the agent
+       API the runner talks to (claudeborgen/PROTOCOL.md), FakeClaude, and the partial views a host
+       app renders. Deliberately no reference to any host app - the compiler keeps the boundary, and
+       extracting it into its own NuGet package is a matter of moving this directory. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Claudeborgen</RootNamespace>
+    <AssemblyName>Claudeborgen.Web</AssemblyName>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <Nullable>disable</Nullable>
+    <PackageId>Claudeborgen.Web</PackageId>
+    <Description>Claudeborgen: the object owner drives development of their app in conversations with Claude.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Claudeborgen.Tests" />
+  </ItemGroup>
+
+</Project>

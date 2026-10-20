@@ -23,6 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Claudeborgen's app side (claudeborgen/DESIGN.md) - a project reference while it lives in
+         this repo, a NuGet package once it's broken out. -->
+    <ProjectReference Include="..\claudeborgen\dotnet\Claudeborgen.Web\Claudeborgen.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Latest within the 6.x line (fas 8) - NEST's major version is pinned to the Elasticsearch
          server's major version, so this stays compatible with whatever 6.x server is in drift
          without needing to know the exact minor. A jump to a newer major (NEST 7/8, or
