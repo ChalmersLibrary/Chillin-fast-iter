@@ -4,10 +4,11 @@ Claudeborgen ger objektägaren makt att driva utvecklingen av sin tjänst tillsa
 med snabb iteration och synliga resultat. IT-specialisten finns nära till hands, kan flika in när
 problem uppstår och beslutar om vidare integrationstest och driftsättning.
 
-Det byggs **först in i Chillin** (Chalmers.ILL). När det fungerar bra bryts det ut till en egen
-komponent som går att knyta in i andra projekt på samma sätt.
+Det byggs **först in i Chillin** (Chalmers.ILL), men allt ligger redan samlat under `claudeborgen/` utan
+beroenden till Chillin, så att det kan brytas ut till ett eget repo och NuGet-paket genom att flytta
+katalogen.
 
-Status: riktningen ändrades 2026-10-19 (se [Historik](#historik)). Den nya varianten är inte byggd än.
+Status: byggt 2026-10-19/20, inte driftsatt. Se [Komma igång](#komma-igång) och [Ordning](#ordning).
 
 ## Fastställda beslut
 
@@ -24,13 +25,14 @@ Avstämda med Lars. Ompröva inte utan ny avstämning.
 | Grenar | `remove-umbraco` ⊂ `remove-dotnet-framework` ⊂ `claudeborgen` → mergas in i **`test`**. Därefter tas övriga grenar bort och allt arbete sker mot `test`. Repot är `ChalmersLibrary/Chillin-fast-iter`; Lars för ändringar vidare till andra repon. | 2026-10-19 |
 | Roller | Rollerna **`ObjektSpecialist`** och **`ObjektSpecialistIT`** i appens rollsystem. Övriga inloggade är läsare; deras önskemål går via objektspecialisten och de kanaler de redan har. | 2026-10-19 |
 | Synlighet | **Ingenting är öppet.** Alla som har inloggning i appen kan se och läsa allt i integrationen; ingen annan ser något. | 2026-10-19 |
-| Lagring | **Filbaserad**, som resten av Chillin: en JSON-fil per samtal under `DataPath/claude/`. Ingen databas (Chillin har ingen sedan fas 7). | 2026-10-19 |
+| Lagring | **Filbaserad**, som resten av Chillin: en JSON-fil per samtal under `DataPath/claudeborgen/conversations/`. Ingen databas (Chillin har ingen sedan fas 7). | 2026-10-19 |
 | Changelog | En uppgift hamnar i changelogen när objektägaren säger **klar**. Chillins changelog är rubriken "Nytt i Chillin" i `Views/ChalmersILLStartPage.cshtml`. Ingen markering för produktion; ändringen syns i produktion när den driftsatts där. | 2026-10-19 |
 | Externa integrationer | **Inga.** Inga Teams-webhooks, ingen mail. Det som behöver uppmärksamhet visas i integrationen själv. | 2026-10-19 |
 | Tester | **Bygget före push, testerna efter.** Röda tester rättas av Claude i en ny commit inom samma samtal. | 2026-10-19 |
 | Grön markering | Runnern flyttar git-taggen `test-green` till den senaste commit som har gröna tester. IT mergar vidare därifrån. | 2026-10-19 |
 | Inloggning | Appens egen inloggning och roller återanvänds. Ingen egen inloggning. | 2026-10-19 |
-| Claude körs | Claude Code i devcontainer på egen maskin. All trafik går **utåt** från devcontainern; appen kontaktar aldrig Claude. | 2026-10-14 |
+| Claude körs | Claude Code i devcontainer på egen maskin, startat av **runnern** (Node, i `screen`). All trafik går **utåt** från devcontainern; appen kontaktar aldrig Claude. `devcontainer exec claude` finns kvar som reserv. | 2026-10-14/20 |
+| Runner | **Node**, alltid, oavsett appens plattform. Appdelen finns per plattform (NuGet för .NET, npm för Node). Kontraktet är `PROTOCOL.md`. Runnern ligger i projektrepot (`claudeborgen/runner/`) men monteras skrivskyddad. | 2026-10-20 |
 | Snabbslinga | Claude pushar direkt till snabbgrenen **`test`** → automatisk driftsättning till isolerad testserver med fejkade integrationer. IT tar det vidare till integrerad test och produktion (Lars mergar `test` vidare till andra repon). | 2026-10-14/16 |
 | Taggningar | En Claude Code-session per tråd (samtal), så att Claude minns tidigare svar. | 2026-10-19 |
 | Status | Claudes status (ledig / jobbar på X + fas / offline) visas tydligt **i integrationen** (startsidan och samtalssidorna), inte på appens övriga sidor. | 2026-10-14/19 |
@@ -92,185 +94,208 @@ Det finns bara en objektägare per projekt, så runnerns "ett samtal i taget" be
 ## Arkitektur
 
 ```
- ┌───────────── Egen maskin ────────────────┐        ┌────────────── Azure ─────────────────────────┐
- │ devcontainer (per projekt)               │        │ Appen på integrerad test (senare produktion) │
- │  ├─ runner ──── HTTPS, utåt ─────────────────────►│  ├─ Claude-integrationen (sidor + agent-API) │
- │  │   └─ claude -p (session per samtal)   │        │  └─ changelog                                │
- │  ├─ projektrepo (/workspace)             │        │                                              │
- │  └─ ssh-agent ── git push ─────► GitHub (test) ──CI──► Isolerad testserver (integrationen AV)    │
- └──────────────────────────────────────────┘        └──────────────────────────────────────────────┘
+ ┌──────────── Egen maskin: devcontainern ─────────────┐        ┌───────────── Azure ──────────────────────┐
+ │ runner (Node, i screen) ─── HTTPS + token, utåt ──────────────►│ Appen på integrerad test (senare prod)   │
+ │   │  hjärtslag, hämta arbete, svara                 │        │  ├─ startsidan: Claude + changelog       │
+ │   ▼                                                 │        │  └─ /api/claude/... (PROTOCOL.md)        │
+ │ claude -p --resume <session>  (bygger i /workspace) │        │                                          │
+ │   │                                                 │        │                                          │
+ │   ▼ commit + push (deploy-nyckel) ─► GitHub: test ──CI──────►│ Snabbtestservern (isolerad, fejkad data) │
+ └─────────────────────────────────────────────────────┘        └──────────────────────────────────────────┘
 ```
 
-### Claude-integrationen i appen
+Allt går **utåt** från devcontainern. Appen anropar aldrig runnern och startar aldrig Claude.
 
-- Startsidan: avsnittet "Claude" direkt ovanför "Nytt i Chillin", med Claudes status, kö,
-  "Behöver IT", pågående samtal och (för objektspecialisten) "Nytt samtal". Ett samtal öppnas på
-  `/Claude/Conversation/{id}`. Inget av det syns på appens övriga sidor.
-- Changelog: samtal som markerats klara visas överst under "Nytt i Chillin" på startsidan
-  (`Views/ChalmersILLStartPage.cshtml`). De handskrivna versionsposterna ligger kvar under dem som historik.
-- Liveuppdatering av status och samtal (SignalR). Chillin kör redan SignalR på en instans, och
-  integrationen ärver samma enkelinstansförutsättning.
-- Agent-API med projektspecifik token som bara ger åtkomst till samtalen, inget annat i appen.
-  Agent-API:t autentiseras med tokenen, inte med inloggningscookien. Det måste därför undantas
-  från det globala `[Authorize]` och från `ViewerReadOnlyFilter` på samma sätt som Chillins
-  befintliga maskin-till-maskin-endpoints.
-- Egen filbaserad lagring: en JSON-fil per samtal under `DataPath/claude/`, med låsning inom
-  processen som `FileOrderItemManager`.
+### Kod
 
-### Agent-API (skiss)
+```
+claudeborgen/                     hela verktyget, utan beroenden till Chillin
+  DESIGN.md                       det här dokumentet
+  PROTOCOL.md                     agent-API:t: kontraktet mellan runnern och appdelen
+  runner/                         runnern (Node, inga beroenden), med tester (node --test)
+  dotnet/Claudeborgen.Web/        appdelen för .NET (Razor Class Library → NuGet-paket)
+  dotnet/Claudeborgen.Tests/      appdelens tester, bl.a. protokolltester mot en minimal värd
+claudeborgen.json                 Chillins inställningar för runnern
+Chalmers.ILL/ClaudeborgenHosting/ Chillins limkod: roller → åtkomst, sidskal, [AllowViewer]-konvention
+```
 
-| Anrop | Syfte |
-|---|---|
-| `POST /api/claude/heartbeat` | `{state, conversationId?, phase?}`. Grunden för statusvisningen. |
-| `GET  /api/claude/work` | Samtal som väntar på Claude, äldst först. |
-| `POST /api/claude/conversations/{id}/claim` | Ta samtalet (→ Claude arbetar). Ett i taget. |
-| `GET  /api/claude/conversations/{id}` | Rubrik, meddelanden, tidigare varv (commits, sessions-id, testresultat). |
-| `POST /api/claude/conversations/{id}/reply` | `{body, commits[], sessionId, costUsd?, durationSeconds?}`, Claudes svar efter ett varv. |
-| `POST /api/claude/conversations/{id}/tests` | `{commit, green, summary}`, testresultatet efter push. |
+Runnern är skriven i Node och körs alltid så, oavsett vad appen är skriven i. Det är bara appdelen
+som finns per plattform: idag .NET, och en npm-version om en Node-app ska använda det. Det som binder
+ihop dem är `PROTOCOL.md`.
 
-Faser i statusen: läser in · implementerar · bygger · pushar · kör tester · rättar.
+### Appdelen (Claudeborgen.Web)
 
-### Runnern
+- **Startsidan:** `Views/Claudeborgen/_StartPageSection.cshtml`, som värden renderar där dess
+  changelog ligger. I Chillin ligger den direkt ovanför "Nytt i Chillin". Den visar Claudes status,
+  kö, "Behöver IT", pågående samtal och (för objektspecialisten) "Nytt samtal". Klara samtal hamnar i
+  changelogen via `_Changelog.cshtml`.
+- **Ett samtal:** `/Claude/Conversation/{id}`. Innehållet är `_ConversationPage.cshtml`, och värden
+  lägger sin layout runt det (`IClaudeborgenHost.ConversationPage`). `/Claude` skickar vidare till
+  startsidan.
+- **Live:** SignalR-hubben `/claudeborgenHub` skickar bara "något ändrades", och
+  `_content/Claudeborgen.Web/claude.js` hämtar om delarna. Sidorna hämtas också om var 15:e sekund,
+  eftersom offline är frånvaron av hjärtslag och inte en händelse som kan skickas ut.
+- **Agent-API:** `/api/claude/...`, se `PROTOCOL.md`. Det använder camelCase-JSON oavsett värdens
+  inställningar.
+- **Lagring:** en JSON-fil per samtal under `<DataPath>/claudeborgen/conversations/`, med ett enda
+  lås i processen. Det förutsätter en instans, precis som Chillin.
+- **Inkoppling i en värd:** `services.AddClaudeborgen(settings)`, en `IClaudeborgenHost` (roller och
+  sidskal), `app.MapClaudeborgen()`, och rendering av startsidesavsnittet där changelogen ligger.
+  Huruvida något registreras som "skrivskyddat" i värdens behörighetsmodell är värdens sak; i Chillin
+  sköts det av `ClaudeborgenAllowViewerConvention`.
 
-Ligger i claudeborgen-repot och körs i devcontainern, i en loop:
+### Runnern (claudeborgen/runner)
 
-1. Hjärtslag var 20:e sekund, även mitt i ett varv.
-2. Tar nästa samtal som väntar på Claude och kör `claude -p`, med `--resume` på samtalets session.
-3. `BUILD_COMMAND`. Om det är rött får Claude rätta det innan push.
-4. Commit och push till `test`. Svar i samtalet.
-5. `TEST_COMMAND`. Gröna tester flyttar `test-green`, röda ger ett rättningsvarv eller en notis till IT.
+En loop i devcontainern (`node claudeborgen/runner/runner.mjs`). Den är medvetet dum och gör det som
+inte får bero på modellen:
 
-Bygg- och testkommandon, budgettak och tidstak per varv står i `projects/<namn>/project.env` på
-claudeborgen-sidan, så att Claude inte kan ändra vad som räknas som grönt.
+1. Hjärtslag var 20:e sekund, även mitt i ett varv, och direkt vid varje fasbyte.
+2. Frågar efter arbete (`GET work`) och tar ett samtal i taget (`claim`).
+3. **Skydd** innan Claude startas. Om något av dem slår till rapporteras varvet som kraschat:
+   - inget nytt meddelande sedan Claudes senaste svar, utom i rättningsvarv
+   - fler än `maxRoundsPerConversationPerHour` varv i samtalet den senaste timmen (standard 8)
+   - dagens budget `maxBudgetUsdPerDay` är förbrukad (standard 50 USD, per process och UTC-dygn)
+4. `git pull --rebase` på grenen. En arbetskatalog som inte är ren rörs inte, och varvet kraschar
+   i stället.
+5. `claude -p --output-format json --dangerously-skip-permissions --max-budget-usd <per varv>`,
+   med `--resume` på samtalets session. Claude får en systemprompt om att inte committa själv och om
+   att svaret läses av objektspecialisten.
+6. Om något ändrats körs `buildCommand`. Om bygget är rött får Claude rätta det i samma session,
+   högst `maxBuildFixAttempts` gånger. Förblir det rött pushas ingenting, ändringarna läggs i
+   `git stash` och varvet rapporteras som kraschat.
+7. Commit `#<id>: <rubrik>`, push till grenen (vid krock: `pull --rebase` och ett nytt försök), och
+   sedan `reply` med commit och länk till snabbtestservern.
+8. `testCommand` körs, resultatet skickas med `tests`, och om det är grönt flyttas `test-green`.
 
-### Devcontainern
+Tidsgränser finns per Claude-anrop (`roundTimeoutMinutes`) och per kommando
+(`commandTimeoutMinutes`). Alla inställningar står i `claudeborgen.json`.
 
-- **Bas:** Claude Code, brandvägg (`init-firewall.sh`) med en grundlista över tillåtna domäner,
-  och en dedikerad ssh-agent per projekt via `initializeCommand`, så att bara projektets
-  deploy-nyckel syns i containern.
-- **Projekttillägg** (`projects/<namn>/`): extra verktyg i imagen (för Chillin .NET SDK och
-  Chromium), extra domäner i brandväggen (för Chillin `api.nuget.org` och appens adress).
-- Värdens claudeborgen-utcheckning monteras **skrivskyddad**. Claude kan inte ändra sin sandlåda
-  eller runnern.
+**Claude får inte ändra sin egen runner eller vad som räknas som grönt.** Därför monteras
+`claudeborgen/runner/` och `claudeborgen.json` skrivskyddade i devcontainern, se
+[Komma igång](#komma-igång). En följd är att runnerns `git pull` misslyckas om någon ändrar de
+filerna på grenen. Sådana ändringar görs från värden, och där körs också `git pull`.
 
 ## Säkerhet
 
-- **Git-behörighet:** deploy-nyckeln får bara skriva till projektrepot. Grenskydd hindrar Claude från
-  att pusha till annat än `test` (och taggen `test-green`).
-- **Testservern saknar riktiga hemligheter helt**, och Claude-integrationen är avstängd där. Den
-  isolerade konfigurationen ska vara säker av sig själv (för Chillin: `IsolationGuard`).
+- **Git-behörighet:** deploy-nyckeln får bara skriva till projektrepot. Grenskydd ska hindra pushar
+  till annat än `test` och taggen `test-green`.
+- **Snabbtestservern saknar riktiga hemligheter**, och den riktiga kanalen (läge `Agent`) kan inte
+  vara öppen där. `IsolationGuard` stoppar uppstarten i så fall. I läge `FakeRunner` tar
+  agent-API:t bara emot en runner som deklarerar fejkläge, och runnern vägrar själv att köra fejk mot
+  `Agent` eller på riktigt mot `FakeRunner`.
 - **Bara fejkad data i snabbslingan**, så att inga riktiga personuppgifter skickas till Claudes API.
-- **Agent-API:t i produktionsappen** är en ny ingång till en app med riktig data. Tokenen ger bara
-  åtkomst till samtalen; appen sparar bara tokenens hash. IT godkänner att den öppnas.
-- **Det objektägaren skriver i samtalen skickas till Claude.** Inga personuppgifter i samtalen.
-- **Sandlådan kan inte ändra sig själv.** Devcontainer-konfigurationen och runnern monteras
-  skrivskyddade och uppdateras bara manuellt efter granskning.
-- **Kostnad:** budgettak per varv (`--max-budget-usd`) och tidstak. Kostnad per varv sparas.
+  Det objektspecialisten skriver i samtalen skickas däremot till Claude, så det får inte innehålla
+  personuppgifter. Det står också vid skrivfälten.
+- **Agent-API:t på integrerad test och i produktion** är en ny ingång till en app med riktig data.
+  Tokenen ger bara åtkomst till samtalen, och appen sparar bara tokenens hash. IT godkänner att den
+  öppnas.
+- **Sandlådan kan inte ändra sig själv:** `.devcontainer`, runnern och `claudeborgen.json` monteras
+  skrivskyddade.
+- **Kostnad:** tak per varv (`--max-budget-usd`), varv per timme och samtal, och per dygn. Kostnaden
+  per varv sparas i samtalet. Taken finns för att en loop annars snabbt blir dyr. Vid ett e2e-test
+  2026-10-20 körde ett tillståndsfel 62 varv (cirka 27 USD) innan det stoppades; skydden ovan
+  infördes då.
 
 ## Fejkad Claude
 
-Syfte: gränssnittet och hela flödet ska gå att prova på snabbtestservern utan riktiga Claude, utan
-kostnad och utan att något pushas.
+Syfte: gränssnittet och flödet ska gå att prova på snabbtestservern utan riktiga Claude, utan
+kostnad och utan att något pushas. Snabbtestservern kör i isolerat läge och väljer fejk med
+`Claudeborgen:IsolatedMode`:
 
-- **Isolerat läge (`Chillin:Isolated=true`)** registrerar en `FakeClaude` i stället för att öppna
-  agent-API:t. Det följer samma mönster som övriga isolerade fejkar i `Bootstrapper.cs`. Utanför
-  isolerat läge går den inte att slå på; `IsolationGuard` stoppar det.
-- `FakeClaude` är en bakgrundstjänst i appen som **spelar runnerns roll** genom samma tjänstelager
-  som agent-API:t använder. Den skickar hjärtslag, tar samtal som väntar på Claude och går igenom
-  faserna med korta fördröjningar (läser in · implementerar · bygger · pushar · kör tester). Sedan
-  svarar den i samtalet med en kort förberedd text, ett fejkat commit-id och en länk.
-- **Styrbar från meddelandet**, så att även felvägarna går att prova:
-  - `[röd]` ger röda tester → ett rättningsvarv → grönt.
-  - `[röd!]` ger tester som förblir röda → samtalet markeras **behöver IT**.
-  - `[krasch]` gör att varvet kraschar.
-  - `[offline]` stoppar hjärtslagen en stund, så att statusen går till offline.
-  - Utan markering blir varvet grönt och lyckat.
-- Fördröjningarna kan konfigureras (standard några sekunder per fas), så att en demo inte tar
-  minuter men statusbytena ändå hinner synas.
-- Det fejkade commit-id:t och länken är tydligt märkta som fejkade i svaret.
+| `IsolatedMode` | Vad som svarar | Testar |
+|---|---|---|
+| `InAppFake` (standard) | `FakeClaude`, en bakgrundstjänst i appen | Gränssnittet och tjänstelagret. Fungerar utan att något annat körs. |
+| `FakeRunner` | Runnern med `--fake`, i devcontainern | Hela kedjan: runner, agent-API, token, hjärtslag över nätet. |
 
-Den fejkade Claude är också testdubbeln för integrationens characterization-tester, så flödet testas
-utan riktiga Claude även i testsviten.
+Båda styrs av markeringar i meddelandet:
+- `[röd]`: röda tester, ett rättningsvarv och sedan grönt.
+- `[röd!]`: testerna förblir röda, och samtalet markeras **behöver IT**.
+- `[krasch]`: varvet kraschar.
+- `[offline]`: hjärtslagen stannar en stund, så att statusen går till offline.
+- Utan markering blir varvet grönt och lyckat.
 
-**Fejkad runner (steg 4).** Fejken i appen testar gränssnittet och tjänstelagret, men inte runnern,
-agent-API:t, tokenen eller hjärtslagen över nätet. När runnern anpassas får den ett fejkläge (`--fake`):
-runnern körs på riktigt, men med en fejkad `claude`, och git-push och bygge fejkas. Snabbtestservern får
-då en inställning som väljer mellan fejken i appen och agent-API:t för en fejkad runner. Fejken i appen
-finns kvar så att flödet går att prova även när ingen runner är igång. Om runnerfejken visar sig räcka
-kan fejken i appen tas bort.
+Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
 
-## Så är det byggt i Chillin
+## Komma igång
 
-- Kod: `Chalmers.ILL/ClaudeIntegration/`. Kärnan (`Model`, `ConversationStore`,
-  `ClaudeIntegrationService`, `FakeClaude`, `ClaudeIntegrationSettings`) är värdoberoende. Limkoden mot
-  Chillin är `Host/ChillinClaudeIntegrationAccess.cs` (rollerna), `ClaudePageModel` (ärver Chillins
-  layoutmodell) och vyerna (Chillins layout). Inkopplingen i Chillin är `Bootstrapper.RegisterClaudeIntegration`,
-  `Program.cs` (SignalR-hubben `/claudeHub`) och två rader i `Views/ChalmersILLStartPage.cshtml`
-  (avsnittet och changelog-posterna).
-- Sidor: avsnittet på startsidan (`Views/_StartPageSection.cshtml`) och `/Claude/Conversation/{id}`;
-  `/Claude` skickar vidare till startsidan. Uppdateras live:
-  `ClaudeHub` skickar bara "något ändrades", och `wwwroot/scripts/claude.js` hämtar om delarna.
-  Dessutom hämtas de om var 15:e sekund, eftersom offline är frånvaron av hjärtslag och inte en händelse.
-- Agent-API: `/api/claude/...` (`ClaudeAgentApiController`), `Authorization: Bearer <token>`. JSON i
-  PascalCase, som resten av Chillin. Därutöver `POST conversations/{id}/crash {Summary}` för kraschade varv.
-- **Rollerna ger ingen skrivrätt till beställningar.** I Chillin skriver bara `Administrator`
-  (`ViewerReadOnlyFilter`); alla andra roller, `ObjektSpecialist` och `ObjektSpecialistIT` inräknade, är
-  läsroller där. Rolländringar slår igenom vid nästa inloggning, eftersom rollerna ligger i
-  inloggningscookien.
-- Konfiguration (`ClaudeIntegration`-sektionen):
+### Prova på snabbtestservern med fejken i appen
+1. Driftsätt grenen till snabbtestservern (isolerat läge). Ingen extra konfiguration behövs, eftersom
+   `InAppFake` är standard.
+2. Ge konton rollerna `ObjektSpecialist` och/eller `ObjektSpecialistIT` i medlemsadministrationen
+   (kommaseparerade, som övriga roller). Logga ut och in igen.
+3. Startsidan visar avsnittet "Claude" ovanför "Nytt i Chillin".
 
-  | Nyckel | Betydelse |
-  |---|---|
-  | `Enabled` | Slår på integrationen utanför isolerat läge (agentläge). Standard `false`. I isolerat läge är den alltid på, med fejkad Claude. |
-  | `AgentTokenSha256` | SHA-256 (hex) av agent-tokenen. Tom = agent-API:t avvisar allt. |
-  | `CommitUrlTemplate` | Länk till en commit, `{0}` = hash. |
-  | `MaxFixAttempts` | Rättningsvarv vid röda tester innan "behöver IT". Standard 2. |
-  | `OfflineAfterSeconds` | Sekunder utan hjärtslag innan Claude visas som offline. Standard 60. |
-  | `FakePhaseDelayMilliseconds` | Fejken: paus per fas. Standard 3000. |
+### Prova hela kedjan på snabbtestservern med fejkrunnern
+1. Skapa en token på värden och räkna ut hashen:
+   ```sh
+   mkdir -p ~/.claudeborgen && chmod 700 ~/.claudeborgen
+   openssl rand -hex 32 > ~/.claudeborgen/token && chmod 600 ~/.claudeborgen/token
+   printf %s "$(cat ~/.claudeborgen/token)" | sha256sum | cut -d' ' -f1
+   ```
+2. App Settings på snabbtestservern: `Claudeborgen__IsolatedMode=FakeRunner` och
+   `Claudeborgen__AgentTokenSha256=<hashen>`.
+3. I devcontainern, med snabbtestserverns adress tillåten i brandväggen:
+   ```sh
+   CLAUDEBORGEN_API_URL=https://<snabbtestservern>/ node claudeborgen/runner/runner.mjs --fake
+   ```
 
-- `IsolationGuard` stoppar uppstarten om isolerat läge kör något annat än fejken, eller om fejken
-  körs utanför isolerat läge.
-- Webbläsarkontroll: `browser-check/claude-integration-check.js`.
+### Riktig drift mot integrerad test
+1. App Settings på integrerad test: `Claudeborgen__Enabled=true` och
+   `Claudeborgen__AgentTokenSha256=<hashen>`. Använd en annan token än snabbtestserverns.
+2. Fyll i `apiUrl` och `testServerUrl` i `claudeborgen.json`.
+3. Ändringar i `.devcontainer/devcontainer.json` på värden:
+   ```jsonc
+   "mounts": [
+     // … befintliga …
+     "source=${localWorkspaceFolder}/claudeborgen/runner,target=/workspace/claudeborgen/runner,type=bind,readonly",
+     "source=${localWorkspaceFolder}/claudeborgen.json,target=/workspace/claudeborgen.json,type=bind,readonly",
+     "source=${localEnv:HOME}/.claudeborgen,target=/home/node/.claudeborgen,type=bind,readonly"
+   ]
+   ```
+   Lägg dessutom till adresserna till integrerad test och snabbtestservern i `init-firewall.sh`.
+   Bygg sedan om containern med `devcontainer up --workspace-folder . --remove-existing-container`.
+4. Grenen `test` måste finnas på `origin`, och arbetskatalogen ska ha den utcheckad och ren.
+5. Starta runnern i `screen`:
+   ```sh
+   devcontainer exec --workspace-folder . node claudeborgen/runner/runner.mjs
+   ```
+   Den loggar till terminalen. Startsidan visar "Claude ledig" inom 20 sekunder.
 
 ## Gränsen mot värdappen
 
-Byggs från början så att utbrytningen blir mekanisk:
-
-- Egen mapp och eget namnområde, t.ex. `Chalmers.ILL/ClaudeIntegration/`.
-- Egen lagring (egen underkatalog i datakatalogen).
-- Inget i appen beror på integrationen, och integrationen beror inte på appens övriga kod. Undantaget
-  är en enda inkoppling: changelog-komponenten på startsidan.
-- Ett litet gränssnitt som värdappen implementerar:
-  - vem som är inloggad och vilken roll den har (objektägare / IT / läsare)
-  - om integrationen är på, och i så fall med riktiga eller fejkade Claude (fejkade på testservern)
-  - datakatalogen och layouten
-
-Inloggning krävs alltid. Det är inte konfigurerbart.
-
-Utbrytning: integrationen blir ett **Razor Class Library** (NuGet-paket) som andra .NET-projekt lägger
-till och kopplar in med gränssnittet ovan.
+- `claudeborgen/` har inga beroenden till Chillin. `Claudeborgen.Web` är ett eget projekt utan
+  referens till Chillin, så kompilatorn håller gränsen.
+- Det enda värden måste tillhandahålla är `IClaudeborgenHost` (vem får vad, och sidskalet runt ett
+  samtal), `ClaudeborgenSettings` (från konfigurationen och värdens isolerat-läge), och rendering av
+  startsidesavsnittet där changelogen ligger.
+- Inloggning krävs alltid. Det är inte konfigurerbart.
+- Utbrytning: flytta `claudeborgen/` till ett eget repo, publicera `Claudeborgen.Web` som NuGet-paket,
+  och byt Chillins projektreferens mot en paketreferens. Runnern kan köras direkt från en utcheckning
+  eller publiceras som npm-paket.
 
 ## Ordning
 
-1. **Devcontainern för Chillin** från claudeborgen (`projects/chillin/`), så att sessionerna körs i den.
-2. **Integrationen i Chillin** (grenen `claudeborgen`): samtal, status, agent-API, changelog,
-   rollerna `ObjektSpecialist`/`ObjektSpecialistIT`, och fejkad Claude på testservern. *Första
-   versionen byggd 2026-10-19, se [Så är det byggt i Chillin](#så-är-det-byggt-i-chillin).*
-3. **Chillin på integrerad test** med integrationen påslagen (Lars).
-4. **Runnern** anpassad till samtal: bygge före push, tester efter, `test-green`, markeringen "behöver IT",
-   och fejkläget `--fake`.
-5. **CI för `test`** till Chillins isolerade testserver (Chillins fas 10).
-6. **Utbrytning** till ett Razor Class Library när arbetssättet har satt sig.
+1. ~~Integrationen i Chillin~~ *(2026-10-19)*
+2. ~~Utbrytning till `claudeborgen/` med `Claudeborgen.Web`, protokoll och runner~~ *(2026-10-20)*
+3. **Snabbtestservern**: grenen driftsatt, prova med fejken i appen och sedan med fejkrunnern (Lars).
+4. **Chillin på integrerad test** med `Claudeborgen__Enabled=true` (Lars).
+5. **Devcontainern**: skrivskyddade monteringar, token och brandvägg (Lars, på värden).
+6. **CI för `test`** till snabbtestservern (Chillins fas 10).
+7. **Övergång**: Chillin utvecklas via samtalen, med `devcontainer exec claude` som reserv.
 
 ## Öppna frågor
 
-- Vilken CI driftsätter snabbgrenen `test` (GitHub Actions?), och hur snabbt kan det gå?
-- Var ska claudeborgens egen kod (devcontainer + runner) bo när repot `claudeborgen-fast-iter` stängs?
-- Budgettak: rimliga nivåer per varv och per månad.
-- Hur många rättningsförsök vid röda tester innan IT får en notis?
-- Ska man kunna pausa (t.ex. under en demo)?
+- Vilken CI driftsätter `test` (GitHub Actions?), och hur snabbt kan det gå?
+- Budgettak: är 5 USD per varv och 50 USD per dygn rimligt?
+- Ska man kunna pausa runnern från appen (t.ex. under en demo)?
+- `.devcontainer` är gitignorerad i Chillin. Ska den versionshanteras nu när allt ska bo i Chillin?
 
 ## Historik
+
+**2026-10-20: utbrutet och runnern byggd.** Allt flyttades till `claudeborgen/` med
+`Claudeborgen.Web` som eget projekt, agent-API:t blev ett kontrakt (`PROTOCOL.md`, camelCase),
+runnern skrevs från grunden i Node, och fejkrunner-läget lades till. Skydd mot loopar och kostnad
+infördes efter ett e2e-test där ett tillståndsfel gav 62 varv i rad.
 
 **2026-10-19: anpassning till Chillin.** Integrationen placeras på Chillins integrerade testserver,
 eftersom produktion fortfarande är Umbraco-versionen och ingen annan instans kan bära den. Lagringen blev

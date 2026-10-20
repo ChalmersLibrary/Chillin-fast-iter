@@ -1,0 +1,10 @@
+{
+  "name": "claudeborgen-runner",
+  "version": "0.1.0",
+  "description": "Claudeborgen runner: fetches conversations from the app's agent API and runs Claude Code on them, one round at a time. See ../PROTOCOL.md.",
+  "type": "module",
+  "private": true,
+  "bin": { "claudeborgen-runner": "runner.mjs" },
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test" }
+}

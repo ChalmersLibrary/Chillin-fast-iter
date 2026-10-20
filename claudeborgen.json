@@ -1,0 +1,13 @@
+{
+  "apiUrl": "https://SÄTT-ADRESSEN-TILL-INTEGRERAD-TEST/",
+  "testServerUrl": "https://SÄTT-ADRESSEN-TILL-SNABBTESTSERVERN/",
+  "branch": "test",
+  "testGreenTag": "test-green",
+  "buildCommand": "dotnet build Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal && dotnet build claudeborgen/dotnet/Claudeborgen.Tests/Claudeborgen.Tests.csproj /p:Configuration=Debug /v:minimal",
+  "testCommand": "dotnet test Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal --no-build && dotnet test claudeborgen/dotnet/Claudeborgen.Tests/Claudeborgen.Tests.csproj /p:Configuration=Debug /v:minimal --no-build && node --test claudeborgen/runner/",
+  "maxBudgetUsdPerRound": 5,
+  "roundTimeoutMinutes": 45,
+  "commandTimeoutMinutes": 20,
+  "maxBuildFixAttempts": 2,
+  "tokenFile": "~/.claudeborgen/token"
+}

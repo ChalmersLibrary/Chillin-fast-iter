@@ -63,6 +63,10 @@ namespace Claudeborgen
         // A round started automatically because the previous round's tests were red, rather than
         // by a human message.
         public bool IsFixRound { get; set; }
+
+        // How many messages the conversation had when the round started - what "a message written
+        // during the round" is measured against (by position, not by clock).
+        public int MessageCountAtStart { get; set; }
     }
 
     public class Conversation

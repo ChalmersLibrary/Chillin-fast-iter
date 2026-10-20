@@ -179,6 +179,38 @@ namespace Claudeborgen.Tests
             Assert.AreEqual(ConversationState.WaitingForClaude, _service.Get(id).State);
         }
 
+        // Regression: a message timestamped "in the future" relative to the server clock (seeded
+        // data, another time zone) made every reply look like it had a newer message waiting, so
+        // the conversation went straight back to Claude - 62 paid rounds in a row. Whether something
+        // was written during a round is now decided by position in the conversation, not by clock.
+        [TestMethod]
+        public void MessageTimestampedAfterTheClaim_DoesNotSendTheConversationBackToClaude()
+        {
+            _now = _now.AddHours(7);
+            var id = _service.Start("Ett", "a", "agneta").Id;
+            _now = _now.AddHours(-7);
+
+            _service.Claim(id);
+            _service.Reply(id, "Klart", new[] { "c1" }, null, "s", null, null);
+
+            Assert.AreEqual(ConversationState.WaitingForOwner, _service.Get(id).State);
+            Assert.AreEqual(0, _service.Work().Count);
+        }
+
+        [TestMethod]
+        public void FixRoundDetection_IsByPosition_NotByClock()
+        {
+            var id = _service.Start("Ett", "a", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Klart", new[] { "c1" }, null, "s", null, null);
+            _now = _now.AddHours(-7); // the next human message gets an "older" timestamp
+            _service.AddMessage(id, "Och en sak till", "agneta");
+
+            var round = _service.Claim(id);
+
+            Assert.IsFalse(round.IsFixRound, "A human message after the last round makes it a normal round, whatever its timestamp.");
+        }
+
         [TestMethod]
         public void Crash_MarksRoundCrashed_AndFlagsNeedsIt()
         {

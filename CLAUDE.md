@@ -54,6 +54,10 @@ edits är förhandsgodkända och inte kräver användarinteraktion. Använd scri
 ett Edit-alternativ (t.ex. ta bort filer, köra byggen/tester), eller när antalet edits skulle bli
 oskäligt stort.
 
+**När du körs av claudeborgen-runnern** (ett samtal från startsidan, se
+[claudeborgen/DESIGN.md](claudeborgen/DESIGN.md)) gäller runnerns regler i stället för stycket nedan:
+committa och pusha inte själv, utan låt runnern göra det. Den bygger före push och kör testerna efter.
+
 Committa och pusha alltid ändringar direkt när en avgränsad uppgift är klar och testerna är gröna
 (se [Testrutiner](#testrutiner)) — utan att fråga om lov varje gång. Detta gäller enbart grenen
 `remove-dotnet-framework`; pusha aldrig till `master` (se [Driftläge](#driftläge)). Skriv commit-

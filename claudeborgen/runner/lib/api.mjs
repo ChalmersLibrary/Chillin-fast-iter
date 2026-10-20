@@ -1,0 +1,36 @@
+// Client for the agent API - ../PROTOCOL.md is the contract.
+export class ApiError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export function createApi({ apiUrl, token, fake = false, fetchImpl = globalThis.fetch }) {
+  const base = new URL("api/claude/", apiUrl);
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  if (fake) headers["X-Claudeborgen-Fake-Runner"] = "true";
+
+  async function call(method, path, body) {
+    const response = await fetchImpl(new URL(path, base), {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await response.text();
+    const json = text ? JSON.parse(text) : null;
+    if (!response.ok) throw new ApiError(response.status, json?.message ?? `HTTP ${response.status}`);
+    return json;
+  }
+
+  return {
+    info: () => call("GET", "info"),
+    heartbeat: (activity, conversationId, phase) => call("POST", "heartbeat", { activity, conversationId, phase }),
+    work: () => call("GET", "work"),
+    conversation: (id) => call("GET", `conversations/${id}`),
+    claim: (id) => call("POST", `conversations/${id}/claim`),
+    reply: (id, reply) => call("POST", `conversations/${id}/reply`, reply),
+    tests: (id, commit, green, summary) => call("POST", `conversations/${id}/tests`, { commit, green, summary }),
+    crash: (id, summary) => call("POST", `conversations/${id}/crash`, { summary }),
+  };
+}

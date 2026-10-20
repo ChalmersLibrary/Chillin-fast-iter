@@ -277,14 +277,17 @@ namespace Claudeborgen
                     throw new ClaudeborgenException($"Claude arbetar redan i samtal {busy.Id}. Ett samtal i taget.");
 
                 var now = _now();
-                var previousRoundStart = conversation.CurrentRound?.StartedAt ?? DateTime.MinValue;
-                var humanMessageSinceLastRound = conversation.Messages.Any(m => m.AuthorKind == MessageAuthorKind.Human && m.At > previousRoundStart);
+                // Counted by position in the conversation, never by timestamp: clocks differ (a
+                // seeded or imported message, a server in another time zone) and a wrong answer
+                // here means paying for rounds nobody asked for.
+                var humanMessageSinceLastRound = HumanMessageAfter(conversation, conversation.CurrentRound?.MessageCountAtStart ?? 0);
 
                 round = new Round
                 {
                     Number = conversation.Rounds.Count + 1,
                     StartedAt = now,
                     IsFixRound = !humanMessageSinceLastRound,
+                    MessageCountAtStart = conversation.Messages.Count,
                 };
                 conversation.Rounds.Add(round);
                 conversation.State = ConversationState.ClaudeWorking;
@@ -320,7 +323,7 @@ namespace Claudeborgen
                     conversation.SessionId = sessionId;
 
                 conversation.Messages.Add(new ConversationMessage { AuthorKind = MessageAuthorKind.Claude, Author = "Claude", Body = body.Trim(), At = now });
-                conversation.State = HumanMessageSinceClaim(conversation) ? ConversationState.WaitingForClaude : ConversationState.WaitingForOwner;
+                conversation.State = HumanMessageAfter(conversation, round.MessageCountAtStart) ? ConversationState.WaitingForClaude : ConversationState.WaitingForOwner;
                 _store.Save(conversation);
             }
 
@@ -417,8 +420,9 @@ namespace Claudeborgen
 
         private bool IsOffline() => _lastHeartbeatAt == null || _now() - _lastHeartbeatAt.Value > _settings.OfflineAfter;
 
-        private static bool HumanMessageSinceClaim(Conversation conversation) =>
-            conversation.ClaimedAt != null && conversation.Messages.Any(m => m.AuthorKind == MessageAuthorKind.Human && m.At > conversation.ClaimedAt.Value);
+        // Was a human message added at or after position `messageCount` in the conversation?
+        private static bool HumanMessageAfter(Conversation conversation, int messageCount) =>
+            conversation.Messages.Skip(messageCount).Any(m => m.AuthorKind == MessageAuthorKind.Human);
 
         private Conversation LoadOrThrow(int id) =>
             _store.Load(id) ?? throw new ClaudeborgenException($"Samtal {id} finns inte.");
