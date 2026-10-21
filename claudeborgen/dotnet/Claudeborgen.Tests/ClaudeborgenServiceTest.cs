@@ -431,6 +431,27 @@ namespace Claudeborgen.Tests
             StringAssert.Contains(File.ReadAllText(Path.Combine(_dataDirectory, "removed.json")), "[]");
         }
 
+        // Regression (seen on the fast test server): conversations done or cancelled with a version
+        // from before removal existed stayed in the store, and were shown linked in the changelog.
+        [TestMethod]
+        public void LeftoversFromBeforeRemovalExisted_AreCleanedUp()
+        {
+            var store = new ConversationStore(_dataDirectory);
+            store.Save(new Conversation { Id = 1, Title = "Gammal klar", State = ConversationState.Done, DoneAt = _now, ChangelogText = "Gammal klar", ChangelogCommit = "fejk-changelog",
+                Messages = { new ConversationMessage { AuthorKind = MessageAuthorKind.Human, Author = "agneta", Body = "hemligt", At = _now } } });
+            store.Save(new Conversation { Id = 2, Title = "Gammal avbruten", State = ConversationState.Cancelled });
+            store.Save(new Conversation { Id = 3, Title = "Klar, inte committad", State = ConversationState.Done, DoneAt = _now, ChangelogText = "Väntar" });
+
+            var view = _service.ChangelogView();
+
+            Assert.IsNull(_service.Get(1));
+            Assert.IsNull(_service.Get(2));
+            Assert.IsNotNull(_service.Get(3), "Not committed yet - still needed.");
+            Assert.IsFalse(view.Single(e => e.ConversationId == 1).Linkable);
+            Assert.IsTrue(view.Single(e => e.ConversationId == 3).Linkable);
+            Assert.IsFalse(File.ReadAllText(Path.Combine(_dataDirectory, "removed.json")).Contains("hemligt"));
+        }
+
         [TestMethod]
         public void ConversationNumbers_AreNeverReused_AfterRemoval()
         {

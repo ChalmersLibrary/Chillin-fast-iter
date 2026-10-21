@@ -241,6 +241,7 @@ namespace Claudeborgen
 
             lock (_lock)
             {
+                RemoveLeftovers();
                 var removed = _store.LoadRemoved();
                 var stillNeeded = removed.Where(r => !(r.SessionsCleaned && (r.Cancelled || inFile.Contains(r.ConversationId)))).ToList();
                 if (stillNeeded.Count != removed.Count)
@@ -273,6 +274,7 @@ namespace Claudeborgen
         {
             lock (_lock)
             {
+                RemoveLeftovers();
                 return _store.LoadAll()
                     .Where(c => c.State == ConversationState.Done && c.ChangelogCommit == null)
                     .OrderBy(c => c.DoneAt)
@@ -364,6 +366,20 @@ namespace Claudeborgen
                     ?? throw new ClaudeborgenException($"Samtal {id} är inte borttaget.");
                 record.SessionsCleaned = true;
                 _store.SaveRemoved(removed);
+            }
+        }
+
+        // Conversations that should already have been removed: done with their changelog entry
+        // committed, or cancelled. Data from before removal existed (2026-10-21) - otherwise they'd
+        // linger, linkable, forever. Caller holds _lock.
+        private void RemoveLeftovers()
+        {
+            foreach (var conversation in _store.LoadAll())
+            {
+                if (conversation.State == ConversationState.Cancelled)
+                    Remove(conversation, cancelled: true);
+                else if (conversation.State == ConversationState.Done && conversation.ChangelogCommit != null)
+                    Remove(conversation, cancelled: false);
             }
         }
 
