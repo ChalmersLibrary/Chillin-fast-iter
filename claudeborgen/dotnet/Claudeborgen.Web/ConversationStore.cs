@@ -27,6 +27,24 @@ namespace Claudeborgen
             _conversationsDirectory = Path.Combine(dataDirectory, "conversations");
             _nextIdPath = Path.Combine(dataDirectory, "next-id");
             _removedPath = Path.Combine(dataDirectory, "removed.json");
+            _pausePath = Path.Combine(dataDirectory, "development-paused.json");
+        }
+
+        private readonly string _pausePath;
+
+        public DevelopmentPause LoadPause() =>
+            File.Exists(_pausePath) ? JsonSerializer.Deserialize<DevelopmentPause>(File.ReadAllText(_pausePath), JsonOptions) : null;
+
+        public void SavePause(DevelopmentPause pause)
+        {
+            if (pause == null)
+            {
+                if (File.Exists(_pausePath))
+                    File.Delete(_pausePath);
+                return;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(_pausePath));
+            File.WriteAllText(_pausePath, JsonSerializer.Serialize(pause, JsonOptions));
         }
 
         public List<Conversation> LoadAll()

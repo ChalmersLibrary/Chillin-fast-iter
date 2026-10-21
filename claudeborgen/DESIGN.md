@@ -212,6 +212,22 @@ måste känna till commiten, antingen genom att bygga i repot eller via en av va
 Fejken i appen låtsas att driftsättningen tar `FakeDeployDelayMilliseconds` (standard 8 s), och
 fejkrunnern rapporterar ändringen som ute direkt.
 
+### Pausa utvecklingen
+
+ObjektSpecialistIT kan slå av utvecklingen en stund med knappen **"Pausa utvecklingen"** i
+statuspanelen, till exempel när någon behöver arbeta i grenen för hand utan risk för
+mergekonflikter.
+
+- **Det styrs i appen**, inte i runnern, och kan därför inte missas: medan utvecklingen är pausad
+  lämnar appen inte ut något som pushar till git. Det gäller arbetsvarv (`GET work?kind=task` är tom
+  och `claim` ger `409`), changelog-commitar och borttagning av avbrutna arbeten. Ett varv som redan
+  pågår avslutas först, eftersom det inte går att avbryta mitt i på ett säkert sätt.
+- **Idéchatten fungerar som vanligt**, eftersom idéer inte rör git. Meddelanden och nya arbeten går
+  att skriva och väntar i kön.
+- **Alla ser det:** en gul banderoll säger vem som pausade och sedan när. Bara ObjektSpecialistIT
+  har knappen **"Återuppta utvecklingen"**, och den väcker runnern direkt.
+- Pausen sparas i datakatalogen (`development-paused.json`) och klarar en omstart av appen.
+
 ### Avbryta ett arbete
 
 Det finns en knapp: **"Avbryt och ta bort arbete"**. Allt arbetet har ändrat ska bort, eftersom

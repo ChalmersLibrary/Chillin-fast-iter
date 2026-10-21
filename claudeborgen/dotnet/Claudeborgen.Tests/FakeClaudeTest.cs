@@ -132,6 +132,19 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task PausedDevelopment_TheFakeBuildsNothing_ButAnswersIdeas()
+        {
+            var task = _service.Start("Arbete", "Gör något", "agneta").Id;
+            var idea = _service.StartIdea("En idé", "agneta").Id;
+            _service.PauseDevelopment("ivar");
+
+            await RunAsync(3);
+
+            Assert.AreEqual(ConversationState.WaitingForClaude, _service.Get(task).State);
+            Assert.AreEqual(ConversationState.WaitingForOwner, _service.Get(idea).State);
+        }
+
+        [TestMethod]
         public async Task CancelledWork_IsFakeRevertedAndRemoved()
         {
             var id = _service.Start("Ett", "Gör något", "agneta").Id;

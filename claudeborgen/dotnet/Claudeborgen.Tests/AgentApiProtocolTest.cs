@@ -303,6 +303,25 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task PausedDevelopment_NoTaskWork_AndResumingWakesALongPoll()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+            _service.Start("Arbete", "a", "agneta");
+            _service.PauseDevelopment("ivar");
+
+            Assert.AreEqual(0, (await JsonAsync(await _client.GetAsync("/api/claude/work?kind=task"))).GetArrayLength());
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var request = _client.GetAsync("/api/claude/work?kind=task&wait=20");
+            await Task.Delay(300);
+            _service.ResumeDevelopment();
+            var work = await JsonAsync(await request);
+
+            Assert.AreEqual(1, work.GetArrayLength());
+            Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(5), "Woken by resuming, not by the timeout.");
+        }
+
+        [TestMethod]
         public async Task Deployments_PendingThenDeployed()
         {
             await StartAsync(ClaudeborgenMode.Agent);

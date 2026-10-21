@@ -133,6 +133,27 @@ namespace Claudeborgen
             }, () => Redirect(IdeaUrl(id)));
         }
 
+        // DESIGN.md, "Pausa utvecklingen" - ObjektSpecialistIT only.
+        [HttpPost("PauseDevelopment")]
+        [ValidateAntiForgeryToken]
+        public IActionResult PauseDevelopment()
+        {
+            if (IsOff) return NotFound();
+            if (!Access.IsIt) return Forbid();
+            _service.PauseDevelopment(Author);
+            return Redirect("/");
+        }
+
+        [HttpPost("ResumeDevelopment")]
+        [ValidateAntiForgeryToken]
+        public IActionResult ResumeDevelopment()
+        {
+            if (IsOff) return NotFound();
+            if (!Access.IsIt) return Forbid();
+            _service.ResumeDevelopment();
+            return Redirect("/");
+        }
+
         public static string IdeaUrl(int id) => $"/?idea={id}#claude-idea";
 
         // Ideas live on the start page, tasks on their own page.

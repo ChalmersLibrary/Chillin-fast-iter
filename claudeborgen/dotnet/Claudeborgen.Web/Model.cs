@@ -167,6 +167,14 @@ namespace Claudeborgen
         public bool SessionsCleaned { get; set; }
     }
 
+    // ObjektSpecialistIT has switched development off for a while (DESIGN.md, "Pausa utvecklingen"),
+    // e.g. to work on the branch by hand without merge conflicts.
+    public class DevelopmentPause
+    {
+        public string PausedBy { get; set; }
+        public DateTime PausedAt { get; set; }
+    }
+
     public class ClaudeStatus
     {
         public ClaudeActivity Activity { get; set; }
@@ -178,5 +186,8 @@ namespace Claudeborgen
 
         // Paused only: when the runner tries again (null = it didn't say).
         public DateTime? PausedUntil { get; set; }
+
+        // Development switched off by IT - nothing that pushes to git is handed out.
+        public DevelopmentPause DevelopmentPause { get; set; }
     }
 }

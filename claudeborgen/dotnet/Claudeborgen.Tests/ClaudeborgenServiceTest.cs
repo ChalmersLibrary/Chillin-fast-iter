@@ -545,6 +545,40 @@ namespace Claudeborgen.Tests
             Assert.ThrowsException<ClaudeborgenException>(() => _service.MarkChangelogCommitted(id, "c0ffee"));
         }
 
+        // DESIGN.md, "Pausa utvecklingen"
+        [TestMethod]
+        public void PausedDevelopment_HandsOutNothingThatPushes_IdeasGoOn()
+        {
+            var task = _service.Start("Arbete", "a", "agneta").Id;
+            var done = StartAndDeliver(commit: "c1");
+            _service.MarkDone(done, "agneta", "Klar sak");
+            var cancelled = StartAndDeliver(commit: "c2");
+            _service.Cancel(cancelled, "agneta");
+            var idea = _service.StartIdea("En idé", "agneta").Id;
+
+            _service.PauseDevelopment("ivar");
+
+            Assert.AreEqual("ivar", _service.GetStatus().DevelopmentPause.PausedBy);
+            Assert.AreEqual(0, _service.Work(ConversationKind.Task).Count);
+            Assert.ThrowsException<ClaudeborgenException>(() => _service.Claim(task));
+            Assert.AreEqual(0, _service.PendingChangelog().Count, "No changelog commits.");
+            Assert.AreEqual(0, _service.PendingReverts().Count, "No reverts.");
+            Assert.AreEqual(idea, _service.Work(ConversationKind.Idea).Single().Id, "Ideas don't touch git.");
+
+            _service.AddMessage(task, "Köas medan det är pausat", "agneta");
+            Assert.AreEqual(ConversationState.WaitingForClaude, _service.Get(task).State);
+
+            var reopened = NewService();
+            Assert.IsNotNull(reopened.DevelopmentPause(), "Survives an app restart.");
+
+            _service.ResumeDevelopment();
+
+            Assert.IsNull(_service.GetStatus().DevelopmentPause);
+            Assert.AreEqual(task, _service.Work(ConversationKind.Task).Single().Id);
+            Assert.AreEqual(1, _service.PendingChangelog().Count);
+            Assert.AreEqual(1, _service.PendingReverts().Count);
+        }
+
         // DESIGN.md, "Avbryta ett arbete"
         [TestMethod]
         public void CancellingWorkThatPushed_RevertsFirst_ThenRemoves()

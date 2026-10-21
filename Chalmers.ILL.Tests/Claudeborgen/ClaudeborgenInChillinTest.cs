@@ -414,6 +414,31 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             }
         }
 
+        // DESIGN.md, "Pausa utvecklingen": IT's switch; everyone sees that it's off.
+        [TestMethod]
+        public async Task ItCanPauseAndResumeDevelopment_OthersOnlySeeIt()
+        {
+            using var factory = CreateFactory();
+            using var owner = await LoginAsync(factory, "agneta");
+            using var it = await LoginAsync(factory, "ivar");
+
+            Assert.IsFalse((await GetHtmlAsync(owner, "/")).Contains("claude-pause-development"), "Only IT gets the switch.");
+            var refused = await PostFormAsync(owner, "/", "/Claude/PauseDevelopment", new Dictionary<string, string>());
+            StringAssert.Contains(refused.Headers.Location?.ToString() ?? "", "AccessDenied");
+
+            StringAssert.Contains(await GetHtmlAsync(it, "/"), "claude-pause-development");
+            var paused = await PostFormAsync(it, "/", "/Claude/PauseDevelopment", new Dictionary<string, string>());
+            Assert.AreEqual("/", paused.Headers.Location.ToString());
+
+            var ownerView = await GetHtmlAsync(owner, "/");
+            StringAssert.Contains(ownerView, "Utvecklingen är pausad");
+            StringAssert.Contains(ownerView, "av ivar");
+            Assert.IsFalse(ownerView.Contains("claude-resume-development"));
+
+            await PostFormAsync(it, "/", "/Claude/ResumeDevelopment", new Dictionary<string, string>());
+            Assert.IsFalse((await GetHtmlAsync(owner, "/")).Contains("Utvecklingen är pausad"));
+        }
+
         // "Avbryt och ta bort arbete": what the work pushed is reverted, then it's removed - on the
         // fast test server the fake does both.
         [TestMethod]

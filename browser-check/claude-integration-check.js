@@ -153,6 +153,19 @@ async function waitForState(page, state, timeoutMs) {
     if (await page.$("[data-testid=claude-start-form]")) problem("IT got the start form.");
     await shoot(page, "06-it-attention.png");
 
+    // IT switches development off (e.g. to work on the branch by hand) and back on.
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
+      page.click("[data-testid=claude-pause-development]"),
+    ]);
+    if (!(await page.$("[data-testid=claude-development-paused]"))) problem("No pause banner after pausing.");
+    await shoot(page, "06b-development-paused.png");
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
+      page.click("[data-testid=claude-resume-development]"),
+    ]);
+    if (await page.$("[data-testid=claude-development-paused]")) problem("Pause banner still there after resuming.");
+
     await page.goto(baseUrl + "/Claude/Conversation/" + crashId, { waitUntil: "load", timeout: NAV_TIMEOUT });
     if (!(await page.$("[data-testid=claude-reply-form]"))) problem("IT has no reply form.");
     if (await page.$("[data-testid=claude-done-form]")) problem("IT got the done form.");

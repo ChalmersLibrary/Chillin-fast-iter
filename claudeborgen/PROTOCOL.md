@@ -207,6 +207,13 @@ efter datum.
 `conversationId` finns bara på poster som runnern har skrivit. Appen använder den för att se vilka
 klara samtal som redan finns i den driftsatta filen.
 
+## Pausad utveckling
+
+När ObjektSpecialistIT har pausat utvecklingen lämnar appen inte ut något som pushar till git:
+`GET work?kind=task`, `GET changelog/pending` och `GET reverts/pending` är tomma, och `claim` på ett
+arbete ger `409`. Idéer lämnas ut som vanligt. Runnern behöver alltså inte känna till pausen. När
+utvecklingen återupptas väcks en väntande long poll direkt.
+
 ## Ett varv, sett från runnern
 
 ```

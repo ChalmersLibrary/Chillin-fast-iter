@@ -11,6 +11,31 @@
         _ => "panel-default"
     };
 }
+@* DESIGN.md, "Pausa utvecklingen": shown to everyone; the switch is ObjektSpecialistIT's. *@
+@if (status.DevelopmentPause != null)
+{
+    <div class="alert alert-warning" data-testid="claude-development-paused">
+        @if (Model.Access.IsIt)
+        {
+            <form method="post" action="/Claude/ResumeDevelopment" class="pull-right" style="margin-left: 12px;">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-default btn-sm" data-testid="claude-resume-development">Återuppta utvecklingen</button>
+            </form>
+        }
+        <strong>Utvecklingen är pausad</strong> av @status.DevelopmentPause.PausedBy sedan @ClaudeText.Time(status.DevelopmentPause.PausedAt).
+        Claude bygger, pushar och tar inte bort något förrän den återupptas@(status.Activity == ClaudeActivity.Working ? " – varvet som pågår nu avslutas först" : "").
+        Meddelanden går att skriva och väntar i kön, och idéchatten fungerar som vanligt.
+    </div>
+}
+else if (Model.Access.IsIt)
+{
+    <form method="post" action="/Claude/PauseDevelopment" class="text-right" style="margin-bottom: 8px;"
+          onsubmit="return confirm('Pausa utvecklingen? Claude bygger och pushar ingenting förrän du återupptar den.');">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-default btn-xs" data-testid="claude-pause-development" title="T.ex. när någon behöver arbeta i grenen för hand, så att det inte blir mergekonflikter.">Pausa utvecklingen</button>
+    </form>
+}
+
 <div class="panel @panelClass" data-testid="claude-status" data-activity="@status.Activity">
     <div class="panel-heading">
         <strong>

@@ -253,6 +253,7 @@ namespace Claudeborgen
         {
             lock (_lock)
             {
+                if (_store.LoadPause() != null) return new List<(int, string, List<string>)>();
                 return _store.LoadAll()
                     .Where(c => c.State == ConversationState.Reverting && !c.NeedsIt)
                     .Select(c => (c.Id, c.Title, CommitsOf(c)))
@@ -326,6 +327,7 @@ namespace Claudeborgen
                 var conversations = _store.LoadAll();
                 var status = new ClaudeStatus
                 {
+                    DevelopmentPause = _store.LoadPause(),
                     LastHeartbeatAt = _lastHeartbeatAt,
                     QueueLength = conversations.Count(c => c.State == ConversationState.WaitingForClaude),
                 };
@@ -425,6 +427,7 @@ namespace Claudeborgen
             lock (_lock)
             {
                 RemoveLeftovers();
+                if (_store.LoadPause() != null) return new List<Conversation>();
                 return _store.LoadAll()
                     .Where(c => c.State == ConversationState.Done && c.ChangelogCommit == null)
                     .OrderBy(c => c.DoneAt)
@@ -606,7 +609,12 @@ namespace Claudeborgen
         {
             lock (_lock)
             {
-                var conversations = _store.LoadAll().Where(c => kind == null || c.Kind == kind).ToList();
+                // Paused development: no task work is handed out (ideas don't touch git, they go on).
+                var paused = _store.LoadPause() != null;
+                var conversations = _store.LoadAll()
+                    .Where(c => kind == null || c.Kind == kind)
+                    .Where(c => !(paused && c.Kind == ConversationKind.Task))
+                    .ToList();
                 return conversations.Where(c => c.State == ConversationState.ClaudeWorking)
                     .Concat(conversations.Where(c => c.State == ConversationState.WaitingForClaude).OrderBy(c => c.LastActivityAt))
                     .ToList();
@@ -624,6 +632,8 @@ namespace Claudeborgen
 
                 if (conversation.State != ConversationState.WaitingForClaude)
                     throw new ClaudeborgenException("Samtalet väntar inte på Claude.");
+                if (conversation.Kind == ConversationKind.Task && _store.LoadPause() != null)
+                    throw new ClaudeborgenException("Utvecklingen är pausad.");
 
                 // One at a time per kind: an idea reply (read-only) may run alongside a task round.
                 var busy = _store.LoadAll().FirstOrDefault(c => c.State == ConversationState.ClaudeWorking && c.Kind == conversation.Kind);
@@ -806,10 +816,46 @@ namespace Claudeborgen
         private Conversation LoadOrThrow(int id) =>
             _store.Load(id) ?? throw new ClaudeborgenException($"Samtal {id} finns inte.");
 
+        // DESIGN.md, "Pausa utvecklingen": ObjektSpecialistIT switches development off, e.g. to work
+        // on the branch by hand. Nothing that pushes to git is handed out until it's switched back
+        // on; a round already running finishes. Ideas go on - they don't touch git.
+        public void PauseDevelopment(string by)
+        {
+            lock (_lock)
+            {
+                if (_store.LoadPause() == null)
+                    _store.SavePause(new DevelopmentPause { PausedBy = by, PausedAt = _now() });
+            }
+            _broadcaster?.StatusChanged();
+            Signal();
+        }
+
+        public void ResumeDevelopment()
+        {
+            lock (_lock)
+            {
+                _store.SavePause(null);
+            }
+            _broadcaster?.StatusChanged();
+            Signal(); // wake a long-polling runner: the queue may have work again
+        }
+
+        public DevelopmentPause DevelopmentPause()
+        {
+            lock (_lock)
+            {
+                return _store.LoadPause();
+            }
+        }
+
         private void Changed(int id)
         {
             _broadcaster?.ConversationChanged(id);
+            Signal();
+        }
 
+        private void Signal()
+        {
             TaskCompletionSource signalled;
             lock (_signalLock)
             {
