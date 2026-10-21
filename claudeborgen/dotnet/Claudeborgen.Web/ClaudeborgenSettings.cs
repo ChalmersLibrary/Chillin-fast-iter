@@ -42,6 +42,21 @@ namespace Claudeborgen
         // file the runner's claudeborgen.json "changelogFile" points at.
         public string ChangelogPath { get; set; }
 
+        // claudeborgen-version.txt next to the app (written at build by build/Claudeborgen.Web.targets):
+        // the commit this deployment was built from, served at /claudeborgen/version.
+        public string VersionFilePath { get; set; }
+
+        // How long FakeClaude pretends deployment takes after a round is delivered.
+        public TimeSpan FakeDeployDelay { get; set; } = TimeSpan.FromSeconds(8);
+
+        public string DeployedCommit()
+        {
+            if (string.IsNullOrEmpty(VersionFilePath) || !File.Exists(VersionFilePath))
+                return null;
+            var commit = File.ReadAllText(VersionFilePath).Trim();
+            return commit.Length == 0 ? null : commit;
+        }
+
         // Red-test fix rounds Claude gets before the conversation is flagged "behöver IT".
         public int MaxFixAttempts { get; set; } = 2;
 
@@ -82,6 +97,8 @@ namespace Claudeborgen
                 settings.OfflineAfter = TimeSpan.FromSeconds(offlineAfterSeconds);
             if (int.TryParse(section["FakePhaseDelayMilliseconds"], out var fakePhaseDelayMs))
                 settings.FakePhaseDelay = TimeSpan.FromMilliseconds(fakePhaseDelayMs);
+            if (int.TryParse(section["FakeDeployDelayMilliseconds"], out var fakeDeployDelayMs))
+                settings.FakeDeployDelay = TimeSpan.FromMilliseconds(fakeDeployDelayMs);
 
             return settings;
         }

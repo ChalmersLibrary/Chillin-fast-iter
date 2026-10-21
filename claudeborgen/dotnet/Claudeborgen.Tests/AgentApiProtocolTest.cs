@@ -44,7 +44,7 @@ namespace Claudeborgen.Tests
         private async Task StartAsync(ClaudeborgenMode mode, bool sendToken = true, bool declareFake = false)
         {
             _dataDirectory = Path.Combine(Path.GetTempPath(), "claudeborgen-protocol-" + Guid.NewGuid());
-            var settings = new ClaudeborgenSettings { Mode = mode, DataDirectory = _dataDirectory, AgentTokenSha256 = TokenHash, MaxFixAttempts = 2 };
+            var settings = new ClaudeborgenSettings { Mode = mode, DataDirectory = _dataDirectory, AgentTokenSha256 = TokenHash, MaxFixAttempts = 2, VersionFilePath = Path.Combine(_dataDirectory, "claudeborgen-version.txt") };
 
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.UseTestServer();
@@ -213,6 +213,44 @@ namespace Claudeborgen.Tests
 
             Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{id}/cleaned")).StatusCode);
             Assert.AreEqual(0, (await JsonAsync(await _client.GetAsync("/api/claude/cleanup"))).GetArrayLength());
+        }
+
+        [TestMethod]
+        public async Task Deployments_PendingThenDeployed()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+            var id = _service.Start("Ett", "a", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Klart", new[] { "c1" }, null, "s", null, null);
+
+            var pending = await JsonAsync(await _client.GetAsync("/api/claude/deployments/pending"));
+            Assert.AreEqual(id, pending[0].GetProperty("conversationId").GetInt32());
+            Assert.AreEqual(1, pending[0].GetProperty("round").GetInt32());
+            Assert.AreEqual("c1", pending[0].GetProperty("commit").GetString());
+
+            Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{id}/rounds/1/deployed")).StatusCode);
+            Assert.AreEqual(0, (await JsonAsync(await _client.GetAsync("/api/claude/deployments/pending"))).GetArrayLength());
+        }
+
+        [TestMethod]
+        public async Task Version_IsOpenWithoutToken_AndReportsTheBuiltCommit()
+        {
+            await StartAsync(ClaudeborgenMode.InAppFake, sendToken: false);
+            Directory.CreateDirectory(_dataDirectory);
+
+            var unknown = await JsonAsync(await _client.GetAsync("/claudeborgen/version"));
+            Assert.AreEqual(JsonValueKind.Null, unknown.GetProperty("commit").ValueKind, "No version file: commit unknown.");
+
+            File.WriteAllText(Path.Combine(_dataDirectory, "claudeborgen-version.txt"), "bd9e6696\n");
+            var known = await JsonAsync(await _client.GetAsync("/claudeborgen/version"));
+            Assert.AreEqual("bd9e6696", known.GetProperty("commit").GetString());
+        }
+
+        [TestMethod]
+        public async Task Version_IsNotThereWhenClaudeborgenIsOff()
+        {
+            await StartAsync(ClaudeborgenMode.Off, sendToken: false);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await _client.GetAsync("/claudeborgen/version")).StatusCode);
         }
 
         [TestMethod]

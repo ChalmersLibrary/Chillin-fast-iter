@@ -17,6 +17,7 @@ import { loadConfig } from "./lib/config.mjs";
 import { createFakes } from "./lib/fake.mjs";
 import { Heartbeat } from "./lib/heartbeat.mjs";
 import { commitChangelog, createGuards, runRound } from "./lib/round.mjs";
+import { checkDeployments, fetchDeployedCommit, versionUrl } from "./lib/deployments.mjs";
 import { claudeConfigDir, cleanupSessions } from "./lib/sessions.mjs";
 import { createWorkspace } from "./lib/workspace.mjs";
 
@@ -80,6 +81,10 @@ export async function main(argv = process.argv.slice(2)) {
     workspace = createWorkspace({ cwd: config.projectRoot, ...config });
   }
 
+  const deployedUrl = versionUrl(config);
+  const getDeployedCommit = values.fake ? async () => "fejk" : async () => fetchDeployedCommit(deployedUrl);
+  if (!values.fake && !deployedUrl) log("Ingen testServerUrl i claudeborgen.json - runnern kan inte se när ändringar är ute.");
+
   await heartbeat.start();
   const shutdown = () => { heartbeat.stop(); process.exit(0); };
   process.on("SIGINT", shutdown);
@@ -88,6 +93,7 @@ export async function main(argv = process.argv.slice(2)) {
   for (;;) {
     await commitChangelog({ api, heartbeat, workspace, log });
     await cleanupSessions({ api, configDir: claudeConfigDir(), fake: values.fake, log });
+    if (values.fake || deployedUrl) await checkDeployments({ api, workspace, getDeployedCommit, log });
 
     let work = [];
     try {

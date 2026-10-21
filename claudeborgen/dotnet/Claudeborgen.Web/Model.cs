@@ -74,6 +74,10 @@ namespace Claudeborgen
         // The round ended with Claude asking the owner something.
         public bool AskedQuestion { get; set; }
 
+        // When the runner saw this round's commit live on the fast test server (DESIGN.md,
+        // "Driftsatt"). Null while it's still on its way - and for rounds without a commit.
+        public DateTime? DeployedAt { get; set; }
+
         // How many messages the conversation had when the round started - what "a message written
         // during the round" is measured against (by position, not by clock).
         public int MessageCountAtStart { get; set; }

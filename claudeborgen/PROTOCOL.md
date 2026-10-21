@@ -138,6 +138,24 @@ Changelog-posten är committad.
 ```
 `409` om samtalet inte är klart.
 
+### `GET deployments/pending` → `200`
+Levererade varv med commit vars ändring ännu inte setts på snabbtestservern (senaste dygnet).
+```json
+[ { "conversationId": 12, "round": 2, "commit": "<sha>" } ]
+```
+
+### `POST conversations/{id}/rounds/{round}/deployed` → `204`
+Varvets commit finns i det snabbtestservern kör. Samtalet får meddelandet "Ändringen är ute på
+snabbtestservern och går att prova", men bara för den senaste ändringen.
+
+### `GET /claudeborgen/version` på snabbtestservern → `200`
+Ligger *utanför* `/api/claude/` och kräver varken token eller inloggning, så att runnern kan fråga
+vilken commit servern är byggd från. Det fungerar oavsett läge, utom `Off`.
+```json
+{ "commit": "<sha>" }
+```
+`commit` är `null` om bygget inte visste sin commit. Då kan inga ändringar bekräftas som ute.
+
 ### `GET cleanup` → `200`
 Samtal som tagits bort (klara med committad changelog-post, eller avbrutna) vars Claude Code-sessioner
 runnern ska radera på sin sida.

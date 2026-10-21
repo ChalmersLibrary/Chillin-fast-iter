@@ -45,7 +45,7 @@
     <h4>Varv</h4>
     <table class="table table-condensed" data-testid="claude-rounds">
         <thead>
-            <tr><th>#</th><th>Startat</th><th>Resultat</th><th>Commits</th><th>Tester</th><th>Länkar</th></tr>
+            <tr><th>#</th><th>Startat</th><th>Resultat</th><th>Commits</th><th>Tester</th><th>Ute</th><th>Länkar</th></tr>
         </thead>
         <tbody>
             @foreach (var r in c.Rounds)
@@ -96,10 +96,27 @@
                             <span class="label @ClaudeText.TestsLabelClass(r.Tests)" title="@r.TestSummary">@ClaudeText.Tests(r.Tests)</span>
                         }
                     </td>
+                    <td data-testid="claude-round-deployed">
+                        @if (r.Outcome == RoundOutcome.Delivered && r.Commits.Count > 0)
+                        {
+                            if (r.DeployedAt != null)
+                            {
+                                <span class="label label-success" title="Ute på snabbtestservern">@r.DeployedAt.Value.ToString("HH:mm")</span>
+                            }
+                            else
+                            {
+                                <span class="label label-default">Driftsätts…</span>
+                            }
+                        }
+                    </td>
                     <td>
                         @foreach (var link in r.Links)
                         {
                             <a href="@link" target="_blank" rel="noopener">Prova</a>
+                            if (r.DeployedAt == null)
+                            {
+                                <small class="text-muted">(inte ute än)</small>
+                            }
                         }
                     </td>
                 </tr>

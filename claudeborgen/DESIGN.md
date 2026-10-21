@@ -161,6 +161,29 @@ ihop dem är `PROTOCOL.md`.
 - **Snabbtestservern** committar aldrig något. Fejken i appen och fejkrunnern låtsas, och posten visas
   med "(fejk)".
 
+### Driftsatt
+
+Objektspecialisten ska kunna se när en ändring faktiskt går att prova, inte bara när den är pushad.
+Ingen koppling till Azure eller CI behövs:
+
+1. **Appen vet sin commit.** `build/Claudeborgen.Web.targets` skriver vid bygget commiten till
+   `claudeborgen-version.txt` bredvid appen. Commiten tas, i den ordningen, från
+   `CLAUDEBORGEN_COMMIT`, `GITHUB_SHA` (GitHub Actions), `BUILD_SOURCEVERSION` (Azure DevOps) eller
+   `git rev-parse HEAD`. `GET /claudeborgen/version` visar den, utan inloggning.
+2. **Runnern bevakar.** Vid varje förfrågan hämtar den de varv som väntar på driftsättning, frågar
+   snabbtestservern (`testServerUrl` + `claudeborgen/version`) och kontrollerar med
+   `git merge-base --is-ancestor` om varvets commit ingår. Det gäller även när CI hoppat över
+   versioner. Bevakningen blockerar inget, och den överlever en omstart eftersom appen håller reda
+   på vad som väntar.
+3. **Samtalet visar det.** Varvstabellen visar "Driftsätts…" och sedan klockslaget, och
+   "Prova"-länken visas med "(inte ute än)" fram till dess. När den senaste ändringen är ute kommer
+   meddelandet "Ändringen är ute på snabbtestservern och går att prova".
+
+Förutsättningar: snabbtestservern måste vara nåbar från devcontainern (brandväggen), och CI:s bygge
+måste känna till commiten, antingen genom att bygga i repot eller via en av variablerna ovan.
+Fejken i appen låtsas att driftsättningen tar `FakeDeployDelayMilliseconds` (standard 8 s), och
+fejkrunnern rapporterar ändringen som ute direkt.
+
 ### Samtal tas bort
 
 Samtalen kan innehålla känsliga uppgifter. De sparas därför inte längre än de behövs, och de
@@ -187,8 +210,9 @@ En loop i devcontainern (`node claudeborgen/runner/runner.mjs`). Den är medvete
 inte får bero på modellen:
 
 1. Hjärtslag var 20:e sekund, även mitt i ett varv, och direkt vid varje fasbyte.
-2. Committar väntande changelog-poster (se [Changelog](#changelog)) och raderar sessionerna för
-   borttagna samtal (se [Samtal tas bort](#samtal-tas-bort)).
+2. Committar väntande changelog-poster (se [Changelog](#changelog)), raderar sessionerna för
+   borttagna samtal (se [Samtal tas bort](#samtal-tas-bort)) och kontrollerar vilka ändringar som är
+   ute på snabbtestservern (se [Driftsatt](#driftsatt)).
 3. Frågar efter arbete (`GET work`) och tar ett samtal i taget (`claim`).
 4. **Skydd mot loopar** innan Claude startas. De räknar varv, inte pengar, och gäller vilket konto
    Claude än kör på. Om något av dem slår till rapporteras varvet som kraschat:

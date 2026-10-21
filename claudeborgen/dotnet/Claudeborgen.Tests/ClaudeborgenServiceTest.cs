@@ -245,6 +245,52 @@ namespace Claudeborgen.Tests
             CollectionAssert.AreEqual(new[] { "s-1" }, _service.PendingSessionCleanup().Single().SessionIds, "Claude asked - its session holds the discussion.");
         }
 
+        // DESIGN.md, "Driftsatt": the owner learns when a change is actually there to try.
+        [TestMethod]
+        public void DeliveredRound_WaitsForDeployment_ThenTellsTheOwner()
+        {
+            var id = StartAndDeliver(commit: "c1");
+            Assert.AreEqual((id, 1, "c1"), _service.PendingDeployments().Single());
+
+            _service.MarkDeployed(id, 1);
+
+            var conversation = _service.Get(id);
+            Assert.IsNotNull(conversation.Rounds.Single().DeployedAt);
+            Assert.AreEqual("Ändringen är ute på snabbtestservern och går att prova.", conversation.Messages.Last().Body);
+            Assert.AreEqual(0, _service.PendingDeployments().Count);
+            Assert.AreEqual(ConversationState.WaitingForOwner, conversation.State, "Being deployed changes nothing about whose turn it is.");
+
+            _service.MarkDeployed(id, 1);
+            Assert.AreEqual(1, _service.Get(id).Messages.Count(m => m.Body.StartsWith("Ändringen är ute")), "Reported once.");
+        }
+
+        [TestMethod]
+        public void OnlyTheNewestChange_GetsTheMessage()
+        {
+            var id = StartAndDeliver(commit: "c1");
+            _service.AddMessage(id, "En sak till", "agneta");
+            _service.Claim(id);
+            _service.Reply(id, "Klart igen", new[] { "c2" }, null, "s", null, null);
+
+            _service.MarkDeployed(id, 1);
+            _service.MarkDeployed(id, 2);
+
+            Assert.AreEqual(1, _service.Get(id).Messages.Count(m => m.Body.StartsWith("Ändringen är ute")));
+        }
+
+        [TestMethod]
+        public void RoundsWithoutCommits_AndOldRounds_AreNotWaitedFor()
+        {
+            var id = _service.Start("Fråga", "a", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Svar utan ändring", null, null, "s", null, null);
+            Assert.AreEqual(0, _service.PendingDeployments().Count, "Nothing to deploy.");
+
+            var other = StartAndDeliver(commit: "c9");
+            _now = _now.AddDays(2);
+            Assert.AreEqual(0, _service.PendingDeployments().Count, "Two days old - never going to show up.");
+        }
+
         [TestMethod]
         public void Release_PutsTheConversationBackInTheQueue_WithoutTrace()
         {

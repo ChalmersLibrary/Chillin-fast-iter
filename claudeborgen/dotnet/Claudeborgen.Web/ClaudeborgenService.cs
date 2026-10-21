@@ -301,6 +301,51 @@ namespace Claudeborgen
             Changed(id);
         }
 
+        // Delivered rounds whose commit isn't confirmed live on the fast test server yet (DESIGN.md,
+        // "Driftsatt"). Only the last day's: an older one is never going to show up.
+        public List<(int ConversationId, int Round, string Commit)> PendingDeployments()
+        {
+            lock (_lock)
+            {
+                var since = _now().AddDays(-1);
+                return _store.LoadAll()
+                    .SelectMany(c => c.Rounds
+                        .Where(r => r.Outcome == RoundOutcome.Delivered && r.Commits.Count > 0 && r.DeployedAt == null && r.FinishedAt > since)
+                        .Select(r => (c.Id, r.Number, r.Commits.Last())))
+                    .ToList();
+            }
+        }
+
+        public void MarkDeployed(int id, int roundNumber)
+        {
+            lock (_lock)
+            {
+                var conversation = LoadOrThrow(id);
+                var round = conversation.Rounds.FirstOrDefault(r => r.Number == roundNumber)
+                    ?? throw new ClaudeborgenException($"Samtal {id} har inget varv {roundNumber}.");
+                if (round.DeployedAt != null)
+                    return;
+
+                var now = _now();
+                round.DeployedAt = now;
+
+                // Tell the owner - but only about the newest change: an older round going live at the
+                // same time is old news.
+                var newest = conversation.Rounds.LastOrDefault(r => r.Outcome == RoundOutcome.Delivered && r.Commits.Count > 0);
+                if (newest == round)
+                    conversation.Messages.Add(new ConversationMessage
+                    {
+                        AuthorKind = MessageAuthorKind.System,
+                        Author = "System",
+                        Body = "Ändringen är ute på snabbtestservern och går att prova.",
+                        At = now,
+                    });
+                _store.Save(conversation);
+            }
+
+            Changed(id);
+        }
+
         // Removed conversations whose Claude Code sessions the runner still has to delete.
         public List<RemovedConversation> PendingSessionCleanup()
         {

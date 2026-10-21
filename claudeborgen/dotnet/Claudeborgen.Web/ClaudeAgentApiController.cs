@@ -185,6 +185,14 @@ namespace Claudeborgen
                 text = c.ChangelogText ?? c.Title,
             }));
 
+        // Delivered rounds not yet seen live on the fast test server (PROTOCOL.md).
+        [HttpGet("deployments/pending")]
+        public IActionResult PendingDeployments() =>
+            Json(_service.PendingDeployments().Select(d => new { conversationId = d.ConversationId, round = d.Round, commit = d.Commit }));
+
+        [HttpPost("conversations/{id:int}/rounds/{round:int}/deployed")]
+        public IActionResult Deployed(int id, int round) => Guarded(() => _service.MarkDeployed(id, round));
+
         // Removed conversations whose Claude Code sessions the runner should delete (PROTOCOL.md).
         [HttpGet("cleanup")]
         public IActionResult PendingCleanup() =>

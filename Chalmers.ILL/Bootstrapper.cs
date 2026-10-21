@@ -151,6 +151,8 @@ namespace Chalmers.ILL
             // Chillin's changelog (start page, "Nytt i Chillin") - deployed next to the app, see
             // Chalmers.ILL.csproj; claudeborgen.json's "changelogFile" is the same file in the repo.
             settings.ChangelogPath = Path.Combine(contentRoot, "changelog.json");
+            // Written at build by claudeborgen's build/Claudeborgen.Web.targets (imported in the csproj).
+            settings.VersionFilePath = Path.Combine(AppContext.BaseDirectory, "claudeborgen-version.txt");
             services.AddClaudeborgen(settings);
             services.AddSingleton<IClaudeborgenHost>(sp => new ChillinClaudeborgenHost(sp.GetRequiredService<IMemberInfoManager>()));
         }

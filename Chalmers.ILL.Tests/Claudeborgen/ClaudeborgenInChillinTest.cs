@@ -41,6 +41,7 @@ namespace Chalmers.ILL.Tests.Claudeborgen
                 ["Chillin:DataPath"] = dataPath,
                 ["Chillin:BaseUrl"] = "http://localhost/",
                 ["Claudeborgen:FakePhaseDelayMilliseconds"] = "0",
+                ["Claudeborgen:FakeDeployDelayMilliseconds"] = "0",
             };
             foreach (var kvp in extraConfig ?? new Dictionary<string, string>())
                 config[kvp.Key] = kvp.Value;
@@ -353,6 +354,44 @@ namespace Chalmers.ILL.Tests.Claudeborgen
                 Assert.AreEqual(HttpStatusCode.Redirect, response.StatusCode, url);
                 StringAssert.Contains(response.Headers.Location.ToString(), "ChalmersILLLoginPage", url);
             }
+        }
+
+        // The fast test server tells the runner which commit it runs - without a login, since the
+        // runner doesn't log in to the app. Chillin's build stamps the commit (claudeborgen's
+        // build/Claudeborgen.Web.targets, imported in Chalmers.ILL.csproj).
+        [TestMethod]
+        public async Task Version_IsOpenWithoutLogin_AndIsTheBuiltCommit()
+        {
+            using var factory = CreateFactory();
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+            var response = await client.GetAsync("/claudeborgen/version");
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var commit = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("commit").GetString();
+            StringAssert.Matches(commit, new Regex("^[0-9a-f]{40}$"), "The git commit of this build.");
+        }
+
+        [TestMethod]
+        public async Task DeliveredChange_ShowsWhenItIsOutOnTheFastTestServer()
+        {
+            using var factory = CreateFactory();
+            using var client = await LoginAsync(factory, "agneta");
+            var start = await PostFormAsync(client, "/", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Ett", ["body"] = "Gör något" });
+            var id = int.Parse(Regex.Match(start.Headers.Location.ToString(), @"(\d+)$").Groups[1].Value);
+
+            var stopwatch = Stopwatch.StartNew();
+            string html = null;
+            while (stopwatch.Elapsed < TimeSpan.FromSeconds(30))
+            {
+                html = await GetHtmlAsync(client, $"/Claude/ConversationContent/{id}");
+                if (html.Contains("Ändringen är ute på snabbtestservern"))
+                    break;
+                await Task.Delay(200);
+            }
+
+            StringAssert.Contains(html, "Ändringen är ute på snabbtestservern och går att prova.");
+            Assert.IsFalse(html.Contains("Driftsätts…"));
         }
 
         // Chalmers.ILL/changelog.json is edited by hand and appended to by the runner - it must

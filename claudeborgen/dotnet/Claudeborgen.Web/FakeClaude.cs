@@ -87,6 +87,14 @@ namespace Claudeborgen
             // only pretends to, so the entry shows as "(fejk)" and nothing is ever committed.
             foreach (var done in _service.PendingChangelog())
                 _service.MarkChangelogCommitted(done.Id, FakeCommitPrefix + "-changelog");
+            // "Deployment" takes a little while, like on the real fast test server.
+            foreach (var (conversationId, roundNumber, _) in _service.PendingDeployments())
+            {
+                var finished = _service.Get(conversationId)?.Rounds.FirstOrDefault(r => r.Number == roundNumber)?.FinishedAt;
+                if (finished != null && DateTime.Now - finished.Value >= _service.Settings.FakeDeployDelay)
+                    _service.MarkDeployed(conversationId, roundNumber);
+            }
+
             foreach (var removed in _service.PendingSessionCleanup())
                 _service.MarkSessionsCleaned(removed.ConversationId); // fake sessions exist nowhere
 

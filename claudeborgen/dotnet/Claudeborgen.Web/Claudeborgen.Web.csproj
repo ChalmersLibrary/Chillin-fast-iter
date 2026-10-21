@@ -22,4 +22,9 @@
     <InternalsVisibleTo Include="Claudeborgen.Tests" />
   </ItemGroup>
 
+  <!-- Imported automatically by projects that use the NuGet package. -->
+  <ItemGroup>
+    <None Include="build\Claudeborgen.Web.targets" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
 </Project>

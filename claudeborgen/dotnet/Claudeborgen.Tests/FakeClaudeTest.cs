@@ -103,6 +103,20 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task DeliveredChange_IsDeployedAfterTheFakeDelay()
+        {
+            _service.Settings.FakeDeployDelay = TimeSpan.FromMilliseconds(200);
+            var id = _service.Start("Ett", "Gör något", "agneta").Id;
+
+            await RunAsync(1);
+            Assert.IsNull(_service.Get(id).Rounds.Single().DeployedAt, "Not instantly.");
+
+            await Task.Delay(300);
+            await RunAsync(1);
+            Assert.IsNotNull(_service.Get(id).Rounds.Single().DeployedAt);
+        }
+
+        [TestMethod]
         public async Task Fraga_AsksAQuestion_WithoutDeliveringAnything()
         {
             var id = _service.Start("Knapp", "Lägg till en knapp [fråga]", "agneta").Id;

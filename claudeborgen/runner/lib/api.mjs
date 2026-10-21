@@ -36,6 +36,8 @@ export function createApi({ apiUrl, token, fake = false, fetchImpl = globalThis.
     crash: (id, summary) => call("POST", `conversations/${id}/crash`, { summary }),
     pendingChangelog: () => call("GET", "changelog/pending"),
     pendingCleanup: () => call("GET", "cleanup"),
+    pendingDeployments: () => call("GET", "deployments/pending"),
+    deployed: (id, round) => call("POST", `conversations/${id}/rounds/${round}/deployed`),
     sessionsCleaned: (id) => call("POST", `conversations/${id}/cleaned`),
     changelogCommitted: (id, commit) => call("POST", `conversations/${id}/changelog`, { commit }),
   };

@@ -34,6 +34,10 @@
     <ProjectReference Include="..\claudeborgen\dotnet\Claudeborgen.Web\Claudeborgen.Web.csproj" />
   </ItemGroup>
 
+  <!-- Stamps the git commit into claudeborgen-version.txt, so the runner can see when a change is
+       deployed. A NuGet package imports this by itself; a project reference doesn't. -->
+  <Import Project="..\claudeborgen\dotnet\Claudeborgen.Web\build\Claudeborgen.Web.targets" />
+
   <ItemGroup>
     <!-- Latest within the 6.x line (fas 8) - NEST's major version is pinned to the Elasticsearch
          server's major version, so this stays compatible with whatever 6.x server is in drift

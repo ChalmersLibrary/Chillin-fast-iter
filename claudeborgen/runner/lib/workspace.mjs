@@ -78,6 +78,16 @@ export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGr
       await git("push", "-f", "origin", `refs/tags/${testGreenTag}`);
     },
 
+    // Is `commit` part of what's deployed? True also when a later commit was deployed directly
+    // (CI may skip versions). Fetches first, since the deployed commit may be newer than ours.
+    async isDeployed(commit, deployedCommit) {
+      if (!deployedCommit) return false;
+      if (commit === deployedCommit) return true;
+      await runImpl("git", ["fetch", "--quiet", "origin", branch], { cwd, timeoutMs: 5 * 60 * 1000 });
+      const r = await runImpl("git", ["merge-base", "--is-ancestor", commit, deployedCommit], { cwd, timeoutMs: 60 * 1000 });
+      return r.code === 0; // 1 = not included; anything else (unknown commit) = can't tell, so not yet
+    },
+
     // A done conversation's changelog entry, as its own small commit - no Claude, no build: it's
     // data the app reads. Returns the commit (HEAD if the entry was already there).
     async commitChangelogEntry(entry) {
@@ -108,6 +118,7 @@ export function createFakeWorkspace({ markers }) {
     },
     commitAndPush: async () => `fejk${Date.now().toString(16).slice(-5)}${++counter}`,
     commitChangelogEntry: async () => `fejk-changelog${++counter}`,
+    isDeployed: async () => true,
     stash: async () => {},
     markGreen: async () => {},
   };

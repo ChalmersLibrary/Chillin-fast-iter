@@ -24,6 +24,8 @@ export const DEFAULTS = {
   model: null,
   fallbackModel: null,
   changelogFile: null,
+  // Where the fast test server says which commit it runs; default <testServerUrl>/claudeborgen/version.
+  testServerVersionUrl: null,
   tokenFile: "~/.claudeborgen/token",
 };
 
