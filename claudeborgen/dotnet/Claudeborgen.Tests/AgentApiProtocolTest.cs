@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security.Claims;
@@ -213,6 +214,24 @@ namespace Claudeborgen.Tests
 
             Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{id}/cleaned")).StatusCode);
             Assert.AreEqual(0, (await JsonAsync(await _client.GetAsync("/api/claude/cleanup"))).GetArrayLength());
+        }
+
+        [TestMethod]
+        public async Task Work_CanBeAskedForByKind()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+            var task = _service.Start("Arbete", "a", "agneta").Id;
+            var idea = _service.StartIdea("Idé", "agneta").Id;
+
+            var ideas = await JsonAsync(await _client.GetAsync("/api/claude/work?kind=idea"));
+            Assert.AreEqual(1, ideas.GetArrayLength());
+            Assert.AreEqual(idea, ideas[0].GetProperty("id").GetInt32());
+            Assert.AreEqual("idea", ideas[0].GetProperty("kind").GetString());
+
+            var tasks = await JsonAsync(await _client.GetAsync("/api/claude/work?kind=task"));
+            Assert.AreEqual(task, tasks.EnumerateArray().Single().GetProperty("id").GetInt32());
+
+            Assert.AreEqual(2, (await JsonAsync(await _client.GetAsync("/api/claude/work"))).GetArrayLength());
         }
 
         [TestMethod]

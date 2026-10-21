@@ -81,6 +81,75 @@ namespace Claudeborgen
             return conversation;
         }
 
+        // A loose idea chat (DESIGN.md, "Idéer"): no title asked for - it's made from the first message.
+        public Conversation StartIdea(string body, string author)
+        {
+            if (string.IsNullOrWhiteSpace(body))
+                throw new ClaudeborgenException("Skriv något först.");
+
+            Conversation conversation;
+            lock (_lock)
+            {
+                var now = _now();
+                conversation = new Conversation
+                {
+                    Id = _store.NextId(),
+                    Kind = ConversationKind.Idea,
+                    Title = Shorten(body, 60),
+                    CreatedBy = author,
+                    CreatedAt = now,
+                    State = ConversationState.WaitingForClaude,
+                };
+                conversation.Messages.Add(new ConversationMessage { AuthorKind = MessageAuthorKind.Human, Author = author, Body = body.Trim(), At = now });
+                _store.Save(conversation);
+            }
+
+            Changed(conversation.Id);
+            return conversation;
+        }
+
+        // The idea is worth building: it becomes a task, and the owner's "build it" is a human message,
+        // so the next round is a normal round in the same session - Claude has the whole idea
+        // discussion in mind.
+        public void ConvertToTask(int id, string title, string author)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+                throw new ClaudeborgenException("Arbetet behöver en rubrik.");
+
+            lock (_lock)
+            {
+                var conversation = LoadOrThrow(id);
+                if (!conversation.IsIdea)
+                    throw new ClaudeborgenException("Det här är redan ett arbete.");
+                if (!conversation.IsOpen)
+                    throw new ClaudeborgenException("Idén är avslutad.");
+                if (conversation.State == ConversationState.ClaudeWorking)
+                    throw new ClaudeborgenException("Claude svarar just nu. Vänta tills svaret har kommit.");
+
+                conversation.Kind = ConversationKind.Task;
+                conversation.Title = title.Trim();
+                conversation.NeedsIt = false;
+                conversation.NeedsItReason = null;
+                conversation.Messages.Add(new ConversationMessage
+                {
+                    AuthorKind = MessageAuthorKind.Human,
+                    Author = author,
+                    Body = $"Nu bygger vi det här: \"{conversation.Title}\". Implementera det vi har pratat om.",
+                    At = _now(),
+                });
+                conversation.State = ConversationState.WaitingForClaude;
+                _store.Save(conversation);
+            }
+
+            Changed(id);
+        }
+
+        private static string Shorten(string text, int max)
+        {
+            var oneLine = string.Join(" ", text.Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+            return oneLine.Length <= max ? oneLine : oneLine.Substring(0, max - 1).TrimEnd() + "…";
+        }
+
         // Every human message starts a new round - also one written while Claude is mid-round; it's
         // queued and picked up when the current round ends (see Reply).
         public void AddMessage(int id, string body, string author)
@@ -113,6 +182,8 @@ namespace Claudeborgen
                 var conversation = LoadOrThrow(id);
                 if (!conversation.IsOpen)
                     throw new ClaudeborgenException("Samtalet är redan avslutat.");
+                if (conversation.IsIdea)
+                    throw new ClaudeborgenException("En idé blir klar först när den har gjorts om till ett arbete och byggts.");
                 if (conversation.State == ConversationState.ClaudeWorking)
                     throw new ClaudeborgenException("Claude arbetar i samtalet just nu. Vänta tills varvet är klart.");
 
@@ -370,13 +441,17 @@ namespace Claudeborgen
         }
 
         // Conversations that should already have been removed: done with their changelog entry
-        // committed, or cancelled. Data from before removal existed (2026-10-21) - otherwise they'd
+        // committed, cancelled, or ideas idle for longer than IdeaRetention. Data from before removal existed (2026-10-21) - otherwise they'd
         // linger, linkable, forever. Caller holds _lock.
         private void RemoveLeftovers()
         {
+            var now = _now();
             foreach (var conversation in _store.LoadAll())
             {
                 if (conversation.State == ConversationState.Cancelled)
+                    Remove(conversation, cancelled: true);
+                // An idea left alone is let go of - nothing sensitive lingers (DESIGN.md, "Idéer").
+                else if (conversation.IsIdea && conversation.State != ConversationState.ClaudeWorking && now - conversation.LastActivityAt > _settings.IdeaRetention)
                     Remove(conversation, cancelled: true);
                 else if (conversation.State == ConversationState.Done && conversation.ChangelogCommit != null)
                     Remove(conversation, cancelled: false);
@@ -446,11 +521,13 @@ namespace Claudeborgen
 
         // A round Claude was in the middle of comes first, so a restarted runner resumes it; then
         // conversations waiting for Claude, oldest first.
-        public List<Conversation> Work()
+        // `kind`: the runner handles ideas and tasks in separate loops, so an idea chat never waits
+        // behind an implementation round.
+        public List<Conversation> Work(ConversationKind? kind = null)
         {
             lock (_lock)
             {
-                var conversations = _store.LoadAll();
+                var conversations = _store.LoadAll().Where(c => kind == null || c.Kind == kind).ToList();
                 return conversations.Where(c => c.State == ConversationState.ClaudeWorking)
                     .Concat(conversations.Where(c => c.State == ConversationState.WaitingForClaude).OrderBy(c => c.LastActivityAt))
                     .ToList();
@@ -469,7 +546,8 @@ namespace Claudeborgen
                 if (conversation.State != ConversationState.WaitingForClaude)
                     throw new ClaudeborgenException("Samtalet väntar inte på Claude.");
 
-                var busy = _store.LoadAll().FirstOrDefault(c => c.State == ConversationState.ClaudeWorking);
+                // One at a time per kind: an idea reply (read-only) may run alongside a task round.
+                var busy = _store.LoadAll().FirstOrDefault(c => c.State == ConversationState.ClaudeWorking && c.Kind == conversation.Kind);
                 if (busy != null)
                     throw new ClaudeborgenException($"Claude arbetar redan i samtal {busy.Id}. Ett samtal i taget.");
 

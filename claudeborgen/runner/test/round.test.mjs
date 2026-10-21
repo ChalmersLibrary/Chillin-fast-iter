@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createGuards, guardRound, runRound } from "../lib/round.mjs";
+import { createGuards, guardRound, runIdeaRound, runRound } from "../lib/round.mjs";
 import { QuotaExhausted } from "../lib/errors.mjs";
 import { CONFIG, conversation, fakeApi, fakeClaude, fakeWorkspace, heartbeatRecorder } from "./helpers.mjs";
 
@@ -246,4 +246,46 @@ test("question: an ordinary reply is not a question", async () => {
   const api = fakeApi({ conversation: conversation() });
   await runRound({ api, heartbeat: heartbeatRecorder(), claude: fakeClaude(), workspace: fakeWorkspace(), conversationId: 7, config: CONFIG });
   assert.equal(api.call("reply").args[1].question, false);
+});
+
+// --- ideas: a chat, never a build ------------------------------------------------------------
+
+
+const IDEA_GUARDS = { maxRoundsPerConversationPerHour: 30, maxRoundsPerHour: 60, maxBudgetUsdPerDay: null };
+
+test("idea: Claude answers in idea mode, nothing is committed or tested", async () => {
+  const api = fakeApi({ conversation: conversation({ title: "Jag funderar på…" }) });
+  const claude = fakeClaude([{ text: "Spännande! Vem skulle använda det?", sessionId: "s-9", costUsd: 0.05, durationMs: 2000 }]);
+
+  const result = await runIdeaRound({ api, claude, conversationId: 7, guards: createGuards(IDEA_GUARDS) });
+
+  assert.deepEqual(result, { paused: false });
+  assert.equal(claude.calls[0].options.mode, "idea");
+  assert.deepEqual(api.names(), ["claim", "conversation", "reply"]);
+  const reply = api.call("reply").args[1];
+  assert.equal(reply.body, "Spännande! Vem skulle använda det?");
+  assert.deepEqual(reply.commits, []);
+  assert.equal(reply.sessionId, "s-9");
+});
+
+test("idea: no new message -> Claude isn't asked", async () => {
+  const api = fakeApi({ conversation: conversation({ messages: [
+    { authorKind: "human", author: "agneta", body: "Idé" },
+    { authorKind: "claude", author: "Claude", body: "Svar" },
+  ] }) });
+  const claude = fakeClaude();
+  await runIdeaRound({ api, claude, conversationId: 7, guards: createGuards(IDEA_GUARDS) });
+
+  assert.equal(claude.calls.length, 0);
+  assert.ok(api.names().includes("crash"));
+});
+
+test("idea: quota used up -> back to the queue, paused", async () => {
+  const api = fakeApi({ conversation: conversation() });
+  api.release = async (id) => { api.calls.push({ name: "release", args: [id] }); };
+  const result = await runIdeaRound({ api, claude: fakeClaude([new QuotaExhausted("slut")]), conversationId: 7 });
+
+  assert.equal(result.paused, true);
+  assert.ok(api.names().includes("release"));
+  assert.ok(!api.names().includes("crash"));
 });

@@ -9,14 +9,14 @@
 //   --config  the project's settings (default: ./claudeborgen.json)
 //   --fake    fake Claude, git and build - for trying the chain against the fast test server
 //             (app in Claudeborgen:IsolatedMode=FakeRunner). Refuses to run against the real channel.
-//   --once    at most one round, then exit (for trying things out)
+//   --once    at most one idea answer and one round, then exit (for trying things out)
 import { parseArgs } from "node:util";
 import { createApi } from "./lib/api.mjs";
 import { createClaude } from "./lib/claude.mjs";
 import { loadConfig } from "./lib/config.mjs";
 import { createFakes } from "./lib/fake.mjs";
 import { Heartbeat } from "./lib/heartbeat.mjs";
-import { commitChangelog, createGuards, runRound } from "./lib/round.mjs";
+import { commitChangelog, createGuards, runIdeaRound, runRound } from "./lib/round.mjs";
 import { checkDeployments, fetchDeployedCommit, versionUrl } from "./lib/deployments.mjs";
 import { claudeConfigDir, cleanupSessions } from "./lib/sessions.mjs";
 import { createWorkspace } from "./lib/workspace.mjs";
@@ -90,36 +90,75 @@ export async function main(argv = process.argv.slice(2)) {
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 
-  for (;;) {
-    await commitChangelog({ api, heartbeat, workspace, log });
-    await cleanupSessions({ api, configDir: claudeConfigDir(), fake: values.fake, log });
-    if (values.fake || deployedUrl) await checkDeployments({ api, workspace, getDeployedCommit, log });
+  // Shared between the two loops: when the account's quota is used up, both wait.
+  let pausedUntil = null;
+  const pauseIfNeeded = async (result) => {
+    if (!result.paused) return;
+    const fallback = new Date(Date.now() + config.pauseRetryMinutes * 60 * 1000);
+    pausedUntil = result.resetAt && result.resetAt > new Date() ? result.resetAt : fallback;
+    await pause(heartbeat, pausedUntil, config, log);
+    pausedUntil = null;
+  };
+  const isPaused = () => pausedUntil && pausedUntil > new Date();
 
-    let work = [];
-    try {
-      work = await api.work();
-    } catch (e) {
-      log(`Kunde inte hämta arbete: ${e.message}`);
+  // Ideas (DESIGN.md, "Idéer"): their own loop, polled often, so a chat never waits behind an
+  // implementation round. Read-only, so running alongside a round in the same tree is fine.
+  const ideaGuards = createGuards({
+    maxRoundsPerConversationPerHour: config.maxIdeaRepliesPerConversationPerHour,
+    maxRoundsPerHour: config.maxIdeaRepliesPerHour,
+    maxBudgetUsdPerDay: config.maxBudgetUsdPerDay,
+  });
+  const ideaLoop = async () => {
+    for (;;) {
+      if (!isPaused()) {
+        try {
+          const ideas = await api.work("idea");
+          if (ideas.length > 0) {
+            const result = await runIdeaRound({ api, claude, conversationId: ideas[0].id, guards: ideaGuards, log });
+            await pauseIfNeeded(result);
+            if (values.once) return;
+            continue;
+          }
+        } catch (e) {
+          log(`Kunde inte hämta idéer: ${e.message}`);
+        }
+      }
+      if (values.once) return;
+      await sleep(config.ideaPollSeconds * 1000);
     }
+  };
 
-    if (work.length > 0) {
-      const result = await runRound({ api, heartbeat, claude, workspace, conversationId: work[0].id, config, guards, log, onRound });
-      if (result.paused) {
-        await pause(heartbeat, result.resetAt, config, log);
-        if (values.once) break;
+  const taskLoop = async () => {
+    for (;;) {
+      await commitChangelog({ api, heartbeat, workspace, log });
+      await cleanupSessions({ api, configDir: claudeConfigDir(), fake: values.fake, log });
+      if (values.fake || deployedUrl) await checkDeployments({ api, workspace, getDeployedCommit, log });
+
+      let work = [];
+      if (!isPaused()) {
+        try {
+          work = await api.work("task");
+        } catch (e) {
+          log(`Kunde inte hämta arbete: ${e.message}`);
+        }
+      }
+
+      if (work.length > 0) {
+        const result = await runRound({ api, heartbeat, claude, workspace, conversationId: work[0].id, config, guards, log, onRound });
+        await pauseIfNeeded(result);
+        if (values.once) return;
+        // There may be more right away (a fix round, a message written meanwhile) - a short pause
+        // only, so a round that keeps failing early can't spin.
+        await sleep(2000);
         continue;
       }
-      if (values.once) break;
-      // There may be more right away (a fix round, a message written meanwhile) - a short pause
-      // only, so a round that keeps failing early can't spin.
-      await sleep(2000);
-      continue;
+
+      if (values.once) return;
+      await sleep(config.pollSeconds * 1000);
     }
+  };
 
-    if (values.once) break;
-    await sleep(config.pollSeconds * 1000);
-  }
-
+  await Promise.all([ideaLoop(), taskLoop()]);
   heartbeat.stop();
 }
 

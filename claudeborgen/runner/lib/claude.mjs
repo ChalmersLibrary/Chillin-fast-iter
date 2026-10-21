@@ -3,19 +3,23 @@
 // limit per call, and --resume so a conversation keeps its memory across rounds.
 import { quotaFrom } from "./errors.mjs";
 import { run, tail } from "./exec.mjs";
-import { SYSTEM_PROMPT } from "./prompt.mjs";
+import { IDEA_SYSTEM_PROMPT, SYSTEM_PROMPT } from "./prompt.mjs";
+
+// What an idea chat may not use: anything that changes files or runs commands. Reading the code
+// (Read, Grep, Glob) is fine. Without --dangerously-skip-permissions, anything else that would need
+// approval is refused too in -p mode.
+export const IDEA_DISALLOWED_TOOLS = "Edit,Write,MultiEdit,NotebookEdit,Bash";
 
 // `model`/`fallbackModel` (claudeborgen.json) are passed as --model/--fallback-model when set; without
 // them Claude Code uses whatever default the container's own settings say, which then silently
 // follows the last interactive /model choice - so projects should set them.
 export function createClaude({ command = "claude", cwd, maxBudgetUsd, timeoutMinutes, model = null, fallbackModel = null, runImpl = run }) {
-  return async function claude(prompt, { sessionId } = {}) {
-    const args = [
-      "-p",
-      "--output-format", "json",
-      "--dangerously-skip-permissions",
-      "--append-system-prompt", SYSTEM_PROMPT,
-    ];
+  return async function claude(prompt, { sessionId, mode = "task" } = {}) {
+    const args = ["-p", "--output-format", "json"];
+    if (mode === "idea")
+      args.push("--disallowedTools", IDEA_DISALLOWED_TOOLS, "--append-system-prompt", IDEA_SYSTEM_PROMPT);
+    else
+      args.push("--dangerously-skip-permissions", "--append-system-prompt", SYSTEM_PROMPT);
     if (maxBudgetUsd) args.push("--max-budget-usd", String(maxBudgetUsd));
     if (model) args.push("--model", model);
     if (fallbackModel) args.push("--fallback-model", fallbackModel);

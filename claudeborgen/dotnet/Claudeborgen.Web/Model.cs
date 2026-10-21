@@ -9,6 +9,15 @@ namespace Claudeborgen
     // Every human message starts a round (implement -> push -> deploy -> reply), until the owner
     // says "klar" and the conversation lands in the changelog. Serialized with System.Text.Json both
     // to disk (ConversationStore) and over the agent API (camelCase there, see PROTOCOL.md).
+    // DESIGN.md, "Idéer": an idea is a loose chat with Claude on the start page - no title needed,
+    // nothing built, Claude may read the code but not change it. The object owner can turn it into a
+    // task, and Claude then builds it with the whole idea discussion in mind (same session).
+    public enum ConversationKind
+    {
+        Task,
+        Idea
+    }
+
     public enum ConversationState
     {
         WaitingForClaude,
@@ -86,6 +95,7 @@ namespace Claudeborgen
     public class Conversation
     {
         public int Id { get; set; }
+        public ConversationKind Kind { get; set; } = ConversationKind.Task;
         public string Title { get; set; }
         public string CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -119,6 +129,9 @@ namespace Claudeborgen
         public Round CurrentRound => Rounds.LastOrDefault();
         [JsonIgnore]
         public bool IsOpen => State != ConversationState.Done && State != ConversationState.Cancelled;
+
+        [JsonIgnore]
+        public bool IsIdea => Kind == ConversationKind.Idea;
     }
 
     public enum ClaudeActivity

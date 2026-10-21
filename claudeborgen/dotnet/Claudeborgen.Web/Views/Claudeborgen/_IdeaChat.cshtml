@@ -1,0 +1,27 @@
+@model ClaudePageModel
+@* The idea chat's messages, re-fetched live (DESIGN.md, "Idéer"). Chat-shaped on purpose: no
+   rounds, commits or tests - nothing is built in an idea. *@
+@{
+    var c = Model.Conversation;
+    var claudeThinking = c.State == ConversationState.WaitingForClaude || c.State == ConversationState.ClaudeWorking;
+}
+<div data-testid="claude-idea-chat" data-state="@c.State">
+    @foreach (var m in c.Messages)
+    {
+        var mine = m.AuthorKind == MessageAuthorKind.Human;
+        <div style="display: flex; justify-content: @(mine ? "flex-end" : "flex-start"); margin-bottom: 8px;">
+            <div style="max-width: 80%; padding: 8px 12px; border-radius: 12px; background: @(mine ? "#d9edf7" : m.AuthorKind == MessageAuthorKind.System ? "#fcf8e3" : "#f5f5f5");">
+                <div class="small text-muted"><strong>@(m.AuthorKind == MessageAuthorKind.Claude ? "Claude" : m.Author)</strong> @m.At.ToString("HH:mm")</div>
+                <div style="white-space: pre-wrap;">@m.Body</div>
+            </div>
+        </div>
+    }
+    @if (claudeThinking)
+    {
+        <div class="text-muted small" data-testid="claude-typing"><em>Claude skriver…</em></div>
+    }
+    @if (c.NeedsIt)
+    {
+        <div class="text-danger small"><strong>Behöver IT:</strong> @c.NeedsItReason</div>
+    }
+</div>

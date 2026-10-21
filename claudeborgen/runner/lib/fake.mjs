@@ -24,7 +24,11 @@ export function createFakeContext() {
 }
 
 export function createFakeClaude({ markers, heartbeat, offlineMs, quotaPauseMs = 45000, phaseDelayMs = 1500, sleep = defaultSleep }) {
-  return async function fakeClaude(prompt, { sessionId } = {}) {
+  return async function fakeClaude(prompt, { sessionId, mode = "task" } = {}) {
+    if (mode === "idea") {
+      await sleep(phaseDelayMs);
+      return { text: "(Fejkad runner) Spännande idé! Det ser ut att vara en ganska liten ändring. Tryck \"Gör det här till ett arbete\" när du vill.", sessionId: sessionId ?? `fejk-session-${Date.now()}`, costUsd: 0, durationMs: phaseDelayMs };
+    }
     const ctx = markers();
     const { instruction, isFixRound } = ctx;
     await sleep(phaseDelayMs);

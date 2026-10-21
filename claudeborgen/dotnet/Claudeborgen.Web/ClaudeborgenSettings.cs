@@ -63,6 +63,9 @@ namespace Claudeborgen
         // No heartbeat for this long = Claude shown as offline.
         public TimeSpan OfflineAfter { get; set; } = TimeSpan.FromSeconds(60);
 
+        // An idea nobody has touched for this long is removed (DESIGN.md, "Idéer").
+        public TimeSpan IdeaRetention { get; set; } = TimeSpan.FromDays(14);
+
         // InAppFake only: pause per phase, long enough for the status changes to be visible.
         public TimeSpan FakePhaseDelay { get; set; } = TimeSpan.FromSeconds(3);
 

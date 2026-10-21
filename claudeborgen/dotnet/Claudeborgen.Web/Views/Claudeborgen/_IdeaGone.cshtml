@@ -1,0 +1,12 @@
+@model Conversation
+@* What an open idea chat turns into once the idea is no longer an idea (see ClaudeController.IdeaChat). *@
+<div class="alert alert-info" data-testid="claude-idea-gone">
+    @if (Model != null)
+    {
+        @:Idén har blivit ett arbete: <a href="/Claude/Conversation/@Model.Id">#@Model.Id @Model.Title</a>
+    }
+    else
+    {
+        @:Idén är släppt. <a href="/?idea=ny#claude-idea">Börja en ny idé</a>
+    }
+</div>

@@ -28,7 +28,7 @@ export function createApi({ apiUrl, token, fake = false, fetchImpl = globalThis.
     heartbeat: (activity, conversationId, phase, pausedUntil) =>
       call("POST", "heartbeat", { activity, conversationId, phase, pausedUntil: pausedUntil ? pausedUntil.toISOString() : undefined }),
     release: (id) => call("POST", `conversations/${id}/release`),
-    work: () => call("GET", "work"),
+    work: (kind) => call("GET", kind ? `work?kind=${kind}` : "work"),
     conversation: (id) => call("GET", `conversations/${id}`),
     claim: (id) => call("POST", `conversations/${id}/claim`),
     reply: (id, reply) => call("POST", `conversations/${id}/reply`, reply),

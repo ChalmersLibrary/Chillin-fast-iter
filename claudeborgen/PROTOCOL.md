@@ -62,11 +62,18 @@ kvot är slut. `phase` är då orsaken och `pausedUntil` är när runnern förs�
 fortsätter under pausen, och utan dem visas Claude som offline som vanligt.
 
 ### `GET work` → `200`
-Samtal att arbeta med, i den ordning de ska tas. Ett samtal med ett pågående varv (`claudeWorking`)
+`?kind=idea` eller `?kind=task` begränsar till idéer respektive arbeten, eftersom runnern har en loop
+för varje. Utan parameter returneras båda. Samtal att arbeta med, i den ordning de ska tas. Ett samtal med ett pågående varv (`claudeWorking`)
 kommer först, så att en omstartad runner tar upp det igen. Därefter kommer samtal som väntar på Claude,
 äldst först.
 ```json
-[ { "id": 12, "title": "Exportknapp", "state": "waitingForClaude", "sessionId": "…" } ]
+[ { "id": 12, "kind": "task" | "idea", "title": "Exportknapp", "state": "waitingForClaude", "sessionId": "…" } ]
+```
+En **idé** besvaras som i en chatt: runnern kör Claude utan rätt att ändra filer eller köra kommandon,
+och svarar med `reply` utan commits. En idé blir ett arbete i appen ("Gör det här till ett arbete"),
+och samma samtal, med samma `sessionId`, dyker sedan upp som `kind: "task"`. Högst ett idésvar och ett
+arbetsvarv kan pågå samtidigt (`claim` ger `409` per sort).
+```json
 ```
 
 ### `GET conversations/{id}` → `200`

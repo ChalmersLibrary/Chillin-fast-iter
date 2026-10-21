@@ -1,28 +1,28 @@
 @model ClaudePageModel
-@* The live part of the start page's Claude section. Finished conversations show up in the
-   changelog right below, so only the open ones are listed here. *@
+@* The live part of the start page's Claude section. Finished work shows up in the changelog right
+   below, so only open work and ideas are listed here. *@
 @await Html.PartialAsync("~/Views/Claudeborgen/_StatusPanel.cshtml", Model)
 
 @{
     var open = Model.Conversations.Where(c => c.IsOpen).OrderByDescending(c => c.LastActivityAt).ToList();
+    var work = open.Where(c => !c.IsIdea).ToList();
+    var ideas = open.Where(c => c.IsIdea).ToList();
+    var questions = work.Count(c => c.State == ConversationState.QuestionForOwner);
 }
 
-<h4>Pågående samtal</h4>
-@{
-    var questions = open.Count(c => c.State == ConversationState.QuestionForOwner);
-}
+<h4>Pågående arbeten</h4>
 @if (questions > 0)
 {
     <p class="text-danger" data-testid="claude-question-count"><strong>@(questions == 1 ? "Claude har en fråga som väntar på svar." : $"Claude har {questions} frågor som väntar på svar.")</strong></p>
 }
-@if (open.Count == 0)
+@if (work.Count == 0)
 {
-    <p class="text-muted">Inga pågående samtal.</p>
+    <p class="text-muted">Inga pågående arbeten.</p>
 }
 else
 {
     <div class="list-group" data-testid="claude-open-conversations">
-        @foreach (var c in open)
+        @foreach (var c in work)
         {
             <a class="list-group-item" href="/Claude/Conversation/@c.Id">
                 <span class="label @ClaudeText.StateLabelClass(c.State)">@ClaudeText.State(c.State)</span>
@@ -32,6 +32,24 @@ else
                 }
                 <strong>#@c.Id @c.Title</strong>
                 <span class="text-muted pull-right">@ClaudeText.Time(c.LastActivityAt)</span>
+            </a>
+        }
+    </div>
+}
+
+@if (ideas.Count > 0)
+{
+    <h4>Idéer</h4>
+    <div class="list-group" data-testid="claude-open-ideas">
+        @foreach (var c in ideas)
+        {
+            <a class="list-group-item" href="@ClaudeController.IdeaUrl(c.Id)">
+                @if (c.State == ConversationState.WaitingForClaude || c.State == ConversationState.ClaudeWorking)
+                {
+                    <span class="label label-info">Claude skriver…</span>
+                }
+                @c.Title
+                <span class="text-muted pull-right">@c.CreatedBy · @ClaudeText.Time(c.LastActivityAt)</span>
             </a>
         }
     </div>

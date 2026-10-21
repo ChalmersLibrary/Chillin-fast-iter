@@ -74,8 +74,32 @@ async function waitForState(page, state, timeoutMs) {
   page.on("dialog", (d) => d.accept());
 
   try {
-    // 1. Object owner: a plain round, watched live.
+    // 0. Bounce an idea in the chat box on the start page, then turn it into work.
     await login(page, "agneta");
+    await page.goto(baseUrl + "/", { waitUntil: "load", timeout: NAV_TIMEOUT });
+    await page.type("[data-testid=claude-idea-form] textarea", "Tänk om man kunde se hur länge en beställning har legat i samma status?");
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
+      page.click("[data-testid=claude-idea-form] button[type=submit]"),
+    ]);
+    await page.waitForFunction(() => document.querySelector("[data-testid=claude-idea-chat]")?.getAttribute("data-state") === "WaitingForOwner", { timeout: 60000, polling: 250 });
+    await page.type("[data-testid=claude-idea-form] textarea", "Det är mest för handläggarna, så de ser vad som fastnat.");
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
+      page.click("[data-testid=claude-idea-form] button[type=submit]"),
+    ]);
+    await page.waitForFunction(() => document.querySelectorAll("[data-testid=claude-idea-chat] > div").length >= 4 && document.querySelector("[data-testid=claude-idea-chat]")?.getAttribute("data-state") === "WaitingForOwner", { timeout: 60000, polling: 250 });
+    await shoot(page, "00-idea-chat.png");
+    await page.evaluate(() => { document.querySelector("[data-testid=claude-convert-form] input[name=title]").value = "Visa tid i status"; });
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
+      page.click("[data-testid=claude-convert-form] button[type=submit]"),
+    ]);
+    if (!/\/Claude\/Conversation\//.test(page.url())) problem("Converting the idea didn't open it as work: " + page.url());
+    await waitForState(page, "WaitingForOwner", 60000);
+    await shoot(page, "00b-idea-became-work.png");
+
+    // 1. Object owner: a plain round, watched live.
     await page.goto(baseUrl + "/", { waitUntil: "load", timeout: NAV_TIMEOUT });
     await shoot(page, "01-startpage-owner.png");
 

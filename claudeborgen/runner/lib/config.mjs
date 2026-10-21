@@ -20,6 +20,10 @@ export const DEFAULTS = {
   pauseRetryMinutes: 30,
   heartbeatSeconds: 20,
   pollSeconds: 20,
+  // Ideas are a chat - asked for more often, and with their own (chattier) loop limits.
+  ideaPollSeconds: 3,
+  maxIdeaRepliesPerConversationPerHour: 30,
+  maxIdeaRepliesPerHour: 60,
   claudeCommand: "claude",
   model: null,
   fallbackModel: null,

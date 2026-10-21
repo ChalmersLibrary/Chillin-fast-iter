@@ -352,3 +352,21 @@ test("claude: model and fallback model are passed when configured, left to Claud
   assert.ok(!seen[1].includes("--model"));
   assert.ok(!seen[1].includes("--fallback-model"));
 });
+
+test("claude: idea mode reads but can't write - no permission bypass, editing and shell tools off", async () => {
+  let args;
+  const claude = createClaude({ cwd: "/", timeoutMinutes: 1, runImpl: async (c, a) => { args = a; return { code: 0, stdout: JSON.stringify({ result: "ok", session_id: "s" }), output: "" }; } });
+
+  await claude("x", { mode: "idea" });
+
+  assert.ok(!args.includes("--dangerously-skip-permissions"));
+  const disallowed = args[args.indexOf("--disallowedTools") + 1];
+  for (const tool of ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"]) assert.ok(disallowed.split(",").includes(tool), tool);
+  assert.match(args[args.indexOf("--append-system-prompt") + 1], /Ingenting ska byggas än/);
+});
+
+test("fake: an idea gets a chat answer", async () => {
+  const fakes = createFakes({ heartbeat: heartbeatRecorder(), offlineMs: 0, phaseDelayMs: 0 });
+  const answer = await fakes.claude("x", { mode: "idea" });
+  assert.match(answer.text, /Fejkad runner/);
+});

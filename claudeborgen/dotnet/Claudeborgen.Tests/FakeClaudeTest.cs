@@ -117,6 +117,21 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task Idea_GetsAChatAnswer_BeforeWaitingWork_AndNothingIsBuilt()
+        {
+            var task = _service.Start("Arbete", "Gör något", "agneta").Id;
+            var idea = _service.StartIdea("Tänk om listan kunde sorteras", "agneta").Id;
+
+            await RunAsync(1);
+
+            var answered = _service.Get(idea);
+            Assert.AreEqual(ConversationState.WaitingForOwner, answered.State, "The idea was answered first.");
+            StringAssert.Contains(answered.Messages.Last().Body, "Fejkad Claude");
+            Assert.AreEqual(0, answered.Rounds.Single().Commits.Count);
+            Assert.AreEqual(ConversationState.WaitingForClaude, _service.Get(task).State);
+        }
+
+        [TestMethod]
         public async Task Fraga_AsksAQuestion_WithoutDeliveringAnything()
         {
             var id = _service.Start("Knapp", "Lägg till en knapp [fråga]", "agneta").Id;

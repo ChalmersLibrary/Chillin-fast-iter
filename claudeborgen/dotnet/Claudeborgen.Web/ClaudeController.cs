@@ -39,6 +39,7 @@ namespace Claudeborgen
             if (IsOff) return NotFound();
             var model = BuildModel(conversationId: id);
             if (model.Conversation == null) return NotFound();
+            if (model.Conversation.IsIdea) return Redirect(IdeaUrl(id)); // ideas are chatted on the start page
             return _host.ConversationPage(this, model);
         }
 
@@ -80,12 +81,61 @@ namespace Claudeborgen
             if (IsOff) return NotFound();
             if (!Access.CanWrite) return Forbid();
 
+            var back = BackTo(id);
             return Attempt(() =>
             {
                 _service.AddMessage(id, body, Author);
-                return RedirectToAction(nameof(Conversation), new { id });
-            }, () => RedirectToAction(nameof(Conversation), new { id }));
+                return back;
+            }, () => back);
         }
+
+        // DESIGN.md, "Idéer": a loose chat on the start page. Anyone who may write in conversations
+        // may bounce ideas; only the object owner turns one into a task.
+        [HttpPost("Idea")]
+        [ValidateAntiForgeryToken]
+        public IActionResult Idea(string body)
+        {
+            if (IsOff) return NotFound();
+            if (!Access.CanWrite) return Forbid();
+
+            return Attempt(() =>
+            {
+                var idea = _service.StartIdea(body, Author);
+                return Redirect(IdeaUrl(idea.Id));
+            }, () => Redirect("/"));
+        }
+
+        [HttpGet("IdeaChat/{id:int}")]
+        public IActionResult IdeaChat(int id)
+        {
+            if (IsOff) return NotFound();
+            var model = BuildModel(conversationId: id);
+            // Someone else may have the chat open when it's turned into work or let go of: tell them,
+            // rather than leave a chat that silently stops updating.
+            if (model.Conversation == null || !model.Conversation.IsIdea)
+                return PartialView(ViewRoot + "_IdeaGone.cshtml", model.Conversation);
+            return PartialView(ViewRoot + "_IdeaChat.cshtml", model);
+        }
+
+        [HttpPost("Convert/{id:int}")]
+        [ValidateAntiForgeryToken]
+        public IActionResult Convert(int id, string title)
+        {
+            if (IsOff) return NotFound();
+            if (!Access.CanStartAndClose) return Forbid();
+
+            return Attempt(() =>
+            {
+                _service.ConvertToTask(id, title, Author);
+                return RedirectToAction(nameof(Conversation), new { id });
+            }, () => Redirect(IdeaUrl(id)));
+        }
+
+        public static string IdeaUrl(int id) => $"/?idea={id}#claude-idea";
+
+        // Ideas live on the start page, tasks on their own page.
+        private IActionResult BackTo(int id) =>
+            _service.Get(id)?.IsIdea == true ? Redirect(IdeaUrl(id)) : RedirectToAction(nameof(Conversation), new { id });
 
         [HttpPost("Done/{id:int}")]
         [ValidateAntiForgeryToken]
@@ -103,12 +153,14 @@ namespace Claudeborgen
             }, () => RedirectToAction(nameof(Conversation), new { id }));
         }
 
+        // Also "Släpp idén" - letting go of an idea is open to whoever may bounce ideas.
         [HttpPost("Cancel/{id:int}")]
         [ValidateAntiForgeryToken]
         public IActionResult Cancel(int id)
         {
             if (IsOff) return NotFound();
-            if (!Access.CanStartAndClose) return Forbid();
+            var isIdea = _service.Get(id)?.IsIdea == true;
+            if (!(isIdea ? Access.CanWrite : Access.CanStartAndClose)) return Forbid();
 
             return Attempt(() =>
             {

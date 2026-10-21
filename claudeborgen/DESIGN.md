@@ -144,6 +144,34 @@ ihop dem är `PROTOCOL.md`.
   Huruvida något registreras som "skrivskyddat" i värdens behörighetsmodell är värdens sak; i Chillin
   sköts det av `ClaudeborgenAllowViewerConvention`.
 
+### Idéer
+
+Att skriva rubrik och meddelande känns som en beställning, och det gör att man skriver väldigt noga.
+Därför finns en lösare väg in: en **chattruta på startsidan**, "Bolla en idé med Claude".
+
+- **Ingen rubrik.** Man skriver bara, och rubriken tas från första meddelandet.
+- **Claude svarar som i en chatt:** kort, i samtalston och gärna med en motfråga. Claude hjälper till
+  att avgöra om idén är värd att bygga, ungefär hur stor den är och vilka alternativ som finns.
+  Claude får läsa koden för att svara konkret, men kan inte ändra något: runnern kör `claude -p`
+  utan att kringgå behörigheter och med `Edit`, `Write`, `MultiEdit`, `NotebookEdit` och `Bash`
+  avstängda.
+- **Chatten fortsätter på startsidan** och uppdateras live, med "Claude skriver…" medan Claude tänker.
+  Andra pågående idéer listas under "Idéer", och alla med inloggning kan läsa dem. Alla som får skriva
+  i samtal (`ObjektSpecialist`, `ObjektSpecialistIT`) kan bolla idéer.
+- **"Gör det här till ett arbete"** (objektspecialisten, rubriken är förifylld) gör idén till ett
+  vanligt arbete. Objektspecialistens "Nu bygger vi det här: …" blir ett meddelande i samtalet, och
+  nästa varv bygger det i *samma* Claude-session, alltså med hela idédiskussionen i minnet.
+- **"Släpp idén"** tar bort den. Idéer som legat orörda i 14 dagar (`IdeaRetention`) tas bort
+  automatiskt, med Claude-sessionen, enligt samma princip som i [Samtal tas bort](#samtal-tas-bort).
+- **Idéer väntar inte på arbeten.** Runnern har en egen idéloop som frågar var 3:e sekund
+  (`ideaPollSeconds`) och svarar parallellt med ett pågående implementationsvarv. Det går att göra
+  eftersom idéer inte rör några filer. Det är högst ett idésvar och ett arbete åt gången, och
+  idéerna har egna, generösare tak mot loopar (`maxIdeaRepliesPerConversationPerHour` 30,
+  `maxIdeaRepliesPerHour` 60).
+- **"Nytt arbete direkt"**, med rubrik och meddelande, finns kvar ihopfälld för den som redan vet vad
+  som ska göras.
+- Fejken i appen svarar på idéer före väntande arbeten, och fejkrunnern svarar också.
+
 ### Changelog
 
 - `changelogFile` i `claudeborgen.json` pekar ut filen i repot. Värden pekar ut samma fil där appen

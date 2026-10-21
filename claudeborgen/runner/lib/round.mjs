@@ -177,6 +177,49 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
+// One answer in an idea chat (DESIGN.md, "Idéer"): no git, no build, Claude in read-only mode.
+// Guarded like a task round (no new input -> no Claude; per-conversation and total limits), with
+// its own, chattier limits.
+export async function runIdeaRound({ api, claude, conversationId, guards, log = () => {} }) {
+  let round = null;
+  try {
+    round = await api.claim(conversationId);
+    const conversation = await api.conversation(conversationId);
+    if (guards) {
+      const refusal = guardRound({ conversation, round, guards });
+      if (refusal) throw new RoundFailure(refusal);
+      guards.recordRound(conversationId);
+    }
+
+    const sessionId = conversation.sessionId ?? null;
+    const answer = await claude(buildPrompt(conversation, { resume: !!sessionId }), { sessionId, mode: "idea" });
+    guards?.recordCost(answer.costUsd);
+    await api.reply(conversationId, {
+      body: answer.text || "(Claude lämnade inget svar.)",
+      commits: [],
+      links: [],
+      sessionId: answer.sessionId ?? sessionId,
+      costUsd: round2(answer.costUsd),
+      durationSeconds: Math.round((answer.durationMs ?? 0) / 1000),
+      question: false,
+    });
+    log(`Idé #${conversationId}: svar skickat`);
+    return { paused: false };
+  } catch (e) {
+    if (e instanceof QuotaExhausted) {
+      log(`Idé #${conversationId}: ${e.message}`);
+      try { if (round) await api.release(conversationId); } catch (releaseError) { log(`Idé #${conversationId}: kunde inte lämna tillbaka: ${releaseError.message}`); }
+      return { paused: true, resetAt: e.resetAt };
+    }
+    const summary = e instanceof RoundFailure ? e.message : `Runnern kunde inte svara: ${e.message}`;
+    log(`Idé #${conversationId}: ${summary}`);
+    if (round) {
+      try { await api.crash(conversationId, summary); } catch (reportError) { log(`Idé #${conversationId}: kunde inte rapportera: ${reportError.message}`); }
+    }
+    return { paused: false };
+  }
+}
+
 // After "klar": commit the conversation's changelog entry to the project's changelog file, so it
 // travels with the code (DESIGN.md, "Changelog"). Failures are only logged and retried on the next
 // poll - the conversation itself is done either way.

@@ -291,6 +291,81 @@ namespace Claudeborgen.Tests
             Assert.AreEqual(0, _service.PendingDeployments().Count, "Two days old - never going to show up.");
         }
 
+        // DESIGN.md, "Idéer"
+        [TestMethod]
+        public void Idea_NeedsNoTitle_AndIsMadeFromTheFirstMessage()
+        {
+            var idea = _service.StartIdea("Jag funderar på om man kunde exportera listan till Excel på något sätt, typ en knapp", "agneta");
+
+            Assert.AreEqual(ConversationKind.Idea, idea.Kind);
+            Assert.IsTrue(idea.Title.Length <= 60);
+            StringAssert.StartsWith(idea.Title, "Jag funderar på om man kunde exportera");
+            Assert.AreEqual(idea.Id, _service.Work(ConversationKind.Idea).Single().Id);
+            Assert.AreEqual(0, _service.Work(ConversationKind.Task).Count);
+        }
+
+        [TestMethod]
+        public void IdeaAndTask_CanBeWorkedOnAtTheSameTime_ButOnlyOneOfEach()
+        {
+            var task = _service.Start("Arbete", "a", "agneta").Id;
+            var idea = _service.StartIdea("Idé", "agneta").Id;
+            var idea2 = _service.StartIdea("Idé 2", "agneta").Id;
+            _service.Claim(task);
+
+            _service.Claim(idea);
+
+            Assert.ThrowsException<ClaudeborgenException>(() => _service.Claim(idea2));
+        }
+
+        [TestMethod]
+        public void ConvertToTask_KeepsTheDiscussion_AndStartsANormalRoundInTheSameSession()
+        {
+            var id = _service.StartIdea("Exportknapp?", "agneta").Id;
+            _service.Claim(id);
+            Tick();
+            _service.Reply(id, "Låter rimligt, vem ska använda den?", null, null, "s-idea", null, null);
+            Tick();
+
+            _service.ConvertToTask(id, "Exportknapp på listan", "agneta");
+
+            var task = _service.Get(id);
+            Assert.AreEqual(ConversationKind.Task, task.Kind);
+            Assert.AreEqual("Exportknapp på listan", task.Title);
+            Assert.AreEqual(ConversationState.WaitingForClaude, task.State);
+            Assert.AreEqual("s-idea", task.SessionId, "Claude keeps the idea discussion in mind.");
+            Assert.AreEqual(3, task.Messages.Count);
+            StringAssert.Contains(task.Messages.Last().Body, "Exportknapp på listan");
+            Assert.AreEqual(MessageAuthorKind.Human, task.Messages.Last().AuthorKind);
+            Assert.IsFalse(_service.Claim(id).IsFixRound, "A normal round, not a fix round.");
+        }
+
+        [TestMethod]
+        public void Idea_CannotBeMarkedDone_OnlyConvertedOrLetGo()
+        {
+            var id = _service.StartIdea("Idé", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Svar", null, null, "s", null, null);
+
+            Assert.ThrowsException<ClaudeborgenException>(() => _service.MarkDone(id, "agneta", null));
+
+            _service.Cancel(id, "agneta");
+            Assert.IsNull(_service.Get(id), "Letting go of an idea removes it.");
+        }
+
+        [TestMethod]
+        public void IdleIdea_IsRemovedAfterTheRetentionPeriod()
+        {
+            var id = _service.StartIdea("Idé", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Svar", null, null, "s", null, null);
+
+            _now = _now.AddDays(15);
+            _service.ChangelogView();
+
+            Assert.IsNull(_service.Get(id));
+            CollectionAssert.AreEqual(new[] { "s" }, _service.PendingSessionCleanup().Single().SessionIds, "Its Claude session is cleaned up too.");
+        }
+
         [TestMethod]
         public void Release_PutsTheConversationBackInTheQueue_WithoutTrace()
         {

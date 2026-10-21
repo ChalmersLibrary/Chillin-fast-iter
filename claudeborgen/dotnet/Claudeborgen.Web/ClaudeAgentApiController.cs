@@ -137,9 +137,13 @@ namespace Claudeborgen
             return NoContent();
         }
 
+        // ?kind=idea|task - the runner polls ideas more often, in a loop of its own.
         [HttpGet("work")]
-        public IActionResult Work() =>
-            Json(_service.Work().Select(c => new { c.Id, c.Title, c.State, c.SessionId }));
+        public IActionResult Work([FromQuery] string kind = null)
+        {
+            ConversationKind? filter = Enum.TryParse<ConversationKind>(kind, ignoreCase: true, out var k) ? k : null;
+            return Json(_service.Work(filter).Select(c => new { c.Id, c.Kind, c.Title, c.State, c.SessionId }));
+        }
 
         [HttpGet("conversations/{id:int}")]
         public IActionResult Get(int id)

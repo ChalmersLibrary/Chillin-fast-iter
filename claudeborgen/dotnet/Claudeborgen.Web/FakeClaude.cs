@@ -18,6 +18,7 @@ namespace Claudeborgen
     //   [krasch]  the round crashes
     //   [offline] heartbeats stop for a while, so the status goes offline
     //   [fråga]   Claude asks a question instead of building anything, and waits for the answer
+    // Ideas (DESIGN.md, "Idéer") get a short chat-style answer, never a build.
     //   [kvot]    the account's quota is "used up": the conversation goes back to the queue and
     //             Claude shows as paused for a while, then the round runs (once per conversation)
     public class FakeClaude : BackgroundService
@@ -100,7 +101,15 @@ namespace Claudeborgen
 
             
 
-            var conversation = _service.Work().FirstOrDefault();
+            // Ideas first, like the runner's faster idea loop: a chat shouldn't wait behind a build.
+            var idea = _service.Work(ConversationKind.Idea).FirstOrDefault();
+            if (idea != null)
+            {
+                await AnswerIdeaAsync(idea, cancellationToken);
+                return;
+            }
+
+            var conversation = _service.Work(ConversationKind.Task).FirstOrDefault();
             if (conversation == null)
                 return;
 
@@ -163,6 +172,18 @@ namespace Claudeborgen
             _service.ReportTests(conversation.Id, commit, !red, red ? "FakeClaude låtsades att 1 test är rött." : "Alla tester gröna (fejkat).");
 
             Heartbeat(ClaudeActivity.Idle, null, null);
+        }
+
+        private async Task AnswerIdeaAsync(Conversation idea, CancellationToken cancellationToken)
+        {
+            _service.Claim(idea.Id);
+            await Task.Delay(_phaseDelay, cancellationToken);
+            var said = idea.Messages.LastOrDefault(m => m.AuthorKind == MessageAuthorKind.Human)?.Body ?? "";
+            var replies = idea.Messages.Count(m => m.AuthorKind == MessageAuthorKind.Claude);
+            var body = replies == 0
+                ? $"(Fejkad Claude) Spännande! Om jag förstår dig rätt: \"{Shorten(said)}\". Det ser ut att vara en ganska liten ändring. Vem skulle ha mest nytta av det?"
+                : "(Fejkad Claude) Då låter det värt att bygga. Tryck \"Gör det här till ett arbete\" när du vill, så sätter jag igång.";
+            _service.Reply(idea.Id, body, null, null, "fejk-session-" + idea.Id, 0m, (int)_phaseDelay.TotalSeconds);
         }
 
         private void Heartbeat(ClaudeActivity activity, int? conversationId, string phase) =>

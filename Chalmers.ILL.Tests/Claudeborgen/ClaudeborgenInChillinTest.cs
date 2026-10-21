@@ -162,6 +162,62 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             StringAssert.Contains(startPage, "data-testid=\"claude-changelog-entry\"");
         }
 
+        // DESIGN.md, "Idéer": bounce an idea on the start page, then turn it into work.
+        [TestMethod]
+        public async Task Idea_ChatOnTheStartPage_ThenBecomesWork()
+        {
+            using var factory = CreateFactory();
+            using var client = await LoginAsync(factory, "agneta");
+
+            var startPage = await GetHtmlAsync(client, "/");
+            StringAssert.Contains(startPage, "Bolla en idé med Claude");
+
+            var posted = await PostFormAsync(client, "/", "/Claude/Idea", new Dictionary<string, string> { ["body"] = "Tänk om man kunde exportera listan" });
+            Assert.AreEqual(HttpStatusCode.Redirect, posted.StatusCode);
+            var ideaUrl = posted.Headers.Location.ToString();
+            StringAssert.StartsWith(ideaUrl, "/?idea=");
+            var id = int.Parse(Regex.Match(ideaUrl, @"idea=(\d+)").Groups[1].Value);
+
+            var stopwatch = Stopwatch.StartNew();
+            string chat = null;
+            while (stopwatch.Elapsed < TimeSpan.FromSeconds(30))
+            {
+                chat = await GetHtmlAsync(client, $"/Claude/IdeaChat/{id}");
+                if (chat.Contains("data-state=\"WaitingForOwner\""))
+                    break;
+                await Task.Delay(200);
+            }
+            StringAssert.Contains(chat, "Tänk om man kunde exportera listan");
+            StringAssert.Contains(chat, "Fejkad Claude");
+
+            var page = await GetHtmlAsync(client, ideaUrl);
+            StringAssert.Contains(page, "Gör det här till ett arbete");
+            Assert.AreEqual(HttpStatusCode.Redirect, (await client.GetAsync($"/Claude/Conversation/{id}")).StatusCode, "Ideas are chatted on the start page.");
+
+            var converted = await PostFormAsync(client, ideaUrl, $"/Claude/Convert/{id}", new Dictionary<string, string> { ["title"] = "Export av listan" });
+            StringAssert.Contains(converted.Headers.Location.ToString(), $"/Claude/Conversation/{id}");
+
+            var delivered = await WaitForStateAsync(client, id, "WaitingForOwner");
+            StringAssert.Contains(delivered, "Export av listan");
+            StringAssert.Contains(delivered, "Gröna tester");
+        }
+
+        [TestMethod]
+        public async Task Viewer_SeesIdeas_ButCannotStartOne()
+        {
+            using var factory = CreateFactory();
+            using var owner = await LoginAsync(factory, "agneta");
+            await PostFormAsync(owner, "/", "/Claude/Idea", new Dictionary<string, string> { ["body"] = "En idé alla kan se" });
+
+            using var viewer = await LoginAsync(factory, "viewer");
+            var html = await GetHtmlAsync(viewer, "/");
+            StringAssert.Contains(html, "En idé alla kan se");
+            Assert.IsFalse(html.Contains("claude-idea-form"));
+
+            var refused = await PostFormAsync(viewer, "/ChalmersILLLoginPage", "/Claude/Idea", new Dictionary<string, string> { ["body"] = "Får inte" });
+            StringAssert.Contains(refused.Headers.Location?.ToString() ?? "", "AccessDenied");
+        }
+
         // Claude asks instead of guessing: the conversation shows as a question, on the start page
         // and in the conversation itself.
         [TestMethod]
