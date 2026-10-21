@@ -23,8 +23,8 @@
         @Html.AntiForgeryToken()
         <div class="form-group">
             <label for="claude-reply">Nästa meddelande till Claude</label>
-            <textarea class="form-control" id="claude-reply" name="body" rows="4" required></textarea>
-            <p class="help-block">Skriv inga personuppgifter – allt du skriver skickas till Claude.</p>
+            <textarea class="form-control" id="claude-reply" name="body" rows="4" required data-enter-sends></textarea>
+            <p class="help-block">Enter skickar, Shift+Enter ger ny rad. Skriv inga personuppgifter – allt du skriver skickas till Claude.</p>
         </div>
         <button type="submit" class="btn btn-primary">Skicka</button>
     </form>
@@ -53,4 +53,4 @@
     </div>
 }
 
-<script src="/_content/Claudeborgen.Web/claude.js" type="text/javascript"></script>
+<script src="/_content/Claudeborgen.Web/claude.js?v=@(Model.Settings.DeployedCommit() ?? "dev")" type="text/javascript"></script>

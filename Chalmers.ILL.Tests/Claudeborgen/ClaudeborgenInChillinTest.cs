@@ -332,7 +332,7 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             var startPage = await GetHtmlAsync(viewer, "/");
             StringAssert.Contains(startPage, "data-testid=\"claude-section\"");
             StringAssert.Contains(startPage, "data-testid=\"claude-status\"");
-            StringAssert.Contains(startPage, "/_content/Claudeborgen.Web/claude.js");
+            StringAssert.Contains(startPage, "/_content/Claudeborgen.Web/claude.js?v=");
             Assert.IsTrue(startPage.IndexOf("claude-section") < startPage.IndexOf("Nytt i Chillin"), "The Claude section sits right above the changelog.");
 
             var claude = await viewer.GetAsync("/Claude");

@@ -48,4 +48,25 @@
     });
 
     setInterval(refreshAll, 15 * 1000);
+
+    // Chat convention in the boxes where you talk to Claude (marked data-enter-sends): Enter sends,
+    // Shift+Enter is a new line. Not while an input method is composing (e.g. accents on some
+    // keyboards), and nothing is sent twice or empty.
+    document.addEventListener("keydown", function (e) {
+        var box = e.target;
+        if (e.key !== "Enter" || e.shiftKey || e.isComposing || !box.matches || !box.matches("textarea[data-enter-sends]")) {
+            return;
+        }
+        e.preventDefault();
+        var form = box.form;
+        if (!form || box.value.trim() === "" || form.getAttribute("data-sending") === "1") {
+            return;
+        }
+        form.setAttribute("data-sending", "1");
+        if (form.requestSubmit) {
+            form.requestSubmit();
+        } else {
+            form.submit();
+        }
+    });
 })();

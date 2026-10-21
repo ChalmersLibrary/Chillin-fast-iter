@@ -56,10 +56,10 @@
                     <form method="post" action="@(idea != null ? $"/Claude/Reply/{idea.Id}" : "/Claude/Idea")" data-testid="claude-idea-form">
                         @Html.AntiForgeryToken()
                         <div class="form-group">
-                            <textarea class="form-control" name="body" rows="2" required placeholder="@(idea != null ? "Svara Claude…" : "Jag funderar på…")"></textarea>
+                            <textarea class="form-control" name="body" rows="2" required data-enter-sends placeholder="@(idea != null ? "Svara Claude…" : "Jag funderar på…")"></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm">Skicka</button>
-                        <span class="help-block" style="display: inline; margin-left: 8px;">Inga personuppgifter – allt du skriver skickas till Claude.</span>
+                        <span class="help-block" style="display: inline; margin-left: 8px;">Enter skickar, Shift+Enter ger ny rad. Inga personuppgifter – allt du skriver skickas till Claude.</span>
                     </form>
                 }
 
@@ -119,6 +119,7 @@
             </div>
         }
 
-        <script src="/_content/Claudeborgen.Web/claude.js" type="text/javascript"></script>
+        @* ?v= the deployed commit: a new deployment is never stuck with a cached old script. *@
+        <script src="/_content/Claudeborgen.Web/claude.js?v=@(ClaudeService.Settings.DeployedCommit() ?? "dev")" type="text/javascript"></script>
     </div>
 }

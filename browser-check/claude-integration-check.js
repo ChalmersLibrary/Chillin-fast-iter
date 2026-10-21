@@ -77,10 +77,18 @@ async function waitForState(page, state, timeoutMs) {
     // 0. Bounce an idea in the chat box on the start page, then turn it into work.
     await login(page, "agneta");
     await page.goto(baseUrl + "/", { waitUntil: "load", timeout: NAV_TIMEOUT });
-    await page.type("[data-testid=claude-idea-form] textarea", "Tänk om man kunde se hur länge en beställning har legat i samma status?");
+    // Chat convention: Shift+Enter is a new line, Enter sends.
+    await page.type("[data-testid=claude-idea-form] textarea", "Tänk om man kunde se hur länge");
+    await page.keyboard.down("Shift");
+    await page.keyboard.press("Enter");
+    await page.keyboard.up("Shift");
+    await page.type("[data-testid=claude-idea-form] textarea", "en beställning har legat i samma status?");
+    const typed = await page.$eval("[data-testid=claude-idea-form] textarea", (t) => t.value);
+    if (!typed.includes("\n")) problem("Shift+Enter didn't make a new line.");
+    if (page.url().includes("idea=")) problem("Shift+Enter sent the message.");
     await Promise.all([
       page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
-      page.click("[data-testid=claude-idea-form] button[type=submit]"),
+      page.keyboard.press("Enter"),
     ]);
     await page.waitForFunction(() => document.querySelector("[data-testid=claude-idea-chat]")?.getAttribute("data-state") === "WaitingForOwner", { timeout: 60000, polling: 250 });
     await page.type("[data-testid=claude-idea-form] textarea", "Det är mest för handläggarna, så de ser vad som fastnat.");
