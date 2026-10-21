@@ -1,15 +1,37 @@
 @inject ClaudeborgenService ClaudeService
-@* Conversations marked done, as entries under "Nytt i Chillin" on the start page - above the
-   hand-written version entries, which stay as history. *@
-@if (ClaudeService.Settings.IsOn)
-{
-    foreach (var c in ClaudeService.Changelog())
+@* The changelog (DESIGN.md, "Changelog"): the deployed changelog file plus conversations marked
+   done whose entry isn't in it yet, newest first. Rendered by the host where its changelog lives. *@
+@{
+    var entries = ClaudeService.ChangelogView();
+}
+<ul class="list-group" data-testid="changelog">
+    @foreach (var entry in entries)
     {
-        <li class="list-group-item" data-testid="claude-changelog-entry">
-            <h4>@(c.DoneAt?.ToString("yyyy-MM-dd"))</h4>
+        <li class="list-group-item" data-testid="@(entry.ConversationId != null ? "claude-changelog-entry" : "changelog-entry")">
+            <h4>
+                @entry.Date@(string.IsNullOrEmpty(entry.Version) ? "" : " - " + entry.Version)
+                @if (entry.Pending)
+                {
+                    <small class="text-muted" title="@(entry.Fake ? "Snabbtestservern: klart-markeringen committas aldrig här." : "Klar, men ännu inte driftsatt här.")">
+                        @(entry.Fake ? "(fejk)" : "(på väg)")
+                    </small>
+                }
+            </h4>
             <ul>
-                <li><a href="/Claude/Conversation/@c.Id">@c.ChangelogText</a></li>
+                @foreach (var item in entry.Items)
+                {
+                    <li>
+                        @if (entry.ConversationId != null && ClaudeService.Settings.IsOn)
+                        {
+                            <a href="/Claude/Conversation/@entry.ConversationId">@item</a>
+                        }
+                        else
+                        {
+                            @item
+                        }
+                    </li>
+                }
             </ul>
         </li>
     }
-}
+</ul>

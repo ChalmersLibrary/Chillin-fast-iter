@@ -188,6 +188,25 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task Changelog_PendingAfterDone_ThenCommitted()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+            var id = _service.Start("Exportknapp", "a", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Klart", new[] { "c1" }, null, "s", null, null);
+            _service.MarkDone(id, "agneta", "Exportknapp på listan");
+
+            var pending = await JsonAsync(await _client.GetAsync("/api/claude/changelog/pending"));
+            Assert.AreEqual(1, pending.GetArrayLength());
+            Assert.AreEqual(id, pending[0].GetProperty("conversationId").GetInt32());
+            Assert.AreEqual("Exportknapp på listan", pending[0].GetProperty("text").GetString());
+            StringAssert.Matches(pending[0].GetProperty("date").GetString(), new System.Text.RegularExpressions.Regex(@"^\d{4}-\d{2}-\d{2}$"));
+
+            Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{id}/changelog", new { commit = "c0ffee" })).StatusCode);
+            Assert.AreEqual(0, (await JsonAsync(await _client.GetAsync("/api/claude/changelog/pending"))).GetArrayLength());
+        }
+
+        [TestMethod]
         public async Task InvalidStateChange_Is409WithMessage()
         {
             await StartAsync(ClaudeborgenMode.Agent);

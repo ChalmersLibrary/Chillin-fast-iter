@@ -111,6 +111,34 @@ misslyckades. Inget har levererats. Samtalet markeras "behöver IT".
 { "summary": "Bygget är rött efter 2 rättningsförsök. Inget har pushats." }
 ```
 
+### `GET changelog/pending` → `200`
+Samtal som markerats klara men vars changelog-post ännu inte är committad. Runnern lägger in posten
+överst i projektets changelog-fil, committar och pushar den, och rapporterar sedan med anropet nedan.
+```json
+[ { "conversationId": 12, "date": "2026-10-21", "text": "Exportknapp på beställningslistan" } ]
+```
+
+### `POST conversations/{id}/changelog` → `204`
+Changelog-posten är committad.
+```json
+{ "commit": "<sha>" }
+```
+`409` om samtalet inte är klart.
+
+## Changelog-filen
+
+En JSON-lista i projektrepot. Sökvägen anges i runnerns `claudeborgen.json` som `changelogFile`, och
+appen läser samma fil där den är driftsatt. Nyaste posten ligger först, men visningen sorterar ändå
+efter datum.
+```json
+[
+  { "date": "2026-10-21", "items": ["Exportknapp på beställningslistan"], "conversationId": 12 },
+  { "date": "2025-09-09", "version": "v2.6.3", "items": ["Handskriven post"] }
+]
+```
+`conversationId` finns bara på poster som runnern har skrivit. Appen använder den för att se vilka
+klara samtal som redan finns i den driftsatta filen.
+
 ## Ett varv, sett från runnern
 
 ```

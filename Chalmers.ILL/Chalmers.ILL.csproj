@@ -20,6 +20,12 @@
     <Content Update="Config\log4net.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- The start page's changelog ("Nytt i Chillin"), read at runtime from the content root;
+         Claudeborgen's runner appends to it when a conversation is marked done. -->
+    <Content Update="changelog.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

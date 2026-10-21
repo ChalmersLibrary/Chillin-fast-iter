@@ -86,6 +86,19 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task DoneConversation_GetsAFakeChangelogCommit_NeverARealOne()
+        {
+            var id = _service.Start("Ett", "Gör något", "agneta").Id;
+            await RunAsync(1);
+            _service.MarkDone(id, "agneta", "Något");
+
+            await RunAsync(1);
+
+            StringAssert.StartsWith(_service.Get(id).ChangelogCommit, FakeClaude.FakeCommitPrefix);
+            Assert.AreEqual(0, _service.PendingChangelog().Count);
+        }
+
+        [TestMethod]
         public async Task Crash_FlagsNeedsIt_WithoutDelivering()
         {
             var id = _service.Start("Ett", "Gör något [krasch]", "agneta").Id;

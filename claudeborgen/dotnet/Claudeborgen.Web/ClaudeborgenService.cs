@@ -222,6 +222,41 @@ namespace Claudeborgen
             }
         }
 
+        // What the start page shows: the deployed changelog file, plus done conversations whose
+        // entry isn't in it yet.
+        public List<ChangelogEntry> ChangelogView() =>
+            ChangelogFile.Merge(ChangelogFile.Load(_settings.ChangelogPath), Changelog(), _settings.IsFake);
+
+        // Done conversations whose changelog entry hasn't been committed yet - the runner's job.
+        public List<Conversation> PendingChangelog()
+        {
+            lock (_lock)
+            {
+                return _store.LoadAll()
+                    .Where(c => c.State == ConversationState.Done && c.ChangelogCommit == null)
+                    .OrderBy(c => c.DoneAt)
+                    .ToList();
+            }
+        }
+
+        public void MarkChangelogCommitted(int id, string commit)
+        {
+            if (string.IsNullOrWhiteSpace(commit))
+                throw new ClaudeborgenException("Commit saknas.");
+
+            lock (_lock)
+            {
+                var conversation = LoadOrThrow(id);
+                if (conversation.State != ConversationState.Done)
+                    throw new ClaudeborgenException("Samtalet är inte markerat som klart.");
+
+                conversation.ChangelogCommit = commit.Trim();
+                _store.Save(conversation);
+            }
+
+            Changed(id);
+        }
+
         #endregion
 
         #region Claude (runner via agent API, or FakeClaude)

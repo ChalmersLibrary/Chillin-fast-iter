@@ -260,6 +260,27 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public void Done_IsPendingForTheChangelog_UntilTheRunnerCommitsIt()
+        {
+            var id = StartAndDeliver();
+            Assert.AreEqual(0, _service.PendingChangelog().Count, "Not done yet.");
+
+            _service.MarkDone(id, "agneta", "Exportknapp");
+            Assert.AreEqual(id, _service.PendingChangelog().Single().Id);
+
+            _service.MarkChangelogCommitted(id, "c0ffee");
+            Assert.AreEqual(0, _service.PendingChangelog().Count);
+            Assert.AreEqual("c0ffee", _service.Get(id).ChangelogCommit);
+        }
+
+        [TestMethod]
+        public void ChangelogCommitted_OnAConversationThatIsNotDone_IsRejected()
+        {
+            var id = _service.Start("Ett", "a", "agneta").Id;
+            Assert.ThrowsException<ClaudeborgenException>(() => _service.MarkChangelogCommitted(id, "c0ffee"));
+        }
+
+        [TestMethod]
         public void CancelledConversation_IsNotInTheChangelog()
         {
             var id = _service.Start("Ett", "a", "agneta").Id;

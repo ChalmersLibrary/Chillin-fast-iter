@@ -95,6 +95,10 @@ namespace Claudeborgen
         public string DoneBy { get; set; }
         public string ChangelogText { get; set; }
 
+        // The commit that added this conversation's entry to the changelog file (the runner does it
+        // after "klar"); null = not yet. A FakeClaude.FakeCommitPrefix value means a fake did it.
+        public string ChangelogCommit { get; set; }
+
         [JsonIgnore]
         public DateTime LastActivityAt => Messages.Count > 0 ? Messages.Max(m => m.At) : CreatedAt;
         [JsonIgnore]

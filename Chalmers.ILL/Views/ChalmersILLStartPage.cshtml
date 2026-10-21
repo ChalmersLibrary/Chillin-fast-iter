@@ -59,80 +59,9 @@
 
 <div>
     <h3>Nytt i Chillin</h3>
-    <ul class="list-group">
-        @await Html.PartialAsync("~/Views/Claudeborgen/_Changelog.cshtml")
-        <li class="list-group-item">
-            <h4>2025-09-09 - v2.6.3</h4>
-            <ul>
-                <li>Ingen hämtning av låntagarbeställningar från Libris.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2025-01-14 - v2.6.2</h4>
-            <ul>
-                <li>Autentisering med refreshtokens mot FOLIO.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2024-11-20 - v2.6.1</h4>
-            <ul>
-                <li>Knapp för att göra kopia av order.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2024-11-13 - v2.6.0</h4>
-            <ul>
-                <li>Regelbunden automatisk anonymisering av gamla ordrar.</li>
-                <li>Gränssnitt för manuell anonymisering av automatiskt anonymiserade ordrar.</li>
-                <li>Borttagning av skickade mail äldre än ett år.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2023-11-13 - v2.5.1</h4>
-            <ul>
-                <li>mblock är nu bara block och innehåller information om huruvida låntagaren är blockerad för requests i FOLIO - antingen manuellt eller automatiskt.</li>
-                <li>Går ej att ta emot bok om låntagaren är blockerad i FOLIO.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2023-10-04 - v2.5.0</h4>
-            <ul>
-                <li>Översiktlig logg på varje ärende som lyfter viktiga saker och länkar vidare till detaljerade loggen.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2023-09-11 - v2.4.0</h4>
-            <ul>
-                <li>QR-kod för mottagning av artikel på filial. Vid scanning av QR-koden, från artikelns försättsblad, skickas mail till låntagare och status uppdateras på ordern.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2023-06-13 - v2.3.0</h4>
-            <ul>
-                <li>Diskappen borttagen.</li>
-                <li>Automatiskt mailutskick till låntagare fyra dagar efter artikel skickats till filial.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2022-12-05 - v2.2.0</h4>
-            <ul>
-                <li>Låntagarens tillhörighet och access till resurser hämtas från PDB.</li>
-                <li>Letar efter person med CID, personnummer och mail i PDB vid skapande av order.</li>
-                <li>Möjlighet att läsa in data från PDB manuellt.</li>
-            </ul>
-        </li>
-        <li class="list-group-item">
-            <h4>2022-10-20 - v2.1.0</h4>
-            <ul>
-                <li>Status active/inactive för kontot i FOLIO läses in och sparas i Chillin vid mailhämtning och manuell hämtning av beställardata.</li>
-                <li>Status på kontot i FOLIO används för att lägga upp informationsrutor vid beställning och mottagning av bok.</li>
-                <li>Informationsruta som påminner om retur i FOLIO efter retur i Chillin och status FOLIO.</li>
-                <li>Informationsruta som påminner om ändring av lånetid i FOLIO efter ändring av lånetid i Chillin och status FOLIO.</li>
-                <li>Status ändras inte vid ändring av lånetid om status är FOLIO.</li>
-                <li>Mallar går att skapa under inställningar.</li>
-            </ul>
-        </li>
-    </ul>
+    @* Changelog: Chalmers.ILL/changelog.json - hand-written entries and the ones Claudeborgen's runner
+       commits when the object owner marks a conversation done, in date order (claudeborgen/DESIGN.md). *@
+    @await Html.PartialAsync("~/Views/Claudeborgen/_Changelog.cshtml")
 </div>
 
 <div>

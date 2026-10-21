@@ -1,0 +1,83 @@
+[
+  {
+    "date": "2025-09-09",
+    "version": "v2.6.3",
+    "items": [
+      "Ingen hämtning av låntagarbeställningar från Libris."
+    ]
+  },
+  {
+    "date": "2025-01-14",
+    "version": "v2.6.2",
+    "items": [
+      "Autentisering med refreshtokens mot FOLIO."
+    ]
+  },
+  {
+    "date": "2024-11-20",
+    "version": "v2.6.1",
+    "items": [
+      "Knapp för att göra kopia av order."
+    ]
+  },
+  {
+    "date": "2024-11-13",
+    "version": "v2.6.0",
+    "items": [
+      "Regelbunden automatisk anonymisering av gamla ordrar.",
+      "Gränssnitt för manuell anonymisering av automatiskt anonymiserade ordrar.",
+      "Borttagning av skickade mail äldre än ett år."
+    ]
+  },
+  {
+    "date": "2023-11-13",
+    "version": "v2.5.1",
+    "items": [
+      "mblock är nu bara block och innehåller information om huruvida låntagaren är blockerad för requests i FOLIO - antingen manuellt eller automatiskt.",
+      "Går ej att ta emot bok om låntagaren är blockerad i FOLIO."
+    ]
+  },
+  {
+    "date": "2023-10-04",
+    "version": "v2.5.0",
+    "items": [
+      "Översiktlig logg på varje ärende som lyfter viktiga saker och länkar vidare till detaljerade loggen."
+    ]
+  },
+  {
+    "date": "2023-09-11",
+    "version": "v2.4.0",
+    "items": [
+      "QR-kod för mottagning av artikel på filial. Vid scanning av QR-koden, från artikelns försättsblad, skickas mail till låntagare och status uppdateras på ordern."
+    ]
+  },
+  {
+    "date": "2023-06-13",
+    "version": "v2.3.0",
+    "items": [
+      "Diskappen borttagen.",
+      "Automatiskt mailutskick till låntagare fyra dagar efter artikel skickats till filial."
+    ]
+  },
+  {
+    "date": "2022-12-05",
+    "version": "v2.2.0",
+    "items": [
+      "Låntagarens tillhörighet och access till resurser hämtas från PDB.",
+      "Letar efter person med CID, personnummer och mail i PDB vid skapande av order.",
+      "Möjlighet att läsa in data från PDB manuellt."
+    ]
+  },
+  {
+    "date": "2022-10-20",
+    "version": "v2.1.0",
+    "items": [
+      "Status active/inactive för kontot i FOLIO läses in och sparas i Chillin vid mailhämtning och manuell hämtning av beställardata.",
+      "Status på kontot i FOLIO används för att lägga upp informationsrutor vid beställning och mottagning av bok.",
+      "Informationsruta som påminner om retur i FOLIO efter retur i Chillin och status FOLIO.",
+      "Informationsruta som påminner om ändring av lånetid i FOLIO efter ändring av lånetid i Chillin och status FOLIO.",
+      "Status ändras inte vid ändring av lånetid om status är FOLIO.",
+      "Mallar går att skapa under inställningar."
+    ]
+  }
+]

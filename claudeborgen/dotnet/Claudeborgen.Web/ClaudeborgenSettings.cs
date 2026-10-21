@@ -38,6 +38,10 @@ namespace Claudeborgen
         // e.g. "https://github.com/ChalmersLibrary/Chillin-fast-iter/commit/{0}". Optional.
         public string CommitUrlTemplate { get; set; }
 
+        // The deployed changelog file (DESIGN.md, "Changelog"), set by the host - in the repo it's the
+        // file the runner's claudeborgen.json "changelogFile" points at.
+        public string ChangelogPath { get; set; }
+
         // Red-test fix rounds Claude gets before the conversation is flagged "behöver IT".
         public int MaxFixAttempts { get; set; } = 2;
 

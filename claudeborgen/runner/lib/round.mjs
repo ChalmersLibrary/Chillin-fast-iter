@@ -147,3 +147,29 @@ export async function runRound({ api, heartbeat, claude, workspace, conversation
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
+
+// After "klar": commit the conversation's changelog entry to the project's changelog file, so it
+// travels with the code (DESIGN.md, "Changelog"). Failures are only logged and retried on the next
+// poll - the conversation itself is done either way.
+export async function commitChangelog({ api, heartbeat, workspace, log = () => {} }) {
+  let pending = [];
+  try {
+    pending = await api.pendingChangelog();
+  } catch (e) {
+    log(`Kunde inte hämta changelog-poster: ${e.message}`);
+    return;
+  }
+
+  for (const entry of pending) {
+    try {
+      await heartbeat.working(entry.conversationId, "uppdaterar changelogen");
+      const commit = await workspace.commitChangelogEntry(entry);
+      await api.changelogCommitted(entry.conversationId, commit);
+      log(`#${entry.conversationId}: changelog-posten committad (${commit.slice(0, 10)})`);
+    } catch (e) {
+      log(`#${entry.conversationId}: kunde inte committa changelog-posten: ${e.message}`);
+    } finally {
+      await heartbeat.idle();
+    }
+  }
+}

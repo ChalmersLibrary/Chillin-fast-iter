@@ -16,7 +16,7 @@ import { createClaude } from "./lib/claude.mjs";
 import { loadConfig } from "./lib/config.mjs";
 import { createFakes } from "./lib/fake.mjs";
 import { Heartbeat } from "./lib/heartbeat.mjs";
-import { createGuards, runRound } from "./lib/round.mjs";
+import { commitChangelog, createGuards, runRound } from "./lib/round.mjs";
 import { createWorkspace } from "./lib/workspace.mjs";
 
 function log(message) {
@@ -68,6 +68,8 @@ export async function main(argv = process.argv.slice(2)) {
   process.on("SIGTERM", shutdown);
 
   for (;;) {
+    await commitChangelog({ api, heartbeat, workspace, log });
+
     let work = [];
     try {
       work = await api.work();

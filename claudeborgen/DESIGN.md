@@ -26,7 +26,7 @@ Avstämda med Lars. Ompröva inte utan ny avstämning.
 | Roller | Rollerna **`ObjektSpecialist`** och **`ObjektSpecialistIT`** i appens rollsystem. Övriga inloggade är läsare; deras önskemål går via objektspecialisten och de kanaler de redan har. | 2026-10-19 |
 | Synlighet | **Ingenting är öppet.** Alla som har inloggning i appen kan se och läsa allt i integrationen; ingen annan ser något. | 2026-10-19 |
 | Lagring | **Filbaserad**, som resten av Chillin: en JSON-fil per samtal under `DataPath/claudeborgen/conversations/`. Ingen databas (Chillin har ingen sedan fas 7). | 2026-10-19 |
-| Changelog | En uppgift hamnar i changelogen när objektägaren säger **klar**. Chillins changelog är rubriken "Nytt i Chillin" i `Views/ChalmersILLStartPage.cshtml`. Ingen markering för produktion; ändringen syns i produktion när den driftsatts där. | 2026-10-19 |
+| Changelog | **En fil i repot** (Chillin: `Chalmers.ILL/changelog.json`) med både handskrivna poster och de som runnern committar när objektspecialisten säger **klar**. Posten följer koden genom alla miljöer, och visningen sorteras efter datum oavsett vem som skrev posten. Ett klart samtal som ännu inte finns i den driftsatta filen visas med "(på väg)". På snabbtestservern committas inget, och posten visas med "(fejk)". | 2026-10-19/21 |
 | Externa integrationer | **Inga.** Inga Teams-webhooks, ingen mail. Det som behöver uppmärksamhet visas i integrationen själv. | 2026-10-19 |
 | Tester | **Bygget före push, testerna efter.** Röda tester rättas av Claude i en ny commit inom samma samtal. | 2026-10-19 |
 | Grön markering | Runnern flyttar git-taggen `test-green` till den senaste commit som har gröna tester. IT mergar vidare därifrån. | 2026-10-19 |
@@ -144,28 +144,44 @@ ihop dem är `PROTOCOL.md`.
   Huruvida något registreras som "skrivskyddat" i värdens behörighetsmodell är värdens sak; i Chillin
   sköts det av `ClaudeborgenAllowViewerConvention`.
 
+### Changelog
+
+- `changelogFile` i `claudeborgen.json` pekar ut filen i repot. Värden pekar ut samma fil där appen
+  är driftsatt (`ClaudeborgenSettings.ChangelogPath`).
+- **Handskrivna poster** läggs direkt i filen. Visningen sorterar efter datum, så det spelar ingen
+  roll var i filen de hamnar.
+- **Klar:** samtalet väntar på en changelog-commit. Runnern lägger in posten överst i filen,
+  committar `Changelog: #<id> <text>` till grenen och rapporterar commiten. Ingen Claude och inget
+  bygge, eftersom det bara är data som appen läser. Ett misslyckande loggas och görs om vid nästa
+  förfrågan.
+- **Startsidan** visar filens poster och dessutom klara samtal som ännu inte finns i den driftsatta
+  filen, märkta "(på väg)". Posten flyttar alltså inte och försvinner inte mellan Klar och driftsättning.
+- **Snabbtestservern** committar aldrig något. Fejken i appen och fejkrunnern låtsas, och posten visas
+  med "(fejk)".
+
 ### Runnern (claudeborgen/runner)
 
 En loop i devcontainern (`node claudeborgen/runner/runner.mjs`). Den är medvetet dum och gör det som
 inte får bero på modellen:
 
 1. Hjärtslag var 20:e sekund, även mitt i ett varv, och direkt vid varje fasbyte.
-2. Frågar efter arbete (`GET work`) och tar ett samtal i taget (`claim`).
-3. **Skydd** innan Claude startas. Om något av dem slår till rapporteras varvet som kraschat:
+2. Committar väntande changelog-poster (se [Changelog](#changelog)).
+3. Frågar efter arbete (`GET work`) och tar ett samtal i taget (`claim`).
+4. **Skydd** innan Claude startas. Om något av dem slår till rapporteras varvet som kraschat:
    - inget nytt meddelande sedan Claudes senaste svar, utom i rättningsvarv
    - fler än `maxRoundsPerConversationPerHour` varv i samtalet den senaste timmen (standard 8)
    - dagens budget `maxBudgetUsdPerDay` är förbrukad (standard 50 USD, per process och UTC-dygn)
-4. `git pull --rebase` på grenen. En arbetskatalog som inte är ren rörs inte, och varvet kraschar
+5. `git pull --rebase` på grenen. En arbetskatalog som inte är ren rörs inte, och varvet kraschar
    i stället.
-5. `claude -p --output-format json --dangerously-skip-permissions --max-budget-usd <per varv>`,
+6. `claude -p --output-format json --dangerously-skip-permissions --max-budget-usd <per varv>`,
    med `--resume` på samtalets session. Claude får en systemprompt om att inte committa själv och om
    att svaret läses av objektspecialisten.
-6. Om något ändrats körs `buildCommand`. Om bygget är rött får Claude rätta det i samma session,
+7. Om något ändrats körs `buildCommand`. Om bygget är rött får Claude rätta det i samma session,
    högst `maxBuildFixAttempts` gånger. Förblir det rött pushas ingenting, ändringarna läggs i
    `git stash` och varvet rapporteras som kraschat.
-7. Commit `#<id>: <rubrik>`, push till grenen (vid krock: `pull --rebase` och ett nytt försök), och
+8. Commit `#<id>: <rubrik>`, push till grenen (vid krock: `pull --rebase` och ett nytt försök), och
    sedan `reply` med commit och länk till snabbtestservern.
-8. `testCommand` körs, resultatet skickas med `tests`, och om det är grönt flyttas `test-green`.
+9. `testCommand` körs, resultatet skickas med `tests`, och om det är grönt flyttas `test-green`.
 
 Tidsgränser finns per Claude-anrop (`roundTimeoutMinutes`) och per kommando
 (`commandTimeoutMinutes`). Alla inställningar står i `claudeborgen.json`.
@@ -291,6 +307,10 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
 - `.devcontainer` är gitignorerad i Chillin. Ska den versionshanteras nu när allt ska bo i Chillin?
 
 ## Historik
+
+**2026-10-21: changelogen blev en fil i repot.** Tidigare låg Claudes changelog-poster i
+datakatalogen på servern där samtalet fördes. De följde därför inte med koden till andra miljöer,
+och de hamnade alltid ovanför handskrivna poster oavsett datum.
 
 **2026-10-20: utbrutet och runnern byggd.** Allt flyttades till `claudeborgen/` med
 `Claudeborgen.Web` som eget projekt, agent-API:t blev ett kontrakt (`PROTOCOL.md`, camelCase),

@@ -130,7 +130,8 @@ namespace Chalmers.ILL
                 ? (IPatronDataProvider)affiliationDataProvider
                 : new FolioPatronDataProvider(templateService, affiliationDataProvider, folioConnection));
 
-            RegisterClaudeborgen(services, interim.GetRequiredService<IConfiguration>(), config);
+            RegisterClaudeborgen(services, interim.GetRequiredService<IConfiguration>(), config,
+                interim.GetService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>()?.ContentRootPath ?? AppContext.BaseDirectory);
 
             // Räcke 2 (fas 6, isolerat läge steg A): crash rather than run wrong, against the final
             // registration state.
@@ -144,9 +145,13 @@ namespace Chalmers.ILL
         // ServiceProvider built from this collection shares one service (same reason as
         // IOrderItemSearcher above). Mode follows Chillin:Isolated - a fake mode there, never the
         // real agent channel; IsolationGuard checks it.
-        private static void RegisterClaudeborgen(IServiceCollection services, IConfiguration configuration, IChillinConfiguration config)
+        private static void RegisterClaudeborgen(IServiceCollection services, IConfiguration configuration, IChillinConfiguration config, string contentRoot)
         {
-            services.AddClaudeborgen(ClaudeborgenSettings.FromConfiguration(configuration, config.Isolated, config.DataPath));
+            var settings = ClaudeborgenSettings.FromConfiguration(configuration, config.Isolated, config.DataPath);
+            // Chillin's changelog (start page, "Nytt i Chillin") - deployed next to the app, see
+            // Chalmers.ILL.csproj; claudeborgen.json's "changelogFile" is the same file in the repo.
+            settings.ChangelogPath = Path.Combine(contentRoot, "changelog.json");
+            services.AddClaudeborgen(settings);
             services.AddSingleton<IClaudeborgenHost>(sp => new ChillinClaudeborgenHost(sp.GetRequiredService<IMemberInfoManager>()));
         }
 

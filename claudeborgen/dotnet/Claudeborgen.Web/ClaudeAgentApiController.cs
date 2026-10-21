@@ -118,6 +118,11 @@ namespace Claudeborgen
             public string Summary { get; set; }
         }
 
+        public class ChangelogCommittedRequest
+        {
+            public string Commit { get; set; }
+        }
+
         [HttpGet("info")]
         public IActionResult Info() =>
             Json(new { protocolVersion = ProtocolVersion, mode = _service.Settings.Mode.ToString(), maxFixAttempts = _service.Settings.MaxFixAttempts });
@@ -163,6 +168,23 @@ namespace Claudeborgen
         {
             var request = await ReadBody<CrashRequest>();
             return Guarded(() => _service.ReportCrash(id, request?.Summary));
+        }
+
+        // Done conversations whose changelog entry the runner should commit (PROTOCOL.md).
+        [HttpGet("changelog/pending")]
+        public IActionResult PendingChangelog() =>
+            Json(_service.PendingChangelog().Select(c => new
+            {
+                conversationId = c.Id,
+                date = (c.DoneAt ?? c.CreatedAt).ToString("yyyy-MM-dd"),
+                text = c.ChangelogText ?? c.Title,
+            }));
+
+        [HttpPost("conversations/{id:int}/changelog")]
+        public async Task<IActionResult> ChangelogCommitted(int id)
+        {
+            var request = await ReadBody<ChangelogCommittedRequest>();
+            return Guarded(() => _service.MarkChangelogCommitted(id, request?.Commit));
         }
 
         private async Task<T> ReadBody<T>() where T : class

@@ -5,8 +5,8 @@ import { createClaude } from "../lib/claude.mjs";
 import { loadConfig } from "../lib/config.mjs";
 import { createFakes } from "../lib/fake.mjs";
 import { buildPrompt } from "../lib/prompt.mjs";
-import { runRound } from "../lib/round.mjs";
-import { createWorkspace } from "../lib/workspace.mjs";
+import { commitChangelog, runRound } from "../lib/round.mjs";
+import { addChangelogEntry, createWorkspace } from "../lib/workspace.mjs";
 import { CONFIG, conversation, fakeApi, heartbeatRecorder } from "./helpers.mjs";
 
 // --- config -----------------------------------------------------------------------------------
@@ -177,4 +177,80 @@ test("fake: [röd] is red once, green in the fix round; [röd!] stays red; [kras
   assert.equal((await fakeRound("Gör X [röd]", { number: 2, isFixRound: true })).call("tests").args[2], true);
   assert.equal((await fakeRound("Gör X [röd!]", { number: 3, isFixRound: true })).call("tests").args[2], false);
   assert.match((await fakeRound("Gör X [krasch]")).call("crash").args[1], /krascha/);
+});
+
+// --- changelog ------------------------------------------------------------------------------
+
+
+function memoryFiles(initial) {
+  const files = { ...initial };
+  return {
+    files,
+    readFile: (p) => { if (!(p in files)) { const e = new Error("ENOENT"); e.code = "ENOENT"; throw e; } return files[p]; },
+    writeFile: (p, content) => { files[p] = content; },
+  };
+}
+
+test("changelog: a done conversation's entry goes on top, once", () => {
+  const fs = memoryFiles({ "/p/changelog.json": JSON.stringify([{ date: "2025-09-09", version: "v2.6.3", items: ["Gammalt"] }]) });
+  const entry = { conversationId: 12, date: "2026-10-21", text: "Exportknapp" };
+
+  assert.equal(addChangelogEntry("/p/changelog.json", entry, fs), true);
+  assert.equal(addChangelogEntry("/p/changelog.json", entry, fs), false, "already there - nothing to add");
+
+  const written = JSON.parse(fs.files["/p/changelog.json"]);
+  assert.deepEqual(written[0], { date: "2026-10-21", items: ["Exportknapp"], conversationId: 12 });
+  assert.equal(written[1].version, "v2.6.3");
+  assert.equal(written.length, 2);
+});
+
+test("changelog: a missing file starts a new one; a broken one is an error, not overwritten", () => {
+  const fs = memoryFiles({});
+  addChangelogEntry("/p/changelog.json", { conversationId: 1, date: "2026-10-21", text: "X" }, fs);
+  assert.equal(JSON.parse(fs.files["/p/changelog.json"]).length, 1);
+
+  const broken = memoryFiles({ "/p/changelog.json": "{ inte json" });
+  assert.throws(() => addChangelogEntry("/p/changelog.json", { conversationId: 1, date: "d", text: "X" }, broken), /Kunde inte läsa/);
+  assert.equal(broken.files["/p/changelog.json"], "{ inte json");
+});
+
+test("changelog: workspace pulls, writes, commits and pushes as its own commit", async () => {
+  const gitCalls = [];
+  const fs = memoryFiles({ "/proj/Chalmers.ILL/changelog.json": "[]" });
+  const runImpl = async (command, args) => {
+    gitCalls.push(args.join(" "));
+    if (args[0] === "status") return { code: 0, stdout: "", output: "" };
+    if (args[0] === "rev-parse") return { code: 0, stdout: "c0ffee\n", output: "" };
+    return { code: 0, stdout: "", output: "" };
+  };
+  const ws = createWorkspace({ cwd: "/proj", branch: "test", buildCommand: "b", testCommand: "t", testGreenTag: "g", commandTimeoutMinutes: 1, changelogFile: "Chalmers.ILL/changelog.json", runImpl, files: fs });
+
+  const commit = await ws.commitChangelogEntry({ conversationId: 12, date: "2026-10-21", text: "Exportknapp" });
+
+  assert.equal(commit, "c0ffee");
+  assert.ok(gitCalls.includes("pull --rebase origin test"));
+  assert.ok(gitCalls.includes("commit -m Changelog: #12 Exportknapp"));
+  assert.ok(gitCalls.includes("push origin HEAD:test"));
+  assert.equal(JSON.parse(fs.files["/proj/Chalmers.ILL/changelog.json"])[0].conversationId, 12);
+});
+
+test("changelog: the runner reports each committed entry; a failure is only logged", async () => {
+  const reported = [];
+  const logs = [];
+  const api = {
+    pendingChangelog: async () => [{ conversationId: 1, date: "d", text: "Ett" }, { conversationId: 2, date: "d", text: "Två" }],
+    changelogCommitted: async (id, commit) => { reported.push([id, commit]); },
+  };
+  const workspace = {
+    commitChangelogEntry: async (entry) => { if (entry.conversationId === 2) throw new Error("push rejected"); return "abc"; },
+  };
+  await commitChangelog({ api, heartbeat: heartbeatRecorder(), workspace, log: (m) => logs.push(m) });
+
+  assert.deepEqual(reported, [[1, "abc"]]);
+  assert.ok(logs.some((l) => /#2: kunde inte committa/.test(l)));
+});
+
+test("changelog: the fake runner never commits", async () => {
+  const fakes = createFakes({ heartbeat: heartbeatRecorder(), offlineMs: 0, phaseDelayMs: 0 });
+  assert.match(await fakes.workspace.commitChangelogEntry({ conversationId: 1, date: "d", text: "X" }), /^fejk/);
 });

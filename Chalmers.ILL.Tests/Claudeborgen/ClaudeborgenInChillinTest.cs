@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
@@ -306,6 +307,38 @@ namespace Chalmers.ILL.Tests.Claudeborgen
                 Assert.AreEqual(HttpStatusCode.Redirect, response.StatusCode, url);
                 StringAssert.Contains(response.Headers.Location.ToString(), "ChalmersILLLoginPage", url);
             }
+        }
+
+        // Chalmers.ILL/changelog.json is edited by hand and appended to by the runner - it must
+        // always parse, or the start page breaks on every server it reaches.
+        [TestMethod]
+        public void ChangelogFile_InTheRepo_Parses_AndHasTheHistory()
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "changelog.json");
+            var entries = global::Claudeborgen.ChangelogFile.Load(path);
+
+            Assert.IsTrue(entries.Count >= 10, $"Expected the version history in {path}.");
+            Assert.IsTrue(entries.All(e => System.Text.RegularExpressions.Regex.IsMatch(e.Date ?? "", @"^\d{4}-\d{2}-\d{2}$")), "Every entry needs a yyyy-MM-dd date.");
+            Assert.IsTrue(entries.All(e => e.Items.Count > 0), "Every entry needs at least one item.");
+        }
+
+        [TestMethod]
+        public async Task DoneOnTheFastTestServer_ShowsInTheChangelogAsFake_InDateOrder()
+        {
+            using var factory = CreateFactory();
+            using var client = await LoginAsync(factory, "agneta");
+            var start = await PostFormAsync(client, "/", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Exportknapp", ["body"] = "a" });
+            var conversationUrl = start.Headers.Location.ToString();
+            var id = int.Parse(Regex.Match(conversationUrl, @"(\d+)$").Groups[1].Value);
+            await WaitForStateAsync(client, id, "WaitingForOwner");
+            await PostFormAsync(client, conversationUrl, $"/Claude/Done/{id}", new Dictionary<string, string> { ["changelogText"] = "Exportknapp på listan" });
+
+            var html = await GetHtmlAsync(client, "/");
+
+            var claudeEntry = html.IndexOf("Exportknapp på listan");
+            Assert.IsTrue(claudeEntry > 0);
+            Assert.IsTrue(claudeEntry < html.IndexOf("2025-09-09 - v2.6.3"), "Newest first: today's entry above the 2025 one.");
+            StringAssert.Contains(html, "(fejk)");
         }
 
         // Characterization of the start page's existing changelog - the integration's entries are

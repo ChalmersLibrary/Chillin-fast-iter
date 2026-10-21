@@ -17,6 +17,7 @@ export const DEFAULTS = {
   heartbeatSeconds: 20,
   pollSeconds: 20,
   claudeCommand: "claude",
+  changelogFile: null,
   tokenFile: "~/.claudeborgen/token",
 };
 

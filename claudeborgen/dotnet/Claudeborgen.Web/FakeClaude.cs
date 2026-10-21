@@ -69,6 +69,11 @@ namespace Claudeborgen
 
             Heartbeat(ClaudeActivity.Idle, null, null);
 
+            // The real runner commits a done conversation's changelog entry to the repo; the fake
+            // only pretends to, so the entry shows as "(fejk)" and nothing is ever committed.
+            foreach (var done in _service.PendingChangelog())
+                _service.MarkChangelogCommitted(done.Id, FakeCommitPrefix + "-changelog");
+
             var conversation = _service.Work().FirstOrDefault();
             if (conversation == null)
                 return;

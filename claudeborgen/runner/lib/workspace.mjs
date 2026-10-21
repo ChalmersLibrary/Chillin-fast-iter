@@ -1,9 +1,28 @@
 // Everything the round does to the project checkout: git, build, tests. One interface, two
 // implementations - the real one, and the fake one for --fake (nothing is touched or pushed).
+import fs from "node:fs";
+import path from "node:path";
 import { RoundFailure } from "./errors.mjs";
 import { run, runShell, tail } from "./exec.mjs";
 
-export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGreenTag, commandTimeoutMinutes, runImpl = run, shellImpl = runShell }) {
+// The project's changelog file (DESIGN.md, "Changelog"): a JSON array, newest first. Adds the
+// entry for a done conversation at the top, unless it's already there. Returns whether it changed.
+export function addChangelogEntry(file, { conversationId, date, text }, { readFile = fs.readFileSync, writeFile = fs.writeFileSync } = {}) {
+  let entries = [];
+  try {
+    entries = JSON.parse(readFile(file, "utf8"));
+  } catch (e) {
+    if (e.code !== "ENOENT") throw new Error(`Kunde inte läsa changelogen ${file}: ${e.message}`);
+  }
+  if (!Array.isArray(entries)) throw new Error(`Changelogen ${file} är inte en JSON-lista.`);
+  if (entries.some((e) => e.conversationId === conversationId)) return false;
+
+  entries.unshift({ date, items: [text], conversationId });
+  writeFile(file, JSON.stringify(entries, null, 2) + "\n");
+  return true;
+}
+
+export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGreenTag, commandTimeoutMinutes, changelogFile, runImpl = run, shellImpl = runShell, files }) {
   const timeoutMs = commandTimeoutMinutes * 60 * 1000;
 
   async function git(...args) {
@@ -58,6 +77,16 @@ export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGr
       await git("tag", "-f", testGreenTag, commit);
       await git("push", "-f", "origin", `refs/tags/${testGreenTag}`);
     },
+
+    // A done conversation's changelog entry, as its own small commit - no Claude, no build: it's
+    // data the app reads. Returns the commit (HEAD if the entry was already there).
+    async commitChangelogEntry(entry) {
+      if (!changelogFile) throw new RoundFailure("claudeborgen.json saknar changelogFile.");
+      await this.prepare();
+      const changed = addChangelogEntry(path.join(cwd, changelogFile), entry, files);
+      if (!changed) return git("rev-parse", "HEAD");
+      return this.commitAndPush(`Changelog: #${entry.conversationId} ${entry.text}`);
+    },
   };
 }
 
@@ -77,6 +106,7 @@ export function createFakeWorkspace({ markers }) {
       return red ? { ok: false, summary: "Fejkrunnern låtsades att 1 test är rött." } : { ok: true, summary: "Alla tester gröna (fejkat)." };
     },
     commitAndPush: async () => `fejk${Date.now().toString(16).slice(-5)}${++counter}`,
+    commitChangelogEntry: async () => `fejk-changelog${++counter}`,
     stash: async () => {},
     markGreen: async () => {},
   };
