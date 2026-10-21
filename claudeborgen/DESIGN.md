@@ -161,7 +161,7 @@ Därför finns en lösare väg in: en **chattruta på startsidan**, "Bolla en id
 - **"Gör det här till ett arbete"** (objektspecialisten, rubriken är förifylld) gör idén till ett
   vanligt arbete. Objektspecialistens "Nu bygger vi det här: …" blir ett meddelande i samtalet, och
   nästa varv bygger det i *samma* Claude-session, alltså med hela idédiskussionen i minnet.
-- **"Släpp idén"** tar bort den. Idéer som legat orörda i 14 dagar (`IdeaRetention`) tas bort
+- **"Skrota idén"** tar bort den. Idéer som legat orörda i 14 dagar (`IdeaRetention`) tas bort
   automatiskt, med Claude-sessionen, enligt samma princip som i [Samtal tas bort](#samtal-tas-bort).
 - **Idéer väntar inte på arbeten.** Runnern har en egen idéloop som svarar parallellt med ett
   pågående implementationsvarv. Det går att göra

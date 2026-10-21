@@ -153,7 +153,7 @@ namespace Claudeborgen
             }, () => RedirectToAction(nameof(Conversation), new { id }));
         }
 
-        // Also "Släpp idén" - letting go of an idea is open to whoever may bounce ideas.
+        // Also "Skrota idén" - scrapping an idea is open to whoever may bounce ideas.
         [HttpPost("Cancel/{id:int}")]
         [ValidateAntiForgeryToken]
         public IActionResult Cancel(int id)
