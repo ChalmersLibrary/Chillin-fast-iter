@@ -117,16 +117,18 @@ namespace Claudeborgen
             return PartialView(ViewRoot + "_IdeaChat.cshtml", model);
         }
 
+        // "Gå vidare": the idea becomes work. No title to fill in - it keeps the one made from the
+        // first message unless a title is posted.
         [HttpPost("Convert/{id:int}")]
         [ValidateAntiForgeryToken]
-        public IActionResult Convert(int id, string title)
+        public IActionResult Convert(int id, string title = null)
         {
             if (IsOff) return NotFound();
             if (!Access.CanStartAndClose) return Forbid();
 
             return Attempt(() =>
             {
-                _service.ConvertToTask(id, title, Author);
+                _service.ConvertToTask(id, string.IsNullOrWhiteSpace(title) ? _service.Get(id)?.Title : title, Author);
                 return RedirectToAction(nameof(Conversation), new { id });
             }, () => Redirect(IdeaUrl(id)));
         }
@@ -153,7 +155,7 @@ namespace Claudeborgen
             }, () => RedirectToAction(nameof(Conversation), new { id }));
         }
 
-        // Also "Skrota idén" - scrapping an idea is open to whoever may bounce ideas.
+        // Also "Rensa diskussion" - clearing an idea is open to whoever may bounce ideas.
         [HttpPost("Cancel/{id:int}")]
         [ValidateAntiForgeryToken]
         public IActionResult Cancel(int id)

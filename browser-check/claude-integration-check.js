@@ -90,7 +90,6 @@ async function waitForState(page, state, timeoutMs) {
     ]);
     await page.waitForFunction(() => document.querySelectorAll("[data-testid=claude-idea-chat] > div").length >= 4 && document.querySelector("[data-testid=claude-idea-chat]")?.getAttribute("data-state") === "WaitingForOwner", { timeout: 60000, polling: 250 });
     await shoot(page, "00-idea-chat.png");
-    await page.evaluate(() => { document.querySelector("[data-testid=claude-convert-form] input[name=title]").value = "Visa tid i status"; });
     await Promise.all([
       page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
       page.click("[data-testid=claude-convert-form] button[type=submit]"),

@@ -191,14 +191,16 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             StringAssert.Contains(chat, "Fejkad Claude");
 
             var page = await GetHtmlAsync(client, ideaUrl);
-            StringAssert.Contains(page, "Gör det här till ett arbete");
+            StringAssert.Contains(page, "Gå vidare");
+            StringAssert.Contains(page, "Rensa diskussion");
             Assert.AreEqual(HttpStatusCode.Redirect, (await client.GetAsync($"/Claude/Conversation/{id}")).StatusCode, "Ideas are chatted on the start page.");
 
-            var converted = await PostFormAsync(client, ideaUrl, $"/Claude/Convert/{id}", new Dictionary<string, string> { ["title"] = "Export av listan" });
+            // "Gå vidare" - no title to fill in: it's made from the first message.
+            var converted = await PostFormAsync(client, ideaUrl, $"/Claude/Convert/{id}", new Dictionary<string, string>());
             StringAssert.Contains(converted.Headers.Location.ToString(), $"/Claude/Conversation/{id}");
 
             var delivered = await WaitForStateAsync(client, id, "WaitingForOwner");
-            StringAssert.Contains(delivered, "Export av listan");
+            StringAssert.Contains(delivered, "Tänk om man kunde exportera listan");
             StringAssert.Contains(delivered, "Gröna tester");
         }
 

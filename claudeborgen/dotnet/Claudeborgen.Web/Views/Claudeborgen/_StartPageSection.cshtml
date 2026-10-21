@@ -66,25 +66,22 @@
                 @if (idea != null)
                 {
                     <hr />
-                    <div class="row">
+                    @* Two buttons, nothing to fill in: going ahead turns the idea into work (titled from the
+                       first message), clearing it removes the discussion. *@
+                    <div>
                         @if (claude.Access.CanStartAndClose)
                         {
-                            <div class="col-sm-9">
-                                <form method="post" action="/Claude/Convert/@idea.Id" class="form-inline" data-testid="claude-convert-form">
-                                    @Html.AntiForgeryToken()
-                                    <input type="text" class="form-control input-sm" name="title" value="@idea.Title" size="45" required aria-label="Rubrik för arbetet">
-                                    <button type="submit" class="btn btn-success btn-sm">Gör det här till ett arbete</button>
-                                </form>
-                            </div>
+                            <form method="post" action="/Claude/Convert/@idea.Id" style="display: inline;" data-testid="claude-convert-form">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-success btn-sm">Gå vidare</button>
+                            </form>
                         }
                         @if (claude.Access.CanWrite)
                         {
-                            <div class="col-sm-3 text-right">
-                                <form method="post" action="/Claude/Cancel/@idea.Id" onsubmit="return confirm('Skrota idén? Chatten tas bort.');" data-testid="claude-drop-idea-form">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-default btn-sm">Skrota idén</button>
-                                </form>
-                            </div>
+                            <form method="post" action="/Claude/Cancel/@idea.Id" style="display: inline;" onsubmit="return confirm('Rensa diskussionen? Den tas bort.');" data-testid="claude-drop-idea-form">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-default btn-sm">Rensa diskussion</button>
+                            </form>
                         }
                     </div>
                 }
