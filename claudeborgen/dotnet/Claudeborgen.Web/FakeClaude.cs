@@ -87,6 +87,10 @@ namespace Claudeborgen
             // only pretends to, so the entry shows as "(fejk)" and nothing is ever committed.
             foreach (var done in _service.PendingChangelog())
                 _service.MarkChangelogCommitted(done.Id, FakeCommitPrefix + "-changelog");
+            foreach (var removed in _service.PendingSessionCleanup())
+                _service.MarkSessionsCleaned(removed.ConversationId); // fake sessions exist nowhere
+
+            
 
             var conversation = _service.Work().FirstOrDefault();
             if (conversation == null)

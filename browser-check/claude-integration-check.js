@@ -128,7 +128,8 @@ async function waitForState(page, state, timeoutMs) {
 
     // 4. Viewer: reads, no forms.
     await login(page, "viewer");
-    await page.goto(baseUrl + "/Claude/Conversation/" + id, { waitUntil: "load", timeout: NAV_TIMEOUT });
+    // The first conversation is done and removed by now - open one that's still there.
+    await page.goto(baseUrl + "/Claude/Conversation/" + crashId, { waitUntil: "load", timeout: NAV_TIMEOUT });
     if (await page.$("form[data-testid^=claude-]")) problem("Viewer got a form.");
     await shoot(page, "07-viewer.png");
   } catch (e) {

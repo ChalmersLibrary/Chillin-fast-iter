@@ -204,6 +204,15 @@ namespace Claudeborgen.Tests
 
             Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{id}/changelog", new { commit = "c0ffee" })).StatusCode);
             Assert.AreEqual(0, (await JsonAsync(await _client.GetAsync("/api/claude/changelog/pending"))).GetArrayLength());
+
+            // The conversation is gone; the runner is asked to delete its sessions.
+            Assert.AreEqual(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/claude/conversations/{id}")).StatusCode);
+            var cleanup = await JsonAsync(await _client.GetAsync("/api/claude/cleanup"));
+            Assert.AreEqual(id, cleanup[0].GetProperty("conversationId").GetInt32());
+            Assert.AreEqual("s", cleanup[0].GetProperty("sessionIds")[0].GetString());
+
+            Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{id}/cleaned")).StatusCode);
+            Assert.AreEqual(0, (await JsonAsync(await _client.GetAsync("/api/claude/cleanup"))).GetArrayLength());
         }
 
         [TestMethod]

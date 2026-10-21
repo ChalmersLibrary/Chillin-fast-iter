@@ -241,7 +241,8 @@ namespace Claudeborgen.Tests
 
             _service.Cancel(id, "agneta");
 
-            Assert.AreEqual(ConversationState.Cancelled, _service.Get(id).State);
+            Assert.IsNull(_service.Get(id));
+            CollectionAssert.AreEqual(new[] { "s-1" }, _service.PendingSessionCleanup().Single().SessionIds, "Claude asked - its session holds the discussion.");
         }
 
         [TestMethod]
@@ -334,7 +335,65 @@ namespace Claudeborgen.Tests
 
             _service.MarkChangelogCommitted(id, "c0ffee");
             Assert.AreEqual(0, _service.PendingChangelog().Count);
-            Assert.AreEqual("c0ffee", _service.Get(id).ChangelogCommit);
+        }
+
+        // DESIGN.md, "Samtal tas bort": once the entry is in the repo the discussion is gone; only
+        // the changelog line and the sessions to clean up are remembered.
+        [TestMethod]
+        public void CommittedChangelog_RemovesTheConversation_KeepingOnlyTheEntryAndSessions()
+        {
+            var id = StartAndDeliver();
+            _service.MarkDone(id, "agneta", "Exportknapp");
+
+            _service.MarkChangelogCommitted(id, "c0ffee");
+
+            Assert.IsNull(_service.Get(id), "The discussion is deleted.");
+            Assert.IsFalse(File.Exists(Path.Combine(_dataDirectory, "conversations", id + ".json")));
+            var removedJson = File.ReadAllText(Path.Combine(_dataDirectory, "removed.json"));
+            Assert.IsFalse(removedJson.Contains("Lägg till en exportknapp"), "No message text survives.");
+            Assert.IsFalse(removedJson.Contains("Klart, prova här"), "No message text survives.");
+
+            var cleanup = _service.PendingSessionCleanup().Single();
+            Assert.AreEqual(id, cleanup.ConversationId);
+            CollectionAssert.AreEqual(new[] { "session-1" }, cleanup.SessionIds);
+
+            var entry = _service.ChangelogView().Single();
+            Assert.AreEqual("Exportknapp", entry.Items.Single());
+            Assert.IsTrue(entry.Pending, "Committed but not yet in the deployed file: shown as on its way.");
+            Assert.IsFalse(entry.Linkable, "There's nothing to open any more.");
+        }
+
+        [TestMethod]
+        public void RemovedRecord_IsDropped_OnceTheFileHasTheEntryAndSessionsAreCleaned()
+        {
+            var changelog = Path.Combine(_dataDirectory, "changelog.json");
+            _service.Settings.ChangelogPath = changelog;
+            var id = StartAndDeliver();
+            _service.MarkDone(id, "agneta", "Exportknapp");
+            _service.MarkChangelogCommitted(id, "c0ffee");
+
+            Directory.CreateDirectory(_dataDirectory);
+            File.WriteAllText(changelog, $"[{{\"date\":\"2026-10-19\",\"items\":[\"Exportknapp\"],\"conversationId\":{id}}}]");
+            Assert.AreEqual(1, _service.ChangelogView().Count, "From the file now, not twice.");
+            Assert.IsFalse(_service.ChangelogView().Single().Pending);
+            Assert.AreEqual(1, _service.PendingSessionCleanup().Count, "Kept until the runner has deleted the sessions.");
+
+            _service.MarkSessionsCleaned(id);
+            _service.ChangelogView();
+
+            Assert.AreEqual(0, _service.PendingSessionCleanup().Count);
+            StringAssert.Contains(File.ReadAllText(Path.Combine(_dataDirectory, "removed.json")), "[]");
+        }
+
+        [TestMethod]
+        public void ConversationNumbers_AreNeverReused_AfterRemoval()
+        {
+            var first = _service.Start("Ett", "a", "agneta").Id;
+            _service.Cancel(first, "agneta");
+
+            var second = _service.Start("Två", "b", "agneta").Id;
+
+            Assert.AreEqual(first + 1, second);
         }
 
         [TestMethod]
@@ -351,9 +410,10 @@ namespace Claudeborgen.Tests
 
             _service.Cancel(id, "agneta");
 
-            Assert.AreEqual(ConversationState.Cancelled, _service.Get(id).State);
-            Assert.AreEqual(0, _service.Changelog().Count);
+            Assert.IsNull(_service.Get(id), "A cancelled conversation is removed right away.");
+            Assert.AreEqual(0, _service.ChangelogView().Count);
             Assert.AreEqual(0, _service.Work().Count);
+            Assert.AreEqual(0, _service.PendingSessionCleanup().Count, "Claude never ran - no sessions to clean.");
         }
 
         [TestMethod]

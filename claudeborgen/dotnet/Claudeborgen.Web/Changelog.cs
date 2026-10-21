@@ -24,6 +24,10 @@ namespace Claudeborgen
         // (committed but not deployed here, or - in a fake mode - never committed at all).
         public bool Pending { get; set; }
         public bool Fake { get; set; }
+
+        // The conversation still exists on this server and can be opened. Conversations are
+        // removed once their entry is committed, so most entries aren't.
+        public bool Linkable { get; set; }
     }
 
     public static class ChangelogFile

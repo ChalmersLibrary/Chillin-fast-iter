@@ -138,6 +138,19 @@ Changelog-posten är committad.
 ```
 `409` om samtalet inte är klart.
 
+### `GET cleanup` → `200`
+Samtal som tagits bort (klara med committad changelog-post, eller avbrutna) vars Claude Code-sessioner
+runnern ska radera på sin sida.
+```json
+[ { "conversationId": 12, "sessionIds": ["4fffa765-…"] } ]
+```
+
+### `POST conversations/{id}/cleaned` → `204`
+Sessionerna är raderade.
+
+Samtalsnummer återanvänds aldrig, inte heller efter att ett samtal tagits bort. När
+`POST …/changelog` har tagits emot finns samtalet inte längre (`GET conversations/{id}` → `404`).
+
 ## Changelog-filen
 
 En JSON-lista i projektrepot. Sökvägen anges i runnerns `claudeborgen.json` som `changelogFile`, och

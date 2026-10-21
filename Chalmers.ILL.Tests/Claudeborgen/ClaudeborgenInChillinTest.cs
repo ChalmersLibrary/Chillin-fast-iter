@@ -379,7 +379,17 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             await WaitForStateAsync(client, id, "WaitingForOwner");
             await PostFormAsync(client, conversationUrl, $"/Claude/Done/{id}", new Dictionary<string, string> { ["changelogText"] = "Exportknapp på listan" });
 
+            // The fake "commits" the entry, and the conversation is then removed like on a real
+            // server - only the changelog line is left, without a link.
+            var stopwatch = Stopwatch.StartNew();
+            while ((await client.GetAsync($"/Claude/ConversationContent/{id}")).StatusCode != HttpStatusCode.NotFound)
+            {
+                Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(30), "The conversation was never removed.");
+                await Task.Delay(200);
+            }
+
             var html = await GetHtmlAsync(client, "/");
+            Assert.IsFalse(html.Contains($"/Claude/Conversation/{id}\""), "Nothing to link to any more.");
 
             var claudeEntry = html.IndexOf("Exportknapp på listan");
             Assert.IsTrue(claudeEntry > 0);

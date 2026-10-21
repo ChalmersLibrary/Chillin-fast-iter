@@ -97,7 +97,9 @@ namespace Claudeborgen
             return Attempt(() =>
             {
                 _service.MarkDone(id, Author, changelogText);
-                return RedirectToAction(nameof(Conversation), new { id });
+                // The conversation is removed once its changelog entry is committed - back to
+                // where the changelog is.
+                return Redirect("/");
             }, () => RedirectToAction(nameof(Conversation), new { id }));
         }
 
@@ -111,7 +113,7 @@ namespace Claudeborgen
             return Attempt(() =>
             {
                 _service.Cancel(id, Author);
-                return RedirectToAction(nameof(Conversation), new { id });
+                return Redirect("/"); // a cancelled conversation is removed right away
             }, () => RedirectToAction(nameof(Conversation), new { id }));
         }
 

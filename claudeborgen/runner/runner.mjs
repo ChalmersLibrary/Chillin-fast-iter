@@ -17,6 +17,7 @@ import { loadConfig } from "./lib/config.mjs";
 import { createFakes } from "./lib/fake.mjs";
 import { Heartbeat } from "./lib/heartbeat.mjs";
 import { commitChangelog, createGuards, runRound } from "./lib/round.mjs";
+import { claudeConfigDir, cleanupSessions } from "./lib/sessions.mjs";
 import { createWorkspace } from "./lib/workspace.mjs";
 
 function log(message) {
@@ -86,6 +87,7 @@ export async function main(argv = process.argv.slice(2)) {
 
   for (;;) {
     await commitChangelog({ api, heartbeat, workspace, log });
+    await cleanupSessions({ api, configDir: claudeConfigDir(), fake: values.fake, log });
 
     let work = [];
     try {

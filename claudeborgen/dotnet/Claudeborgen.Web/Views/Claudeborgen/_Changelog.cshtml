@@ -21,7 +21,7 @@
                 @foreach (var item in entry.Items)
                 {
                     <li>
-                        @if (entry.ConversationId != null && ClaudeService.Settings.IsOn)
+                        @if (entry.Linkable && ClaudeService.Settings.IsOn)
                         {
                             <a href="/Claude/Conversation/@entry.ConversationId">@item</a>
                         }

@@ -94,8 +94,12 @@ namespace Claudeborgen.Tests
 
             await RunAsync(1);
 
-            StringAssert.StartsWith(_service.Get(id).ChangelogCommit, FakeClaude.FakeCommitPrefix);
             Assert.AreEqual(0, _service.PendingChangelog().Count);
+            Assert.IsNull(_service.Get(id), "Removed like on a real server.");
+            Assert.AreEqual(0, _service.PendingSessionCleanup().Count, "Fake sessions exist nowhere - nothing left to clean.");
+            var entry = _service.ChangelogView().Single();
+            Assert.IsTrue(entry.Fake);
+            Assert.AreEqual("Något", entry.Items.Single());
         }
 
         [TestMethod]

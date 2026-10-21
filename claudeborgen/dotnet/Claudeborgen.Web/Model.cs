@@ -128,6 +128,24 @@ namespace Claudeborgen
         Paused
     }
 
+    // What's left of a conversation after it's been removed (DESIGN.md, "Samtal tas bort"): no
+    // discussion, only what the changelog needs until the deployed file has the entry, and which
+    // Claude Code sessions the runner still has to delete on its side.
+    public class RemovedConversation
+    {
+        public int ConversationId { get; set; }
+        public bool Cancelled { get; set; }
+        public DateTime RemovedAt { get; set; }
+
+        // Done conversations only: the changelog entry, shown as "(på väg)" until deployed.
+        public string ChangelogDate { get; set; }
+        public string ChangelogText { get; set; }
+        public string ChangelogCommit { get; set; }
+
+        public List<string> SessionIds { get; set; } = new List<string>();
+        public bool SessionsCleaned { get; set; }
+    }
+
     public class ClaudeStatus
     {
         public ClaudeActivity Activity { get; set; }

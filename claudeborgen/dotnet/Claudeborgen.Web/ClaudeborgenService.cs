@@ -140,11 +140,10 @@ namespace Claudeborgen
                 if (conversation.State == ConversationState.ClaudeWorking)
                     throw new ClaudeborgenException("Claude arbetar i samtalet just nu. Vänta tills varvet är klart.");
 
+                // Nothing to keep from a cancelled conversation: removed right away (DESIGN.md,
+                // "Samtal tas bort").
                 conversation.State = ConversationState.Cancelled;
-                conversation.NeedsIt = false;
-                conversation.NeedsItReason = null;
-                conversation.Messages.Add(new ConversationMessage { AuthorKind = MessageAuthorKind.System, Author = author, Body = "Avbrutet.", At = _now() });
-                _store.Save(conversation);
+                Remove(conversation, cancelled: true);
             }
 
             Changed(id);
@@ -230,8 +229,44 @@ namespace Claudeborgen
 
         // What the start page shows: the deployed changelog file, plus done conversations whose
         // entry isn't in it yet.
-        public List<ChangelogEntry> ChangelogView() =>
-            ChangelogFile.Merge(ChangelogFile.Load(_settings.ChangelogPath), Changelog(), _settings.IsFake);
+        //
+        // Done conversations come from two places: still in the store (marked done, entry not yet
+        // committed) and removed (entry committed, conversation deleted, maybe not deployed here).
+        // A removed conversation's record is dropped once the deployed file has its entry and the
+        // runner has deleted its sessions - from then on the file alone carries it.
+        public List<ChangelogEntry> ChangelogView()
+        {
+            var file = ChangelogFile.Load(_settings.ChangelogPath);
+            var inFile = new HashSet<int>(file.Where(e => e.ConversationId != null).Select(e => e.ConversationId.Value));
+
+            lock (_lock)
+            {
+                var removed = _store.LoadRemoved();
+                var stillNeeded = removed.Where(r => !(r.SessionsCleaned && (r.Cancelled || inFile.Contains(r.ConversationId)))).ToList();
+                if (stillNeeded.Count != removed.Count)
+                    _store.SaveRemoved(stillNeeded);
+
+                var done = _store.LoadAll().Where(c => c.State == ConversationState.Done).ToList();
+                var committed = stillNeeded.Where(r => !r.Cancelled).Select(r => new Conversation
+                {
+                    Id = r.ConversationId,
+                    State = ConversationState.Done,
+                    DoneAt = DateTime.TryParse(r.ChangelogDate, out var date) ? date : r.RemovedAt,
+                    ChangelogText = r.ChangelogText,
+                    ChangelogCommit = r.ChangelogCommit,
+                });
+
+                var entries = ChangelogFile.Merge(file, done.Concat(committed), _settings.IsFake);
+
+                // Only a done conversation still waiting here can be opened. Never an entry from the
+                // file: its number may be another server's conversation (the fast test server has
+                // its own #12).
+                var existing = new HashSet<int>(done.Select(c => c.Id));
+                foreach (var entry in entries)
+                    entry.Linkable = entry.Pending && entry.ConversationId != null && existing.Contains(entry.ConversationId.Value);
+                return entries;
+            }
+        }
 
         // Done conversations whose changelog entry hasn't been committed yet - the runner's job.
         public List<Conversation> PendingChangelog()
@@ -257,10 +292,62 @@ namespace Claudeborgen
                     throw new ClaudeborgenException("Samtalet är inte markerat som klart.");
 
                 conversation.ChangelogCommit = commit.Trim();
-                _store.Save(conversation);
+
+                // The entry is safe in the repo now - the discussion is not kept any longer than
+                // needed (DESIGN.md, "Samtal tas bort").
+                Remove(conversation, cancelled: false);
             }
 
             Changed(id);
+        }
+
+        // Removed conversations whose Claude Code sessions the runner still has to delete.
+        public List<RemovedConversation> PendingSessionCleanup()
+        {
+            lock (_lock)
+            {
+                return _store.LoadRemoved().Where(r => !r.SessionsCleaned).ToList();
+            }
+        }
+
+        public void MarkSessionsCleaned(int id)
+        {
+            lock (_lock)
+            {
+                var removed = _store.LoadRemoved();
+                var record = removed.FirstOrDefault(r => r.ConversationId == id)
+                    ?? throw new ClaudeborgenException($"Samtal {id} är inte borttaget.");
+                record.SessionsCleaned = true;
+                _store.SaveRemoved(removed);
+            }
+        }
+
+        // Deletes the conversation (the discussion) and keeps only a RemovedConversation record.
+        // Caller holds _lock.
+        private void Remove(Conversation conversation, bool cancelled)
+        {
+            var sessionIds = conversation.Rounds.Select(r => r.SessionId)
+                .Append(conversation.SessionId)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct()
+                .ToList();
+
+            var removed = _store.LoadRemoved();
+            removed.RemoveAll(r => r.ConversationId == conversation.Id);
+            removed.Add(new RemovedConversation
+            {
+                ConversationId = conversation.Id,
+                Cancelled = cancelled,
+                RemovedAt = _now(),
+                ChangelogDate = cancelled ? null : (conversation.DoneAt ?? _now()).ToString("yyyy-MM-dd"),
+                ChangelogText = cancelled ? null : conversation.ChangelogText ?? conversation.Title,
+                ChangelogCommit = conversation.ChangelogCommit,
+                SessionIds = sessionIds,
+                // Nothing for the runner to delete if Claude never ran.
+                SessionsCleaned = sessionIds.Count == 0,
+            });
+            _store.SaveRemoved(removed);
+            _store.Delete(conversation.Id);
         }
 
         #endregion

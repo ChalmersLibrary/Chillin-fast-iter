@@ -156,8 +156,30 @@ ihop dem är `PROTOCOL.md`.
   förfrågan.
 - **Startsidan** visar filens poster och dessutom klara samtal som ännu inte finns i den driftsatta
   filen, märkta "(på väg)". Posten flyttar alltså inte och försvinner inte mellan Klar och driftsättning.
+  Bara ett klart samtal som ännu inte committats har länk. Poster i filen länkar aldrig, eftersom
+  samtalet är borttaget och samma nummer kan vara ett annat samtal på en annan server.
 - **Snabbtestservern** committar aldrig något. Fejken i appen och fejkrunnern låtsas, och posten visas
   med "(fejk)".
+
+### Samtal tas bort
+
+Samtalen kan innehålla känsliga uppgifter. De sparas därför inte längre än de behövs, och de
+committas aldrig till repot.
+
+- **Klart samtal:** när runnern har committat changelog-posten raderas samtalet från datakatalogen.
+  Kvar finns changelog-posten i repot (utan länk), commitarna och deras meddelanden (`#12: <rubrik>`).
+- **Avbrutet samtal:** raderas direkt.
+- **Claude Codes sessioner** i devcontainern innehåller samma diskussion. Runnern raderar dem för
+  borttagna samtal (`GET cleanup`). Det gäller `projects/*/<id>.jsonl`, katalogen med samma namn,
+  `session-env/<id>` och `file-history/<id>` under `CLAUDE_CONFIG_DIR`. Bara exakta sessions-id:n
+  raderas, så interaktiva sessioner, minnet och inställningar rörs inte.
+- **Kvar i appen** finns bara en kvittering per borttaget samtal (`removed.json`): nummer, datum,
+  changelog-text och sessions-id:n, men ingen diskussion. Den behövs så att posten kan visas
+  "(på väg)" tills den driftsatta filen har den, och så att runnern vet vilka sessioner som ska
+  raderas. Kvitteringen tas bort när båda delarna är klara.
+- **Samtalsnummer återanvänds aldrig** (`next-id`), så att `#12` alltid betyder samma samtal.
+- Det som skickats till Claude omfattas av Anthropics egen datalagring enligt avtalet. Det här gäller
+  bara det som sparas hos oss.
 
 ### Runnern (claudeborgen/runner)
 
@@ -165,7 +187,8 @@ En loop i devcontainern (`node claudeborgen/runner/runner.mjs`). Den är medvete
 inte får bero på modellen:
 
 1. Hjärtslag var 20:e sekund, även mitt i ett varv, och direkt vid varje fasbyte.
-2. Committar väntande changelog-poster (se [Changelog](#changelog)).
+2. Committar väntande changelog-poster (se [Changelog](#changelog)) och raderar sessionerna för
+   borttagna samtal (se [Samtal tas bort](#samtal-tas-bort)).
 3. Frågar efter arbete (`GET work`) och tar ett samtal i taget (`claim`).
 4. **Skydd mot loopar** innan Claude startas. De räknar varv, inte pengar, och gäller vilket konto
    Claude än kör på. Om något av dem slår till rapporteras varvet som kraschat:

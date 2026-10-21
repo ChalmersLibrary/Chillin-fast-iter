@@ -185,6 +185,14 @@ namespace Claudeborgen
                 text = c.ChangelogText ?? c.Title,
             }));
 
+        // Removed conversations whose Claude Code sessions the runner should delete (PROTOCOL.md).
+        [HttpGet("cleanup")]
+        public IActionResult PendingCleanup() =>
+            Json(_service.PendingSessionCleanup().Select(r => new { conversationId = r.ConversationId, sessionIds = r.SessionIds }));
+
+        [HttpPost("conversations/{id:int}/cleaned")]
+        public IActionResult Cleaned(int id) => Guarded(() => _service.MarkSessionsCleaned(id));
+
         [HttpPost("conversations/{id:int}/changelog")]
         public async Task<IActionResult> ChangelogCommitted(int id)
         {
