@@ -220,6 +220,40 @@ export async function runIdeaRound({ api, claude, conversationId, guards, log = 
   }
 }
 
+// "Avbryt och ta bort arbete": revert what cancelled work pushed (DESIGN.md, "Avbryta ett arbete").
+// No Claude. Success removes the conversation on the app's side; failure flags it for IT.
+export async function revertCancelledWork({ api, heartbeat, workspace, log = () => {} }) {
+  let pending = [];
+  try {
+    pending = await api.pendingReverts();
+  } catch (e) {
+    log(`Kunde inte hämta avbrutna arbeten: ${e.message}`);
+    return;
+  }
+
+  for (const work of pending) {
+    try {
+      await heartbeat.working(work.conversationId, "tar bort ändringar");
+      const commit = await workspace.revertWork(work);
+      await api.reverted(work.conversationId, commit);
+      log(`#${work.conversationId}: avbrutet, ${work.commits.length} commit(ar) borttagna (${commit.slice(0, 10)})`);
+
+      // test-green may still point at a commit with the cancelled work in it - move it past the
+      // revert once the tests agree, like after any round.
+      await heartbeat.working(work.conversationId, "kör tester");
+      const tests = await workspace.test();
+      if (tests.ok) await workspace.markGreen(commit);
+      else log(`#${work.conversationId}: testerna är röda efter borttagningen; test-green flyttas inte.`);
+    } catch (e) {
+      const summary = e instanceof RoundFailure ? e.message : `Runnern kunde inte ta bort ändringarna: ${e.message}`;
+      log(`#${work.conversationId}: ${summary}`);
+      try { await api.revertFailed(work.conversationId, summary); } catch (reportError) { log(`#${work.conversationId}: kunde inte rapportera: ${reportError.message}`); }
+    } finally {
+      await heartbeat.idle();
+    }
+  }
+}
+
 // After "klar": commit the conversation's changelog entry to the project's changelog file, so it
 // travels with the code (DESIGN.md, "Changelog"). Failures are only logged and retried on the next
 // poll - the conversation itself is done either way.

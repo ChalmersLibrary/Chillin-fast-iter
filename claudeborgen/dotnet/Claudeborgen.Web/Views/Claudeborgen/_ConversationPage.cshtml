@@ -16,8 +16,26 @@
     @await Html.PartialAsync("~/Views/Claudeborgen/_ConversationContent.cshtml", Model)
 </div>
 
+@{
+    var reverting = c.State == ConversationState.Reverting;
+}
+
+@if (reverting)
+{
+    <div class="alert @(c.NeedsIt ? "alert-danger" : "alert-info")" data-testid="claude-reverting">
+        @if (c.NeedsIt)
+        {
+            <strong>Ändringarna kunde inte tas bort.</strong> @: Se meddelandet ovan. När IT har tittat på det kan du försöka igen.
+        }
+        else
+        {
+            <strong>Arbetet avbryts.</strong> @: Runnern tar bort ändringarna från testgrenen. Sedan tas arbetet bort härifrån.
+        }
+    </div>
+}
+
 @* Outside the live-refreshed part, so a half-written message survives a refresh. *@
-@if (c.IsOpen && Model.Access.CanWrite)
+@if (c.IsOpen && !reverting && Model.Access.CanWrite)
 {
     <form method="post" action="/Claude/Reply/@c.Id" data-testid="claude-reply-form">
         @Html.AntiForgeryToken()
@@ -30,11 +48,13 @@
     </form>
 }
 
-@if (c.IsOpen && Model.Access.CanStartAndClose)
+@if (c.IsOpen && Model.Access.CanStartAndClose && (!reverting || c.NeedsIt))
 {
     <hr />
     <div class="row">
         <div class="col-md-8">
+            @if (!reverting)
+            {
             <form method="post" action="/Claude/Done/@c.Id" class="form-inline" data-testid="claude-done-form">
                 @Html.AntiForgeryToken()
                 <div class="form-group">
@@ -43,11 +63,13 @@
                 </div>
                 <button type="submit" class="btn btn-success">Klar</button>
             </form>
+            }
         </div>
         <div class="col-md-4 text-right">
-            <form method="post" action="/Claude/Cancel/@c.Id" onsubmit="return confirm('Avbryta samtalet?');" data-testid="claude-cancel-form">
+            @* Everything the work pushed is reverted, then it's removed (DESIGN.md, "Avbryta ett arbete"). *@
+            <form method="post" action="/Claude/Cancel/@c.Id" onsubmit="return confirm('Avbryta och ta bort arbetet? Allt det har ändrat tas bort från testgrenen, och samtalet raderas.');" data-testid="claude-cancel-form">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-default">Avbryt samtalet</button>
+                <button type="submit" class="btn btn-danger">Avbryt och ta bort arbete</button>
             </form>
         </div>
     </div>

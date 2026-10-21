@@ -212,6 +212,23 @@ måste känna till commiten, antingen genom att bygga i repot eller via en av va
 Fejken i appen låtsas att driftsättningen tar `FakeDeployDelayMilliseconds` (standard 8 s), och
 fejkrunnern rapporterar ändringen som ute direkt.
 
+### Avbryta ett arbete
+
+Det finns en knapp: **"Avbryt och ta bort arbete"**. Allt arbetet har ändrat ska bort, eftersom
+det inte finns något läge där man vill behålla ändringarna från ett avbrutet arbete.
+
+- **Har arbetet pushat något** får det tillståndet "Tas bort…". Runnern reverterar alla dess commitar,
+  nyaste först, i *en* commit (`#12: Avbrutet – ändringarna borttagna (rubrik)`). Den bygger först,
+  pushar, kör testerna och flyttar `test-green` om de är gröna, så att `test-green` inte längre
+  pekar på något med det avbrutna arbetet i. Ingen Claude är inblandad. Därefter tas arbetet bort
+  som vanligt, med sessionerna.
+- **Om det inte går**, till exempel vid en konflikt med senare arbete som bygger på samma kod eller ett
+  rött bygge, pushas ingenting, arbetskatalogen lämnas ren och arbetet hamnar under "Behöver IT".
+  Ett nytt tryck på knappen försöker igen. Har någon redan tagit bort ändringarna för hand finns
+  inget kvar att revertera, och då räknas det som klart.
+- **Har arbetet inte pushat något** tas det bort direkt.
+- Ändringar som IT redan har fört vidare från `test` till ett annat repo påverkas inte.
+
 ### Samtal tas bort
 
 Samtalen kan innehålla känsliga uppgifter. De sparas därför inte längre än de behövs, och de

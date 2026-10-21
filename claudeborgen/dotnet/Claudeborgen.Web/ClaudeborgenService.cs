@@ -168,6 +168,8 @@ namespace Claudeborgen
                 var conversation = LoadOrThrow(id);
                 if (!conversation.IsOpen)
                     throw new ClaudeborgenException("Samtalet är avslutat.");
+                if (conversation.State == ConversationState.Reverting)
+                    throw new ClaudeborgenException("Arbetet håller på att tas bort.");
 
                 conversation.Messages.Add(new ConversationMessage { AuthorKind = MessageAuthorKind.Human, Author = author, Body = body.Trim(), At = _now() });
                 conversation.NeedsIt = false;
@@ -190,6 +192,8 @@ namespace Claudeborgen
                     throw new ClaudeborgenException("Samtalet är redan avslutat.");
                 if (conversation.IsIdea)
                     throw new ClaudeborgenException("En idé blir klar först när den har gjorts om till ett arbete och byggts.");
+                if (conversation.State == ConversationState.Reverting)
+                    throw new ClaudeborgenException("Arbetet håller på att tas bort.");
                 if (conversation.State == ConversationState.ClaudeWorking)
                     throw new ClaudeborgenException("Claude arbetar i samtalet just nu. Vänta tills varvet är klart.");
 
@@ -216,11 +220,80 @@ namespace Claudeborgen
                     throw new ClaudeborgenException("Samtalet är redan avslutat.");
                 if (conversation.State == ConversationState.ClaudeWorking)
                     throw new ClaudeborgenException("Claude arbetar i samtalet just nu. Vänta tills varvet är klart.");
+                if (conversation.State == ConversationState.Reverting && !conversation.NeedsIt)
+                    throw new ClaudeborgenException("Arbetet håller redan på att tas bort.");
 
-                // Nothing to keep from a cancelled conversation: removed right away (DESIGN.md,
-                // "Samtal tas bort").
+                // Work that has pushed something: everything it pushed is reverted first, by the
+                // runner (DESIGN.md, "Avbryta ett arbete"). Asking again after a failed revert retries.
+                if (!conversation.IsIdea && CommitsOf(conversation).Count > 0)
+                {
+                    conversation.State = ConversationState.Reverting;
+                    conversation.NeedsIt = false;
+                    conversation.NeedsItReason = null;
+                    conversation.Messages.Add(new ConversationMessage { AuthorKind = MessageAuthorKind.System, Author = author, Body = "Avbrutet. Ändringarna tas bort.", At = _now() });
+                    _store.Save(conversation);
+                }
+                else
+                {
+                    // Nothing pushed, nothing to undo: removed right away (DESIGN.md, "Samtal tas bort").
+                    conversation.State = ConversationState.Cancelled;
+                    Remove(conversation, cancelled: true);
+                }
+            }
+
+            Changed(id);
+        }
+
+        // Every commit the work pushed, oldest first.
+        private static List<string> CommitsOf(Conversation conversation) =>
+            conversation.Rounds.Where(r => r.Outcome == RoundOutcome.Delivered).SelectMany(r => r.Commits).Distinct().ToList();
+
+        // Cancelled work whose commits the runner should revert.
+        public List<(int ConversationId, string Title, List<string> Commits)> PendingReverts()
+        {
+            lock (_lock)
+            {
+                return _store.LoadAll()
+                    .Where(c => c.State == ConversationState.Reverting && !c.NeedsIt)
+                    .Select(c => (c.Id, c.Title, CommitsOf(c)))
+                    .ToList();
+            }
+        }
+
+        // The revert is pushed: now the conversation goes, like any cancelled one.
+        public void MarkReverted(int id, string commit)
+        {
+            lock (_lock)
+            {
+                var conversation = LoadOrThrow(id);
+                if (conversation.State != ConversationState.Reverting)
+                    throw new ClaudeborgenException("Arbetet håller inte på att tas bort.");
                 conversation.State = ConversationState.Cancelled;
                 Remove(conversation, cancelled: true);
+            }
+
+            Changed(id);
+        }
+
+        // The revert couldn't be done (a conflict with later work, a red build): nothing was pushed,
+        // a human decides. "Avbryt och ta bort arbete" again retries.
+        public void MarkRevertFailed(int id, string summary)
+        {
+            lock (_lock)
+            {
+                var conversation = LoadOrThrow(id);
+                if (conversation.State != ConversationState.Reverting)
+                    throw new ClaudeborgenException("Arbetet håller inte på att tas bort.");
+                conversation.NeedsIt = true;
+                conversation.NeedsItReason = "Ändringarna kunde inte tas bort.";
+                conversation.Messages.Add(new ConversationMessage
+                {
+                    AuthorKind = MessageAuthorKind.System,
+                    Author = "System",
+                    Body = "Ändringarna kunde inte tas bort" + (string.IsNullOrWhiteSpace(summary) ? "." : ": " + summary.Trim()) + " Inget har pushats. IT behöver titta på det.",
+                    At = _now(),
+                });
+                _store.Save(conversation);
             }
 
             Changed(id);

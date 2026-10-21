@@ -132,6 +132,19 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task CancelledWork_IsFakeRevertedAndRemoved()
+        {
+            var id = _service.Start("Ett", "Gör något", "agneta").Id;
+            await RunAsync(1);
+            _service.Cancel(id, "agneta");
+            Assert.AreEqual(ConversationState.Reverting, _service.Get(id).State);
+
+            await RunAsync(1);
+
+            Assert.IsNull(_service.Get(id));
+        }
+
+        [TestMethod]
         public async Task Fraga_AsksAQuestion_WithoutDeliveringAnything()
         {
             var id = _service.Start("Knapp", "Lägg till en knapp [fråga]", "agneta").Id;

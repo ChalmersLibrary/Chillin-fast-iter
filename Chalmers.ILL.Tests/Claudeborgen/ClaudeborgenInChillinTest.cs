@@ -414,6 +414,33 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             }
         }
 
+        // "Avbryt och ta bort arbete": what the work pushed is reverted, then it's removed - on the
+        // fast test server the fake does both.
+        [TestMethod]
+        public async Task AvbrytOchTaBortArbete_RemovesTheWork()
+        {
+            using var factory = CreateFactory();
+            using var client = await LoginAsync(factory, "agneta");
+            var start = await PostFormAsync(client, "/", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Ångra mig", ["body"] = "Gör något" });
+            var conversationUrl = start.Headers.Location.ToString();
+            var id = int.Parse(Regex.Match(conversationUrl, @"(\d+)$").Groups[1].Value);
+            var delivered = await WaitForStateAsync(client, id, "WaitingForOwner");
+
+            var page = await GetHtmlAsync(client, conversationUrl);
+            StringAssert.Contains(page, "Avbryt och ta bort arbete");
+
+            var cancelled = await PostFormAsync(client, conversationUrl, $"/Claude/Cancel/{id}", new Dictionary<string, string>());
+            Assert.AreEqual("/", cancelled.Headers.Location.ToString());
+
+            var stopwatch = Stopwatch.StartNew();
+            while ((await client.GetAsync($"/Claude/ConversationContent/{id}")).StatusCode != HttpStatusCode.NotFound)
+            {
+                Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(30), "The work was never removed.");
+                await Task.Delay(200);
+            }
+            Assert.IsFalse((await GetHtmlAsync(client, "/")).Contains("Ångra mig"));
+        }
+
         // The fast test server tells the runner which commit it runs - without a login, since the
         // runner doesn't log in to the app. Chillin's build stamps the commit (claudeborgen's
         // build/Claudeborgen.Web.targets, imported in Chalmers.ILL.csproj).

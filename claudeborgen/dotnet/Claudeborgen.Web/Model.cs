@@ -24,6 +24,10 @@ namespace Claudeborgen
         ClaudeWorking,
         WaitingForOwner,
 
+        // "Avbryt och ta bort arbete" on work that has pushed something: the runner reverts all its
+        // commits; the conversation is removed once that's pushed (DESIGN.md, "Avbryta ett arbete").
+        Reverting,
+
         // Claude needs an answer before it can go on (it asked instead of guessing). Behaves like
         // WaitingForOwner - the next human message starts a round - but is shown as a question.
         QuestionForOwner,

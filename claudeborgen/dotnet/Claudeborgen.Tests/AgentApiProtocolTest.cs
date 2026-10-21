@@ -282,6 +282,27 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task Reverts_PendingThenReverted_OrFailed()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+            var a = _service.Start("Ett", "a", "agneta").Id;
+            _service.Claim(a);
+            _service.Reply(a, "Klart", new[] { "c1" }, null, "s", null, null);
+            _service.Cancel(a, "agneta");
+
+            var pending = await JsonAsync(await _client.GetAsync("/api/claude/reverts/pending"));
+            Assert.AreEqual(a, pending[0].GetProperty("conversationId").GetInt32());
+            Assert.AreEqual("c1", pending[0].GetProperty("commits")[0].GetString());
+
+            Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{a}/revert-failed", new { summary = "konflikt" })).StatusCode);
+            Assert.IsTrue(_service.Get(a).NeedsIt);
+
+            _service.Cancel(a, "agneta");
+            Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{a}/reverted", new { commit = "r1" })).StatusCode);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/claude/conversations/{a}")).StatusCode);
+        }
+
+        [TestMethod]
         public async Task Deployments_PendingThenDeployed()
         {
             await StartAsync(ClaudeborgenMode.Agent);

@@ -205,6 +205,31 @@ namespace Claudeborgen
                 text = c.ChangelogText ?? c.Title,
             }));
 
+        // Cancelled work whose commits the runner should revert (PROTOCOL.md).
+        [HttpGet("reverts/pending")]
+        public IActionResult PendingReverts() =>
+            Json(_service.PendingReverts().Select(r => new { conversationId = r.ConversationId, title = r.Title, commits = r.Commits }));
+
+        public class RevertedRequest
+        {
+            public string Commit { get; set; }
+            public string Summary { get; set; }
+        }
+
+        [HttpPost("conversations/{id:int}/reverted")]
+        public async Task<IActionResult> Reverted(int id)
+        {
+            var request = await ReadBody<RevertedRequest>();
+            return Guarded(() => _service.MarkReverted(id, request?.Commit));
+        }
+
+        [HttpPost("conversations/{id:int}/revert-failed")]
+        public async Task<IActionResult> RevertFailed(int id)
+        {
+            var request = await ReadBody<RevertedRequest>();
+            return Guarded(() => _service.MarkRevertFailed(id, request?.Summary));
+        }
+
         // Delivered rounds not yet seen live on the fast test server (PROTOCOL.md).
         [HttpGet("deployments/pending")]
         public IActionResult PendingDeployments() =>

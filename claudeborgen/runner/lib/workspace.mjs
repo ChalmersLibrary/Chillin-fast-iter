@@ -88,6 +88,30 @@ export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGr
       return r.code === 0; // 1 = not included; anything else (unknown commit) = can't tell, so not yet
     },
 
+    // "Avbryt och ta bort arbete" (DESIGN.md, "Avbryta ett arbete"): revert everything the work
+    // pushed, newest first, as one commit - built first, like any change. A conflict (later work
+    // builds on it) or a red build pushes nothing and is reported. Returns the commit, or HEAD if
+    // there was nothing left to revert (someone already did it by hand).
+    async revertWork({ conversationId, title, commits }) {
+      await this.prepare();
+      const newestFirst = [...commits].reverse();
+      const revert = await runImpl("git", ["revert", "--no-commit", ...newestFirst], { cwd, timeoutMs: 5 * 60 * 1000 });
+      if (revert.code !== 0) {
+        await runImpl("git", ["revert", "--abort"], { cwd, timeoutMs: 60 * 1000 });
+        await runImpl("git", ["reset", "--hard", "HEAD"], { cwd, timeoutMs: 60 * 1000 });
+        throw new RoundFailure(`git revert gick inte rent igenom, troligen för att senare arbete bygger på samma kod:\n${tail(revert.output, 1500)}`);
+      }
+      if (!(await this.hasChanges())) return git("rev-parse", "HEAD");
+
+      const build = await this.build();
+      if (!build.ok) {
+        // The tree was clean before the revert (prepare), so this only throws away the revert.
+        await runImpl("git", ["reset", "--hard", "HEAD"], { cwd, timeoutMs: 60 * 1000 });
+        throw new RoundFailure(`Bygget blev rött utan arbetets ändringar:\n${build.summary}`);
+      }
+      return this.commitAndPush(`#${conversationId}: Avbrutet – ändringarna borttagna (${title})`);
+    },
+
     // A done conversation's changelog entry, as its own small commit - no Claude, no build: it's
     // data the app reads. Returns the commit (HEAD if the entry was already there).
     async commitChangelogEntry(entry) {
@@ -118,6 +142,7 @@ export function createFakeWorkspace({ markers }) {
     },
     commitAndPush: async () => `fejk${Date.now().toString(16).slice(-5)}${++counter}`,
     commitChangelogEntry: async () => `fejk-changelog${++counter}`,
+    revertWork: async () => `fejk-revert${++counter}`,
     isDeployed: async () => true,
     stash: async () => {},
     markGreen: async () => {},

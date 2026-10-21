@@ -11,6 +11,7 @@ namespace Claudeborgen
             ConversationState.ClaudeWorking => "Claude arbetar",
             ConversationState.WaitingForOwner => "Väntar på objektspecialisten",
             ConversationState.QuestionForOwner => "Claude har en fråga",
+            ConversationState.Reverting => "Tas bort…",
             ConversationState.Done => "Klar",
             ConversationState.Cancelled => "Avbruten",
             _ => state.ToString()

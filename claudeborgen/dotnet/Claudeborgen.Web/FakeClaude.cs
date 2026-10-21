@@ -96,6 +96,10 @@ namespace Claudeborgen
                     _service.MarkDeployed(conversationId, roundNumber);
             }
 
+            // The fake reverts nothing - nothing was ever pushed.
+            foreach (var (conversationId, _, _) in _service.PendingReverts())
+                _service.MarkReverted(conversationId, FakeCommitPrefix + "-revert");
+
             foreach (var removed in _service.PendingSessionCleanup())
                 _service.MarkSessionsCleaned(removed.ConversationId); // fake sessions exist nowhere
 

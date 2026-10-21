@@ -545,6 +545,63 @@ namespace Claudeborgen.Tests
             Assert.ThrowsException<ClaudeborgenException>(() => _service.MarkChangelogCommitted(id, "c0ffee"));
         }
 
+        // DESIGN.md, "Avbryta ett arbete"
+        [TestMethod]
+        public void CancellingWorkThatPushed_RevertsFirst_ThenRemoves()
+        {
+            var id = StartAndDeliver(commit: "c1");
+            _service.AddMessage(id, "En sak till", "agneta");
+            _service.Claim(id);
+            _service.Reply(id, "Klart igen", new[] { "c2" }, null, "s", null, null);
+
+            _service.Cancel(id, "agneta");
+
+            Assert.AreEqual(ConversationState.Reverting, _service.Get(id).State, "Kept until its commits are reverted.");
+            var revert = _service.PendingReverts().Single();
+            CollectionAssert.AreEqual(new[] { "c1", "c2" }, revert.Commits, "Everything it pushed, oldest first.");
+            Assert.ThrowsException<ClaudeborgenException>(() => _service.AddMessage(id, "hallå", "agneta"));
+            Assert.ThrowsException<ClaudeborgenException>(() => _service.MarkDone(id, "agneta", null));
+            Assert.AreEqual(0, _service.Work().Count);
+
+            _service.MarkReverted(id, "r1");
+
+            Assert.IsNull(_service.Get(id));
+            Assert.AreEqual(0, _service.PendingReverts().Count);
+            Assert.AreEqual(0, _service.ChangelogView().Count, "Cancelled work never reaches the changelog.");
+        }
+
+        [TestMethod]
+        public void FailedRevert_GoesToIt_AndCancellingAgainRetries()
+        {
+            var id = StartAndDeliver(commit: "c1");
+            _service.Cancel(id, "agneta");
+
+            _service.MarkRevertFailed(id, "git revert gick inte rent igenom");
+
+            var failed = _service.Get(id);
+            Assert.IsTrue(failed.NeedsIt);
+            Assert.AreEqual(id, _service.NeedingAttention().Single().Id);
+            Assert.AreEqual(0, _service.PendingReverts().Count, "Not retried on its own.");
+
+            _service.Cancel(id, "ivar");
+
+            Assert.IsFalse(_service.Get(id).NeedsIt);
+            Assert.AreEqual(1, _service.PendingReverts().Count);
+        }
+
+        [TestMethod]
+        public void CancellingWorkThatPushedNothing_RemovesItRightAway()
+        {
+            var id = _service.Start("Ett", "a", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Bara ett svar", null, null, "s", null, null);
+
+            _service.Cancel(id, "agneta");
+
+            Assert.IsNull(_service.Get(id));
+            Assert.AreEqual(0, _service.PendingReverts().Count);
+        }
+
         [TestMethod]
         public void CancelledConversation_IsNotInTheChangelog()
         {

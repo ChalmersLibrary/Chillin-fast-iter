@@ -168,6 +168,18 @@ vilken commit servern är byggd från. Det fungerar oavsett läge, utom `Off`.
 ```
 `commit` är `null` om bygget inte visste sin commit. Då kan inga ändringar bekräftas som ute.
 
+### `GET reverts/pending` → `200`
+Avbrutna arbeten vars commitar runnern ska revertera, äldsta commit först.
+```json
+[ { "conversationId": 12, "title": "Exportknapp", "commits": ["<sha1>", "<sha2>"] } ]
+```
+
+### `POST conversations/{id}/reverted` → `204`
+`{ "commit": "<sha>" }`. Ändringarna är borttagna och pushade, och arbetet tas bort.
+
+### `POST conversations/{id}/revert-failed` → `204`
+`{ "summary": "…" }`. Ändringarna kunde inte tas bort och inget har pushats. Arbetet markeras "behöver IT".
+
 ### `GET cleanup` → `200`
 Samtal som tagits bort (klara med committad changelog-post, eller avbrutna) vars Claude Code-sessioner
 runnern ska radera på sin sida.

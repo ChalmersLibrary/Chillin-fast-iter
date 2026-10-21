@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createGuards, guardRound, runIdeaRound, runRound } from "../lib/round.mjs";
+import { createGuards, guardRound, revertCancelledWork, runIdeaRound, runRound } from "../lib/round.mjs";
 import { QuotaExhausted } from "../lib/errors.mjs";
 import { CONFIG, conversation, fakeApi, fakeClaude, fakeWorkspace, heartbeatRecorder } from "./helpers.mjs";
 
@@ -288,4 +288,42 @@ test("idea: quota used up -> back to the queue, paused", async () => {
   assert.equal(result.paused, true);
   assert.ok(api.names().includes("release"));
   assert.ok(!api.names().includes("crash"));
+});
+
+// --- "Avbryt och ta bort arbete" -------------------------------------------------------------
+
+
+function revertApi(pending) {
+  const calls = [];
+  return {
+    calls,
+    pendingReverts: async () => pending,
+    reverted: async (id, commit) => calls.push(["reverted", id, commit]),
+    revertFailed: async (id, summary) => calls.push(["revertFailed", id, summary]),
+  };
+}
+
+test("revert: everything the work pushed is reverted, reported, and test-green moved past it", async () => {
+  const api = revertApi([{ conversationId: 12, title: "Exportknapp", commits: ["c1", "c2"] }]);
+  const calls = [];
+  const workspace = {
+    revertWork: async (work) => { calls.push(["revertWork", work.commits]); return "r1"; },
+    test: async () => ({ ok: true, summary: "Passed!" }),
+    markGreen: async (c) => calls.push(["markGreen", c]),
+  };
+  await revertCancelledWork({ api, heartbeat: heartbeatRecorder(), workspace });
+
+  assert.deepEqual(calls, [["revertWork", ["c1", "c2"]], ["markGreen", "r1"]]);
+  assert.deepEqual(api.calls, [["reverted", 12, "r1"]]);
+});
+
+test("revert: a conflict or red build is reported for IT, nothing else happens", async () => {
+  const { RoundFailure } = await import("../lib/errors.mjs");
+  const api = revertApi([{ conversationId: 12, title: "X", commits: ["c1"] }]);
+  const workspace = { revertWork: async () => { throw new RoundFailure("git revert gick inte rent igenom"); }, test: async () => { throw new Error("should not run"); } };
+  await revertCancelledWork({ api, heartbeat: heartbeatRecorder(), workspace });
+
+  assert.equal(api.calls.length, 1);
+  assert.equal(api.calls[0][0], "revertFailed");
+  assert.match(api.calls[0][2], /inte rent igenom/);
 });
