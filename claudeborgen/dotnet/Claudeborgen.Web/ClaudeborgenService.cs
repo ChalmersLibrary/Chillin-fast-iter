@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Claudeborgen
 {
@@ -31,6 +32,11 @@ namespace Claudeborgen
         private readonly ClaudeborgenSettings _settings;
         private readonly Func<DateTime> _now;
         private IClaudeborgenBroadcaster _broadcaster;
+
+        // Completed (and replaced) on every conversation change - what a long-polling runner waits
+        // on (PROTOCOL.md, "GET work"). Heartbeats don't signal: they never create work.
+        private readonly object _signalLock = new object();
+        private TaskCompletionSource _changeSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         // Heartbeat state is deliberately in memory only: after an app restart Claude shows as
         // offline until the runner's next heartbeat, which is the truth anyway.
@@ -730,6 +736,24 @@ namespace Claudeborgen
         private void Changed(int id)
         {
             _broadcaster?.ConversationChanged(id);
+
+            TaskCompletionSource signalled;
+            lock (_signalLock)
+            {
+                signalled = _changeSignal;
+                _changeSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+            signalled.TrySetResult();
+        }
+
+        // Completes at the next conversation change. Take it *before* checking for work, so a change
+        // in between isn't missed.
+        public Task NextChange()
+        {
+            lock (_signalLock)
+            {
+                return _changeSignal.Task;
+            }
         }
     }
 }

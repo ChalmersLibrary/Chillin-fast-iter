@@ -234,6 +234,53 @@ namespace Claudeborgen.Tests
             Assert.AreEqual(2, (await JsonAsync(await _client.GetAsync("/api/claude/work"))).GetArrayLength());
         }
 
+        // Long polling (PROTOCOL.md, "GET work"): the runner reacts at once without asking every
+        // few seconds.
+        [TestMethod]
+        public async Task LongPoll_ReturnsAtOnce_WhenThereIsWork()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+            _service.StartIdea("Idé", "agneta");
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var work = await JsonAsync(await _client.GetAsync("/api/claude/work?kind=idea&wait=10"));
+
+            Assert.AreEqual(1, work.GetArrayLength());
+            Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(2));
+        }
+
+        [TestMethod]
+        public async Task LongPoll_WakesUp_WhenWorkArrives()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var request = _client.GetAsync("/api/claude/work?kind=idea&wait=20");
+            await Task.Delay(500);
+            Assert.IsFalse(request.IsCompleted, "Held while there's nothing to do.");
+
+            _service.StartIdea("Ny idé", "agneta");
+            var work = await JsonAsync(await request);
+
+            Assert.AreEqual(1, work.GetArrayLength());
+            Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(5), $"Woken by the new idea, not the 20 s timeout ({stopwatch.Elapsed}).");
+        }
+
+        [TestMethod]
+        public async Task LongPoll_IgnoresChangesThatAreNotWorkOfItsKind_AndTimesOut()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var request = _client.GetAsync("/api/claude/work?kind=idea&wait=2");
+            await Task.Delay(300);
+            _service.Start("Ett arbete, ingen idé", "a", "agneta");
+            var work = await JsonAsync(await request);
+
+            Assert.AreEqual(0, work.GetArrayLength());
+            Assert.IsTrue(stopwatch.Elapsed >= TimeSpan.FromSeconds(1.8), "Kept waiting for an idea until the timeout.");
+        }
+
         [TestMethod]
         public async Task Deployments_PendingThenDeployed()
         {

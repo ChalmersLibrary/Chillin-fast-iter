@@ -18,6 +18,7 @@ import { createFakes } from "./lib/fake.mjs";
 import { Heartbeat } from "./lib/heartbeat.mjs";
 import { commitChangelog, createGuards, runIdeaRound, runRound } from "./lib/round.mjs";
 import { checkDeployments, fetchDeployedCommit, versionUrl } from "./lib/deployments.mjs";
+import { waitForWork } from "./lib/poll.mjs";
 import { claudeConfigDir, cleanupSessions } from "./lib/sessions.mjs";
 import { createWorkspace } from "./lib/workspace.mjs";
 
@@ -101,8 +102,9 @@ export async function main(argv = process.argv.slice(2)) {
   };
   const isPaused = () => pausedUntil && pausedUntil > new Date();
 
-  // Ideas (DESIGN.md, "Idéer"): their own loop, polled often, so a chat never waits behind an
-  // implementation round. Read-only, so running alongside a round in the same tree is fine.
+  // Ideas (DESIGN.md, "Idéer"): their own loop, so a chat never waits behind an implementation
+  // round. Read-only, so running alongside a round in the same tree is fine. Both loops long-poll
+  // (lib/poll.mjs): a new message is picked up at once, without asking every few seconds.
   const ideaGuards = createGuards({
     maxRoundsPerConversationPerHour: config.maxIdeaRepliesPerConversationPerHour,
     maxRoundsPerHour: config.maxIdeaRepliesPerHour,
@@ -110,21 +112,16 @@ export async function main(argv = process.argv.slice(2)) {
   });
   const ideaLoop = async () => {
     for (;;) {
-      if (!isPaused()) {
-        try {
-          const ideas = await api.work("idea");
-          if (ideas.length > 0) {
-            const result = await runIdeaRound({ api, claude, conversationId: ideas[0].id, guards: ideaGuards, log });
-            await pauseIfNeeded(result);
-            if (values.once) return;
-            continue;
-          }
-        } catch (e) {
-          log(`Kunde inte hämta idéer: ${e.message}`);
-        }
+      if (isPaused()) {
+        await sleep(config.ideaPollSeconds * 1000);
+        continue;
+      }
+      const ideas = await waitForWork({ api, kind: "idea", waitSeconds: values.once ? 0 : config.longPollSeconds, fallbackSeconds: config.ideaPollSeconds, log, sleep: values.once ? async () => {} : sleep });
+      if (ideas.length > 0) {
+        const result = await runIdeaRound({ api, claude, conversationId: ideas[0].id, guards: ideaGuards, log });
+        await pauseIfNeeded(result);
       }
       if (values.once) return;
-      await sleep(config.ideaPollSeconds * 1000);
     }
   };
 
@@ -134,14 +131,11 @@ export async function main(argv = process.argv.slice(2)) {
       await cleanupSessions({ api, configDir: claudeConfigDir(), fake: values.fake, log });
       if (values.fake || deployedUrl) await checkDeployments({ api, workspace, getDeployedCommit, log });
 
-      let work = [];
-      if (!isPaused()) {
-        try {
-          work = await api.work("task");
-        } catch (e) {
-          log(`Kunde inte hämta arbete: ${e.message}`);
-        }
+      if (isPaused()) {
+        await sleep(config.pollSeconds * 1000);
+        continue;
       }
+      const work = await waitForWork({ api, kind: "task", waitSeconds: values.once ? 0 : config.longPollSeconds, fallbackSeconds: config.pollSeconds, log, sleep: values.once ? async () => {} : sleep });
 
       if (work.length > 0) {
         const result = await runRound({ api, heartbeat, claude, workspace, conversationId: work[0].id, config, guards, log, onRound });
@@ -154,7 +148,6 @@ export async function main(argv = process.argv.slice(2)) {
       }
 
       if (values.once) return;
-      await sleep(config.pollSeconds * 1000);
     }
   };
 

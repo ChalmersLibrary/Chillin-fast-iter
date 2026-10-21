@@ -63,7 +63,12 @@ fortsätter under pausen, och utan dem visas Claude som offline som vanligt.
 
 ### `GET work` → `200`
 `?kind=idea` eller `?kind=task` begränsar till idéer respektive arbeten, eftersom runnern har en loop
-för varje. Utan parameter returneras båda. Samtal att arbeta med, i den ordning de ska tas. Ett samtal med ett pågående varv (`claudeWorking`)
+för varje. Utan parameter returneras båda.
+
+**Long polling:** `?wait=N` (sekunder, högst 30). Finns det inget att göra håller appen kvar
+förfrågan tills något ändras som ger arbete av rätt sort, eller tills N sekunder gått, och svarar
+då med en tom lista. Runnern reagerar alltså direkt på ett nytt meddelande utan att fråga hela tiden.
+En app som inte stöder `wait` svarar direkt, och runnern faller då tillbaka till vanlig pollning. Samtal att arbeta med, i den ordning de ska tas. Ett samtal med ett pågående varv (`claudeWorking`)
 kommer först, så att en omstartad runner tar upp det igen. Därefter kommer samtal som väntar på Claude,
 äldst först.
 ```json

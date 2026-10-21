@@ -163,8 +163,8 @@ Därför finns en lösare väg in: en **chattruta på startsidan**, "Bolla en id
   nästa varv bygger det i *samma* Claude-session, alltså med hela idédiskussionen i minnet.
 - **"Släpp idén"** tar bort den. Idéer som legat orörda i 14 dagar (`IdeaRetention`) tas bort
   automatiskt, med Claude-sessionen, enligt samma princip som i [Samtal tas bort](#samtal-tas-bort).
-- **Idéer väntar inte på arbeten.** Runnern har en egen idéloop som frågar var 3:e sekund
-  (`ideaPollSeconds`) och svarar parallellt med ett pågående implementationsvarv. Det går att göra
+- **Idéer väntar inte på arbeten.** Runnern har en egen idéloop som svarar parallellt med ett
+  pågående implementationsvarv. Det går att göra
   eftersom idéer inte rör några filer. Det är högst ett idésvar och ett arbete åt gången, och
   idéerna har egna, generösare tak mot loopar (`maxIdeaRepliesPerConversationPerHour` 30,
   `maxIdeaRepliesPerHour` 60).
@@ -238,6 +238,10 @@ En loop i devcontainern (`node claudeborgen/runner/runner.mjs`). Den är medvete
 inte får bero på modellen:
 
 1. Hjärtslag var 20:e sekund, även mitt i ett varv, och direkt vid varje fasbyte.
+   Runnern frågar efter arbete med **long polling** (`GET work?wait=25`). Appen håller kvar frågan
+   tills något kommer in, så ett nytt meddelande tas upp direkt. När inget händer blir det ungefär
+   5 förfrågningar i minuten för båda looparna tillsammans (mätt), plus hjärtslagen.
+   `pollSeconds` och `ideaPollSeconds` används bara mot en app utan long polling och under paus.
 2. Committar väntande changelog-poster (se [Changelog](#changelog)), raderar sessionerna för
    borttagna samtal (se [Samtal tas bort](#samtal-tas-bort)) och kontrollerar vilka ändringar som är
    ute på snabbtestservern (se [Driftsatt](#driftsatt)).

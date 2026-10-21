@@ -137,12 +137,28 @@ namespace Claudeborgen
             return NoContent();
         }
 
-        // ?kind=idea|task - the runner polls ideas more often, in a loop of its own.
+        public const int MaxWaitSeconds = 30;
+
+        // ?kind=idea|task - the runner has a loop for each. ?wait=N (long polling, max 30 s): with
+        // nothing to do, hold the request until something changes or N seconds pass - the runner
+        // reacts at once instead of on its next poll, and asks far less often.
         [HttpGet("work")]
-        public IActionResult Work([FromQuery] string kind = null)
+        public async Task<IActionResult> Work([FromQuery] string kind = null, [FromQuery] int wait = 0)
         {
             ConversationKind? filter = Enum.TryParse<ConversationKind>(kind, ignoreCase: true, out var k) ? k : null;
-            return Json(_service.Work(filter).Select(c => new { c.Id, c.Kind, c.Title, c.State, c.SessionId }));
+            var deadline = DateTime.UtcNow.AddSeconds(Math.Clamp(wait, 0, MaxWaitSeconds));
+            var aborted = HttpContext.RequestAborted;
+
+            for (;;)
+            {
+                var change = _service.NextChange();
+                var work = _service.Work(filter);
+                var remaining = deadline - DateTime.UtcNow;
+                if (work.Count > 0 || remaining <= TimeSpan.Zero || aborted.IsCancellationRequested)
+                    return Json(work.Select(c => new { c.Id, c.Kind, c.Title, c.State, c.SessionId }));
+
+                await Task.WhenAny(change, Task.Delay(remaining, aborted));
+            }
         }
 
         [HttpGet("conversations/{id:int}")]

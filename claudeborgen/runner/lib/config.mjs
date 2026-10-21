@@ -19,8 +19,11 @@ export const DEFAULTS = {
   maxBudgetUsdPerDay: null,
   pauseRetryMinutes: 30,
   heartbeatSeconds: 20,
+  // Long polling: how long the app may hold a "anything to do?" request (max 30). The poll intervals
+  // below are only the fallback for an app that answers at once, and the pace while paused.
+  longPollSeconds: 25,
   pollSeconds: 20,
-  // Ideas are a chat - asked for more often, and with their own (chattier) loop limits.
+  // Ideas are a chat, with their own (chattier) loop limits.
   ideaPollSeconds: 3,
   maxIdeaRepliesPerConversationPerHour: 30,
   maxIdeaRepliesPerHour: 60,

@@ -28,7 +28,13 @@ export function createApi({ apiUrl, token, fake = false, fetchImpl = globalThis.
     heartbeat: (activity, conversationId, phase, pausedUntil) =>
       call("POST", "heartbeat", { activity, conversationId, phase, pausedUntil: pausedUntil ? pausedUntil.toISOString() : undefined }),
     release: (id) => call("POST", `conversations/${id}/release`),
-    work: (kind) => call("GET", kind ? `work?kind=${kind}` : "work"),
+    work: (kind, waitSeconds) => {
+      const query = new URLSearchParams();
+      if (kind) query.set("kind", kind);
+      if (waitSeconds) query.set("wait", String(waitSeconds));
+      const qs = query.toString();
+      return call("GET", qs ? `work?${qs}` : "work");
+    },
     conversation: (id) => call("GET", `conversations/${id}`),
     claim: (id) => call("POST", `conversations/${id}/claim`),
     reply: (id, reply) => call("POST", `conversations/${id}/reply`, reply),
