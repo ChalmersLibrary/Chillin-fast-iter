@@ -19,6 +19,8 @@ x64/
 x86/
 build/
 !Chalmers.ILL/wwwroot/lib/eonasdan-bootstrap-datetimepicker/build/
+# Claudeborgen's MSBuild targets (commit stamp) - source, not build output; NuGet's build/ convention.
+!claudeborgen/dotnet/Claudeborgen.Web/build/
 bld/
 [Bb]in/
 [Oo]bj/

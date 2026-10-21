@@ -1,0 +1,38 @@
+<Project>
+
+  <!-- Claudeborgen: stamps the git commit the app is built from into claudeborgen-version.txt next to
+       the app, so /claudeborgen/version can tell the runner what's deployed (DESIGN.md, "Driftsatt").
+       Works whatever the host's assembly-info setup is. Order: CLAUDEBORGEN_COMMIT, then CI's own
+       variables (GitHub Actions, Azure DevOps), then `git rev-parse HEAD`. Without any of them the
+       file is empty and the app reports the commit as unknown - the runner then just never sees a
+       change as deployed, nothing breaks.
+
+       In a NuGet package this file lives in build/ and is imported automatically; with a project
+       reference the host imports it itself. -->
+  <Target Name="ClaudeborgenStampCommit" BeforeTargets="AssignTargetPaths">
+    <PropertyGroup>
+      <_ClaudeborgenCommit>$(CLAUDEBORGEN_COMMIT)</_ClaudeborgenCommit>
+      <_ClaudeborgenCommit Condition="'$(_ClaudeborgenCommit)' == ''">$(GITHUB_SHA)</_ClaudeborgenCommit>
+      <_ClaudeborgenCommit Condition="'$(_ClaudeborgenCommit)' == ''">$(BUILD_SOURCEVERSION)</_ClaudeborgenCommit>
+    </PropertyGroup>
+
+    <Exec Condition="'$(_ClaudeborgenCommit)' == ''" Command="git rev-parse HEAD" ConsoleToMSBuild="true"
+          StandardOutputImportance="low" StandardErrorImportance="low" IgnoreExitCode="true"
+          WorkingDirectory="$(MSBuildProjectDirectory)">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_ClaudeborgenGitOutput" />
+      <Output TaskParameter="ExitCode" PropertyName="_ClaudeborgenGitExit" />
+    </Exec>
+    <PropertyGroup Condition="'$(_ClaudeborgenCommit)' == '' And '$(_ClaudeborgenGitExit)' == '0'">
+      <_ClaudeborgenCommit>$(_ClaudeborgenGitOutput.Trim())</_ClaudeborgenCommit>
+    </PropertyGroup>
+
+    <WriteLinesToFile File="$(IntermediateOutputPath)claudeborgen-version.txt" Lines="$(_ClaudeborgenCommit)"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" />
+
+    <ItemGroup>
+      <Content Include="$(IntermediateOutputPath)claudeborgen-version.txt" Link="claudeborgen-version.txt"
+               CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>
