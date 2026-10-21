@@ -207,6 +207,20 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task Reply_AsAQuestion()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+            var id = _service.Start("Knapp", "a", "agneta").Id;
+            await PostAsync($"/api/claude/conversations/{id}/claim");
+
+            await PostAsync($"/api/claude/conversations/{id}/reply", new { body = "Överst eller nederst?", question = true, commits = new string[0] });
+
+            var conversation = await JsonAsync(await _client.GetAsync($"/api/claude/conversations/{id}"));
+            Assert.AreEqual("questionForOwner", conversation.GetProperty("state").GetString());
+            Assert.IsTrue(conversation.GetProperty("messages")[1].GetProperty("isQuestion").GetBoolean());
+        }
+
+        [TestMethod]
         public async Task QuotaUsedUp_ReleaseAndPausedHeartbeat()
         {
             await StartAsync(ClaudeborgenMode.Agent);

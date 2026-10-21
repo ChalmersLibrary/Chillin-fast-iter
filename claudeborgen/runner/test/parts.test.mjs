@@ -6,7 +6,7 @@ import { Heartbeat } from "../lib/heartbeat.mjs";
 import { createClaude } from "../lib/claude.mjs";
 import { loadConfig } from "../lib/config.mjs";
 import { createFakes } from "../lib/fake.mjs";
-import { buildPrompt } from "../lib/prompt.mjs";
+import { buildPrompt, parseQuestion, SYSTEM_PROMPT } from "../lib/prompt.mjs";
 import { commitChangelog, runRound } from "../lib/round.mjs";
 import { addChangelogEntry, createWorkspace } from "../lib/workspace.mjs";
 import { CONFIG, conversation, fakeApi, heartbeatRecorder } from "./helpers.mjs";
@@ -311,4 +311,28 @@ test("fake: [kvot] pauses once per conversation, then the round runs", async () 
   const r2 = await runRound({ api: second, heartbeat, config: CONFIG, conversationId: 7, ...fakes });
   assert.equal(r2.paused, false);
   assert.ok(second.names().includes("reply"));
+});
+
+// --- questions ------------------------------------------------------------------------------
+
+
+test("question marker: FRÅGA:/fråga:/FRAGA: at the start, nowhere else", () => {
+  assert.deepEqual(parseQuestion("FRÅGA: Överst eller nederst?"), { body: "Överst eller nederst?", question: true });
+  assert.deepEqual(parseQuestion("  fråga:\nVilken färg?"), { body: "Vilken färg?", question: true });
+  assert.equal(parseQuestion("FRAGA: utan prickar").question, true);
+  assert.equal(parseQuestion("Klart. En fråga: ska den vara grön?").question, false);
+});
+
+test("system prompt: big ambiguities ask without changing files, small ones are decided", () => {
+  assert.match(SYSTEM_PROMPT, /Stora oklarheter/);
+  assert.match(SYSTEM_PROMPT, /FRÅGA:/);
+  assert.match(SYSTEM_PROMPT, /Små oklarheter/);
+});
+
+test("fake: [fråga] asks a question and changes nothing", async () => {
+  const api = await fakeRound("Lägg till en knapp [fråga]");
+  const reply = api.call("reply").args[1];
+  assert.equal(reply.question, true);
+  assert.deepEqual(reply.commits, []);
+  assert.ok(!api.names().includes("tests"));
 });

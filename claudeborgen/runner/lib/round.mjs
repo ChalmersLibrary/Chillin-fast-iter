@@ -2,7 +2,7 @@
 // not depend on the model live here as code: build before push, tests after, at most N build-fix
 // attempts, nothing pushed on failure, test-green only on green.
 import { QuotaExhausted, RoundFailure } from "./errors.mjs";
-import { buildFixPrompt, buildPrompt } from "./prompt.mjs";
+import { buildFixPrompt, buildPrompt, parseQuestion } from "./prompt.mjs";
 
 export { RoundFailure };
 
@@ -101,15 +101,17 @@ export async function runRound({ api, heartbeat, claude, workspace, conversation
       commit = await workspace.commitAndPush(`#${conversationId}: ${conversation.title}${round.isFixRound ? " (rättning)" : ""}`);
     }
 
+    const { body, question } = parseQuestion(answer.text);
     await api.reply(conversationId, {
-      body: answer.text || "(Claude lämnade inget svar.)",
+      body: body || "(Claude lämnade inget svar.)",
+      question,
       commits: commit ? [commit] : [],
       links: commit && config.testServerUrl ? [config.testServerUrl] : [],
       sessionId,
       costUsd: round2(costUsd),
       durationSeconds: Math.round((Date.now() - startedAt) / 1000),
     });
-    log(`#${conversationId}: svar skickat${commit ? `, commit ${commit.slice(0, 10)}` : ", inga ändringar"}`);
+    log(`#${conversationId}: ${question ? "fråga" : "svar"} skickat${commit ? `, commit ${commit.slice(0, 10)}` : ", inga ändringar"}`);
 
     if (commit) {
       await heartbeat.working(conversationId, "kör tester");

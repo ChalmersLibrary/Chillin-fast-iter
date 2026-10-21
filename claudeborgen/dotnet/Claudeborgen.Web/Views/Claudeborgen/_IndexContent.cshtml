@@ -8,6 +8,13 @@
 }
 
 <h4>Pågående samtal</h4>
+@{
+    var questions = open.Count(c => c.State == ConversationState.QuestionForOwner);
+}
+@if (questions > 0)
+{
+    <p class="text-danger" data-testid="claude-question-count"><strong>@(questions == 1 ? "Claude har en fråga som väntar på svar." : $"Claude har {questions} frågor som väntar på svar.")</strong></p>
+}
 @if (open.Count == 0)
 {
     <p class="text-muted">Inga pågående samtal.</p>

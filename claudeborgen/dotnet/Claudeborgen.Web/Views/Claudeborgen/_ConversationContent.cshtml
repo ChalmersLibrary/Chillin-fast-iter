@@ -14,18 +14,26 @@
 </h3>
 <p class="text-muted">Startat av @c.CreatedBy @ClaudeText.Time(c.CreatedAt)</p>
 
+@if (c.State == ConversationState.QuestionForOwner)
+{
+    <div class="alert alert-danger" data-testid="claude-question">
+        <strong>Claude har en fråga</strong> och väntar på ditt svar innan arbetet fortsätter. Svara med ett nytt meddelande nedan.
+    </div>
+}
+
 <ul class="list-group" data-testid="claude-messages">
     @foreach (var m in c.Messages)
     {
         var css = m.AuthorKind switch
         {
+            MessageAuthorKind.Claude when m.IsQuestion => "list-group-item-danger",
             MessageAuthorKind.Claude => "list-group-item-info",
             MessageAuthorKind.System => "list-group-item-warning",
             _ => ""
         };
         <li class="list-group-item @css">
             <div class="text-muted small">
-                <strong>@(m.AuthorKind == MessageAuthorKind.Claude ? "Claude" : m.Author)</strong> @ClaudeText.Time(m.At)
+                <strong>@(m.AuthorKind == MessageAuthorKind.Claude ? (m.IsQuestion ? "Claude frågar" : "Claude") : m.Author)</strong> @ClaudeText.Time(m.At)
             </div>
             <div style="white-space: pre-wrap;">@m.Body</div>
         </li>
@@ -46,7 +54,15 @@
                     <td>@r.Number@(r.IsFixRound ? " (rättning)" : "")</td>
                     <td>@ClaudeText.Time(r.StartedAt)</td>
                     <td>
-                        @if (r.Outcome == RoundOutcome.Delivered)
+                        @if (r.Outcome == RoundOutcome.Delivered && r.AskedQuestion)
+                        {
+                            <span class="label label-danger">Frågade</span>
+                        }
+                        else if (r.Outcome == RoundOutcome.Delivered && r.Commits.Count == 0)
+                        {
+                            <span class="label label-info">Svarade</span>
+                        }
+                        else if (r.Outcome == RoundOutcome.Delivered)
                         {
                             <span class="label label-success">Levererat</span>
                         }
@@ -74,7 +90,8 @@
                         }
                     </td>
                     <td>
-                        @if (r.Outcome == RoundOutcome.Delivered)
+                        @* No commit, nothing to test. *@
+                        @if (r.Outcome == RoundOutcome.Delivered && r.Commits.Count > 0)
                         {
                             <span class="label @ClaudeText.TestsLabelClass(r.Tests)" title="@r.TestSummary">@ClaudeText.Tests(r.Tests)</span>
                         }

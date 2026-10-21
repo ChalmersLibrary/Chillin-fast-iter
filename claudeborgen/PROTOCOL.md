@@ -74,9 +74,10 @@ Hela samtalet:
 ```json
 {
   "id": 12, "title": "Exportknapp", "createdBy": "agneta", "createdAt": "…",
-  "state": "waitingForClaude" | "claudeWorking" | "waitingForOwner" | "done" | "cancelled",
+  "state": "waitingForClaude" | "claudeWorking" | "waitingForOwner" | "questionForOwner" | "done" | "cancelled",
   "sessionId": "…",
-  "messages": [ { "authorKind": "human" | "claude" | "system", "author": "agneta", "body": "…", "at": "…" } ],
+  "messages": [ { "authorKind": "human" | "claude" | "system", "author": "agneta", "body": "…", "at": "…",
+                  "isQuestion": false } ],
   "rounds": [ { "number": 1, "startedAt": "…", "finishedAt": "…", "outcome": "delivered" | "crashed" | null,
                 "commits": ["abc1234"], "links": ["https://…"], "sessionId": "…",
                 "tests": "pending" | "green" | "red", "testSummary": "…",
@@ -95,8 +96,10 @@ väntar på Claude, eller om Claude redan arbetar i ett annat samtal (ett i tage
 Avslutar varvet som levererat.
 ```json
 { "body": "Svaret till objektspecialisten", "commits": ["<sha>"], "links": ["https://…"],
-  "sessionId": "…", "costUsd": 0.42, "durationSeconds": 120 }
+  "sessionId": "…", "costUsd": 0.42, "durationSeconds": 120, "question": false }
 ```
+`question: true` betyder att Claude behöver svar innan arbetet fortsätter. Samtalet går då till
+`questionForOwner` i stället för `waitingForOwner`, och nästa meddelande startar ett nytt varv.
 `commits` får vara tom om varvet inte ändrade något, till exempel när Claude bara svarade på en fråga.
 Länkar som inte är `http(s)://` eller börjar med `/` tas bort. Om någon har skrivit i samtalet under
 varvet går samtalet direkt tillbaka till "väntar på Claude".

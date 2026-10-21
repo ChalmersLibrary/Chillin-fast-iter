@@ -212,6 +212,39 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public void Question_ShowsAsAQuestion_AndTheAnswerStartsTheNextRound()
+        {
+            var id = _service.Start("Knapp", "Lägg till en knapp", "agneta").Id;
+            _service.Claim(id);
+            Tick();
+            _service.Reply(id, "Överst eller nederst?", null, null, "s-1", null, null, question: true);
+
+            var asked = _service.Get(id);
+            Assert.AreEqual(ConversationState.QuestionForOwner, asked.State);
+            Assert.IsTrue(asked.Rounds.Single().AskedQuestion);
+            Assert.IsTrue(asked.Messages.Last().IsQuestion);
+            Assert.AreEqual(0, _service.Work().Count, "Claude waits for the answer.");
+
+            Tick();
+            _service.AddMessage(id, "Överst", "agneta");
+
+            Assert.AreEqual(ConversationState.WaitingForClaude, _service.Get(id).State);
+            Assert.IsFalse(_service.Claim(id).IsFixRound);
+        }
+
+        [TestMethod]
+        public void Question_CanStillBeClosedByTheOwner()
+        {
+            var id = _service.Start("Knapp", "a", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Överst eller nederst?", null, null, "s-1", null, null, question: true);
+
+            _service.Cancel(id, "agneta");
+
+            Assert.AreEqual(ConversationState.Cancelled, _service.Get(id).State);
+        }
+
+        [TestMethod]
         public void Release_PutsTheConversationBackInTheQueue_WithoutTrace()
         {
             var id = _service.Start("Ett", "a", "agneta").Id;

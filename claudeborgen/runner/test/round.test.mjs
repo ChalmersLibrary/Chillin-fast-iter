@@ -227,3 +227,23 @@ test("a normal round reports not paused", async () => {
   const result = await runRound({ api: fakeApi({ conversation: conversation() }), heartbeat: heartbeatRecorder(), claude: fakeClaude(), workspace: fakeWorkspace(), conversationId: 7, config: CONFIG });
   assert.deepEqual(result, { paused: false });
 });
+
+// --- questions: ask instead of guess ---------------------------------------------------------
+
+test("question: a reply starting with FRÅGA: is sent as a question, without the marker", async () => {
+  const claude = fakeClaude([{ text: "FRÅGA: Överst eller nederst?", sessionId: "s-1", costUsd: 0.1, durationMs: 1 }]);
+  const api = fakeApi({ conversation: conversation() });
+  await runRound({ api, heartbeat: heartbeatRecorder(), claude, workspace: fakeWorkspace({ changes: false }), conversationId: 7, config: CONFIG });
+
+  const reply = api.call("reply").args[1];
+  assert.equal(reply.question, true);
+  assert.equal(reply.body, "Överst eller nederst?");
+  assert.deepEqual(reply.commits, []);
+  assert.ok(!api.names().includes("tests"));
+});
+
+test("question: an ordinary reply is not a question", async () => {
+  const api = fakeApi({ conversation: conversation() });
+  await runRound({ api, heartbeat: heartbeatRecorder(), claude: fakeClaude(), workspace: fakeWorkspace(), conversationId: 7, config: CONFIG });
+  assert.equal(api.call("reply").args[1].question, false);
+});

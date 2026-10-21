@@ -99,6 +99,20 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task Fraga_AsksAQuestion_WithoutDeliveringAnything()
+        {
+            var id = _service.Start("Knapp", "Lägg till en knapp [fråga]", "agneta").Id;
+
+            await RunAsync(1);
+
+            var conversation = _service.Get(id);
+            Assert.AreEqual(ConversationState.QuestionForOwner, conversation.State);
+            Assert.IsTrue(conversation.Messages.Last().IsQuestion);
+            Assert.AreEqual(0, conversation.Rounds.Single().Commits.Count);
+            Assert.AreEqual(TestStatus.Pending, conversation.Rounds.Single().Tests);
+        }
+
+        [TestMethod]
         public async Task Kvot_PausesOnce_ThenTheRoundRuns()
         {
             _fake.QuotaPause = TimeSpan.FromMilliseconds(200);

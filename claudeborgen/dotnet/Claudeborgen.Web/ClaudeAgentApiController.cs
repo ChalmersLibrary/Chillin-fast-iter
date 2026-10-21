@@ -105,6 +105,7 @@ namespace Claudeborgen
             public string SessionId { get; set; }
             public decimal? CostUsd { get; set; }
             public int? DurationSeconds { get; set; }
+            public bool Question { get; set; }
         }
 
         public class TestsRequest
@@ -154,7 +155,7 @@ namespace Claudeborgen
         public async Task<IActionResult> Reply(int id)
         {
             var request = await ReadBody<ReplyRequest>();
-            return Guarded(() => _service.Reply(id, request?.Body, request?.Commits, request?.Links, request?.SessionId, request?.CostUsd, request?.DurationSeconds));
+            return Guarded(() => _service.Reply(id, request?.Body, request?.Commits, request?.Links, request?.SessionId, request?.CostUsd, request?.DurationSeconds, request?.Question ?? false));
         }
 
         [HttpPost("conversations/{id:int}/tests")]

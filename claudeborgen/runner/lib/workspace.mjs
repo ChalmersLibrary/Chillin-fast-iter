@@ -97,7 +97,8 @@ export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGr
 export function createFakeWorkspace({ markers }) {
   let counter = 0;
   return {
-    hasChanges: async () => true,
+    // A question round changes nothing, like the real thing.
+    hasChanges: async () => { const m = markers(); return !(m.instruction.includes("[fråga]") && !m.isFixRound); },
     prepare: async () => {},
     build: async () => ({ ok: true, summary: "Bygget grönt (fejkat)." }),
     async test() {

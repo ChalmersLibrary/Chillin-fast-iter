@@ -161,6 +161,28 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             StringAssert.Contains(startPage, "data-testid=\"claude-changelog-entry\"");
         }
 
+        // Claude asks instead of guessing: the conversation shows as a question, on the start page
+        // and in the conversation itself.
+        [TestMethod]
+        public async Task ClaudeAsks_TheQuestionIsVisible_AndAnAnswerContinues()
+        {
+            using var factory = CreateFactory();
+            using var client = await LoginAsync(factory, "agneta");
+            var start = await PostFormAsync(client, "/", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Knapp", ["body"] = "Lägg till en knapp [fråga]" });
+            var conversationUrl = start.Headers.Location.ToString();
+            var id = int.Parse(Regex.Match(conversationUrl, @"(\d+)$").Groups[1].Value);
+
+            var asked = await WaitForStateAsync(client, id, "QuestionForOwner");
+            StringAssert.Contains(asked, "Claude har en fråga");
+            StringAssert.Contains(asked, "Claude frågar");
+            StringAssert.Contains(asked, ">Frågade<");
+            Assert.IsFalse(asked.Contains("Tester körs"), "A question round has no commit, so nothing to test.");
+            StringAssert.Contains(await GetHtmlAsync(client, "/Claude/IndexContent"), "Claude har en fråga som väntar på svar.");
+
+            await PostFormAsync(client, conversationUrl, $"/Claude/Reply/{id}", new Dictionary<string, string> { ["body"] = "Överst" });
+            await WaitForStateAsync(client, id, "WaitingForOwner");
+        }
+
         // The account's quota is used up: Claude shows as paused on the start page, the
         // conversation waits in the queue, nothing is flagged for IT.
         [TestMethod]

@@ -98,6 +98,18 @@ async function waitForState(page, state, timeoutMs) {
     if (!changelog.some((t) => t.includes("Exportknapp på beställningslistan"))) problem("Changelog entry missing on the start page.");
     await shoot(page, "04-startpage-changelog.png");
 
+    // 2b. Claude asks instead of guessing; an answer continues the conversation.
+    const qId = await startConversation(page, "Knapp", "Lägg till en knapp [fråga]");
+    await page.waitForSelector("[data-testid=claude-question]", { timeout: 60000 });
+    await shoot(page, "04b-question.png");
+    await page.type("#claude-reply", "Överst, tack.");
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
+      page.click("[data-testid=claude-reply-form] button[type=submit]"),
+    ]);
+    await waitForState(page, "WaitingForOwner", 60000);
+    if (qId === id) problem("Question conversation got the same id as the first one.");
+
     // 3. A crashing round -> Behöver IT, seen by the IT specialist.
     const crashId = await startConversation(page, "Kraschtest", "Det här varvet kraschar [krasch]");
     await page.waitForFunction(() => !!document.querySelector("[data-testid=claude-needs-it]"), { timeout: 60000, polling: 250 });

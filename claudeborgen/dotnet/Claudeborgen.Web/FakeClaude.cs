@@ -17,6 +17,7 @@ namespace Claudeborgen
     //   [röd!]    tests stay red -> "behöver IT" after MaxFixAttempts
     //   [krasch]  the round crashes
     //   [offline] heartbeats stop for a while, so the status goes offline
+    //   [fråga]   Claude asks a question instead of building anything, and waits for the answer
     //   [kvot]    the account's quota is "used up": the conversation goes back to the queue and
     //             Claude shows as paused for a while, then the round runs (once per conversation)
     public class FakeClaude : BackgroundService
@@ -108,6 +109,17 @@ namespace Claudeborgen
                 Heartbeat(ClaudeActivity.Working, conversation.Id, "läser in");
                 _silentUntil = DateTime.Now + _service.Settings.OfflineAfter + TimeSpan.FromSeconds(15);
                 await Task.Delay(_service.Settings.OfflineAfter + TimeSpan.FromSeconds(15), cancellationToken);
+            }
+
+            if (instruction.Contains("[fråga]") && !round.IsFixRound)
+            {
+                Heartbeat(ClaudeActivity.Working, conversation.Id, "läser in");
+                await Task.Delay(_phaseDelay, cancellationToken);
+                _service.Reply(conversation.Id,
+                    "(Fejkad Claude) Innan jag börjar: ska knappen ligga överst eller nederst på sidan? Jag har inte ändrat något än.",
+                    null, null, "fejk-session-" + conversation.Id, 0m, (int)_phaseDelay.TotalSeconds, question: true);
+                Heartbeat(ClaudeActivity.Idle, null, null);
+                return;
             }
 
             foreach (var phase in new[] { "läser in", "implementerar", "bygger" })

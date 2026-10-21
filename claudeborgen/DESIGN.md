@@ -189,6 +189,16 @@ inte får bero på modellen:
 Tidsgränser finns per Claude-anrop (`roundTimeoutMinutes`) och per kommando
 (`commandTimeoutMinutes`). Alla inställningar står i `claudeborgen.json`.
 
+**Frågor.** Claude kan inte få svar mitt i ett varv, så frågor går via samtalet:
+- *Små oklarheter:* Claude gör ett rimligt val, bygger och berättar i svaret vilket val det blev.
+- *Stora oklarheter*, där en felgissning skulle kasta bort mycket arbete: Claude bygger ingenting och
+  inleder svaret med `FRÅGA:`. Runnern tar bort markeringen och skickar svaret som en fråga
+  (`question: true`). Samtalet får tillståndet **"Claude har en fråga"**, som syns i listan på
+  startsidan, i samtalet och i varvstabellen ("Frågade"). Svaret skrivs som ett vanligt meddelande,
+  och nästa varv återupptar samma session.
+- Ett meddelande som bara är en fråga *till* Claude besvaras utan ändringar, och det räknas inte som
+  en fråga tillbaka.
+
 **När kontots kvot tar slut** blir det paus, inte krasch. Runnern känner igen felet från
 `claude -p` (HTTP 429 eller text om användningsgräns). Den sparar det Claude hunnit med i
 `git stash`, lämnar tillbaka samtalet till kön (`release`) och skickar hjärtslag med
@@ -246,6 +256,8 @@ Båda styrs av markeringar i meddelandet:
 - `[röd!]`: testerna förblir röda, och samtalet markeras **behöver IT**.
 - `[krasch]`: varvet kraschar.
 - `[offline]`: hjärtslagen stannar en stund, så att statusen går till offline.
+- `[fråga]`: Claude ställer en motfråga i stället för att bygga, och samtalet visas som "Claude har en
+  fråga".
 - `[kvot]`: kvoten "tar slut" en gång. Samtalet går tillbaka till kön, Claude visas som pausad en
   stund, och sedan körs varvet.
 - Utan markering blir varvet grönt och lyckat.

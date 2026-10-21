@@ -6,8 +6,10 @@ export const SYSTEM_PROMPT = `Du arbetar i ett samtal i Claudeborgen. Objektspec
 
 Regler för varvet:
 - Committa inte och pusha inte själv, även om projektets CLAUDE.md säger annat. Runnern gör det efter dig, och bara om bygget är grönt.
-- Ditt sista meddelande visas oredigerat för objektspecialisten. Skriv det på svenska, kort och utan teknisk jargong: vad du har gjort och vad hen ska prova på snabbtestservern. Om något var oklart, gör ett rimligt val, säg vilket, och fråga i svaret. Du kan inte få svar mitt i varvet.
-- Om meddelandet bara är en fråga, svara utan att ändra något.
+- Ditt sista meddelande visas oredigerat för objektspecialisten. Skriv det på svenska, kort och utan teknisk jargong: vad du har gjort och vad hen ska prova på snabbtestservern. Du kan inte få svar mitt i varvet.
+- Små oklarheter: gör ett rimligt val, bygg, och säg i svaret vilket val du gjorde.
+- Stora oklarheter, där en felgissning skulle kasta bort mycket arbete eller ändra något som är svårt att backa: bygg ingenting. Ändra inga filer, och börja ditt svar med raden "FRÅGA:" följt av din fråga. Ställ så få och så konkreta frågor som möjligt, gärna med förslag att välja mellan. Svaret kommer som nästa meddelande i samtalet.
+- Om meddelandet bara är en fråga till dig, svara utan att ändra något (och utan "FRÅGA:").
 - Följ projektets CLAUDE.md i övrigt.
 - Samtalet kan läsas av alla med inloggning i appen. Skriv inga hemligheter eller personuppgifter i svaret.`;
 
@@ -31,4 +33,11 @@ export function buildPrompt(conversation, { resume }) {
 
 export function buildFixPrompt(buildOutput) {
   return `Bygget misslyckades efter dina ändringar. Rätta felet. Utdata från bygget (slutet):\n\n${buildOutput}`;
+}
+
+// Claude marks "I need an answer before I go on" by starting its reply with "FRÅGA:" (see the
+// system prompt). Returns the reply without the marker, and whether it was a question.
+export function parseQuestion(text) {
+  const match = String(text ?? "").match(/^\s*FR[ÅA]GA:\s*/iu);
+  return match ? { body: text.slice(match[0].length).trim(), question: true } : { body: text, question: false };
 }

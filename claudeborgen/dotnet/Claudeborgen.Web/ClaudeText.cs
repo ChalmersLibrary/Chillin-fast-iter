@@ -10,6 +10,7 @@ namespace Claudeborgen
             ConversationState.WaitingForClaude => "Väntar på Claude",
             ConversationState.ClaudeWorking => "Claude arbetar",
             ConversationState.WaitingForOwner => "Väntar på objektspecialisten",
+            ConversationState.QuestionForOwner => "Claude har en fråga",
             ConversationState.Done => "Klar",
             ConversationState.Cancelled => "Avbruten",
             _ => state.ToString()
@@ -20,6 +21,7 @@ namespace Claudeborgen
             ConversationState.WaitingForClaude => "label-info",
             ConversationState.ClaudeWorking => "label-primary",
             ConversationState.WaitingForOwner => "label-warning",
+            ConversationState.QuestionForOwner => "label-danger",
             ConversationState.Done => "label-success",
             _ => "label-default"
         };

@@ -6,6 +6,7 @@
 //   [krasch]  the round crashes
 //   [offline] heartbeats stop for a while, so the app shows Claude offline
 //   [kvot]    the quota is "used up" once per conversation: back to the queue, runner paused
+//   [fråga]   Claude asks a question instead of building anything
 import { QuotaExhausted } from "./errors.mjs";
 import { createFakeWorkspace } from "./workspace.mjs";
 
@@ -39,6 +40,9 @@ export function createFakeClaude({ markers, heartbeat, offlineMs, quotaPauseMs =
       await heartbeat.resume();
     }
     if (instruction.includes("[krasch]") && !isFixRound) throw new Error("Fejkrunnern låtsades krascha ([krasch] i meddelandet).");
+
+    if (instruction.includes("[fråga]") && !isFixRound)
+      return { text: "FRÅGA: (Fejkad runner) Innan jag börjar: ska knappen ligga överst eller nederst på sidan? Jag har inte ändrat något än.", sessionId: sessionId ?? `fejk-session-${Date.now()}`, costUsd: 0, durationMs: phaseDelayMs };
 
     const text = isFixRound
       ? "(Fejkad runner) Jag har rättat testerna."

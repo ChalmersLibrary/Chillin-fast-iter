@@ -348,7 +348,8 @@ namespace Claudeborgen
             return round;
         }
 
-        public void Reply(int id, string body, IEnumerable<string> commits, IEnumerable<string> links, string sessionId, decimal? costUsd, int? durationSeconds)
+        // `question`: Claude asks the owner something and waits for the answer (DESIGN.md, "Frågor").
+        public void Reply(int id, string body, IEnumerable<string> commits, IEnumerable<string> links, string sessionId, decimal? costUsd, int? durationSeconds, bool question = false)
         {
             if (string.IsNullOrWhiteSpace(body))
                 throw new ClaudeborgenException("Svaret är tomt.");
@@ -368,11 +369,14 @@ namespace Claudeborgen
                 round.SessionId = sessionId;
                 round.CostUsd = costUsd;
                 round.DurationSeconds = durationSeconds;
+                round.AskedQuestion = question;
                 if (!string.IsNullOrWhiteSpace(sessionId))
                     conversation.SessionId = sessionId;
 
-                conversation.Messages.Add(new ConversationMessage { AuthorKind = MessageAuthorKind.Claude, Author = "Claude", Body = body.Trim(), At = now });
-                conversation.State = HumanMessageAfter(conversation, round.MessageCountAtStart) ? ConversationState.WaitingForClaude : ConversationState.WaitingForOwner;
+                conversation.Messages.Add(new ConversationMessage { AuthorKind = MessageAuthorKind.Claude, Author = "Claude", Body = body.Trim(), At = now, IsQuestion = question });
+                conversation.State = HumanMessageAfter(conversation, round.MessageCountAtStart)
+                    ? ConversationState.WaitingForClaude
+                    : question ? ConversationState.QuestionForOwner : ConversationState.WaitingForOwner;
                 _store.Save(conversation);
             }
 

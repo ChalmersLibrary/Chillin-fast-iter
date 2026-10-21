@@ -14,6 +14,10 @@ namespace Claudeborgen
         WaitingForClaude,
         ClaudeWorking,
         WaitingForOwner,
+
+        // Claude needs an answer before it can go on (it asked instead of guessing). Behaves like
+        // WaitingForOwner - the next human message starts a round - but is shown as a question.
+        QuestionForOwner,
         Done,
         Cancelled
     }
@@ -41,6 +45,9 @@ namespace Claudeborgen
     public class ConversationMessage
     {
         public MessageAuthorKind AuthorKind { get; set; }
+
+        // A Claude message that asks the owner something and waits for the answer.
+        public bool IsQuestion { get; set; }
         public string Author { get; set; }
         public string Body { get; set; }
         public DateTime At { get; set; }
@@ -63,6 +70,9 @@ namespace Claudeborgen
         // A round started automatically because the previous round's tests were red, rather than
         // by a human message.
         public bool IsFixRound { get; set; }
+
+        // The round ended with Claude asking the owner something.
+        public bool AskedQuestion { get; set; }
 
         // How many messages the conversation had when the round started - what "a message written
         // during the round" is measured against (by position, not by clock).
