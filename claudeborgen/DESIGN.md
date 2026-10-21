@@ -205,6 +205,12 @@ Tidsgränser finns per Claude-anrop (`roundTimeoutMinutes`) och per kommando
 `paused` tills tiden Claude angav, eller `pauseRetryMinutes` (standard 30). Startsidan visar
 "Claude är pausad, försöker igen kl. 14:00". Inget markeras "behöver IT".
 
+**Modell:** `model` och `fallbackModel` i `claudeborgen.json` skickas som `--model` och
+`--fallback-model`. Chillin använder `opus`, med `sonnet` som reserv när opus är överbelastad. Alias
+som `opus` och `sonnet` pekar alltid på den senaste versionen. Ett fullständigt modellnamn låser
+versionen, och `opus[1m]` ger 1M-kontext. Utan inställningen används containerns standard
+(`~/.claude/settings.json`), och den följer i tysthet det senaste `/model`-valet i en interaktiv session.
+
 **Konto:** runnern kör `claude` med den inloggning som finns i devcontainern. Det är troligen
 ObjektSpecialistIT:s eget konto, eller en API-nyckel via `ANTHROPIC_API_KEY`. Med ett personligt konto
 delar runnern kvot med personens eget arbete. Kontrollera att kontots villkor tillåter obevakade

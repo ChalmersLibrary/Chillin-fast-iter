@@ -51,6 +51,10 @@ export async function main(argv = process.argv.slice(2)) {
 
   const info = await api.info();
   log(`Ansluten till ${config.apiUrl} (protokoll ${info.protocolVersion}, läge ${info.mode})${values.fake ? " i fejkläge" : ""}.`);
+  if (!values.fake)
+    log(config.model
+      ? `Modell: ${config.model}${config.fallbackModel ? `, reserv ${config.fallbackModel}` : ""}.`
+      : "Ingen modell i claudeborgen.json - Claude Codes standardinställning i containern används.");
   if (info.protocolVersion !== 1) throw new Error(`Appen talar protokoll ${info.protocolVersion}; runnern kan bara version 1.`);
   if (values.fake && info.mode !== "FakeRunner")
     throw new Error(`Fejkläget är bara till för en snabbtestserver i läge FakeRunner, inte ${info.mode} - fejksvar hör inte hemma i riktiga samtal.`);
@@ -69,6 +73,8 @@ export async function main(argv = process.argv.slice(2)) {
       cwd: config.projectRoot,
       maxBudgetUsd: config.maxBudgetUsdPerRound,
       timeoutMinutes: config.roundTimeoutMinutes,
+      model: config.model,
+      fallbackModel: config.fallbackModel,
     });
     workspace = createWorkspace({ cwd: config.projectRoot, ...config });
   }

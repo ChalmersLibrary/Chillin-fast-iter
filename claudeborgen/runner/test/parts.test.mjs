@@ -336,3 +336,19 @@ test("fake: [fråga] asks a question and changes nothing", async () => {
   assert.deepEqual(reply.commits, []);
   assert.ok(!api.names().includes("tests"));
 });
+
+// --- model ----------------------------------------------------------------------------------
+
+test("claude: model and fallback model are passed when configured, left to Claude Code otherwise", async () => {
+  const seen = [];
+  const runImpl = async (c, args) => { seen.push(args); return { code: 0, stdout: JSON.stringify({ result: "ok", session_id: "s" }), output: "" }; };
+
+  await createClaude({ cwd: "/", timeoutMinutes: 1, model: "opus", fallbackModel: "sonnet", runImpl })("x");
+  const flag = (args, name) => args[args.indexOf(name) + 1];
+  assert.equal(flag(seen[0], "--model"), "opus");
+  assert.equal(flag(seen[0], "--fallback-model"), "sonnet");
+
+  await createClaude({ cwd: "/", timeoutMinutes: 1, runImpl })("x");
+  assert.ok(!seen[1].includes("--model"));
+  assert.ok(!seen[1].includes("--fallback-model"));
+});

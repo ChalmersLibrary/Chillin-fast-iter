@@ -5,7 +5,10 @@ import { quotaFrom } from "./errors.mjs";
 import { run, tail } from "./exec.mjs";
 import { SYSTEM_PROMPT } from "./prompt.mjs";
 
-export function createClaude({ command = "claude", cwd, maxBudgetUsd, timeoutMinutes, runImpl = run }) {
+// `model`/`fallbackModel` (claudeborgen.json) are passed as --model/--fallback-model when set; without
+// them Claude Code uses whatever default the container's own settings say, which then silently
+// follows the last interactive /model choice - so projects should set them.
+export function createClaude({ command = "claude", cwd, maxBudgetUsd, timeoutMinutes, model = null, fallbackModel = null, runImpl = run }) {
   return async function claude(prompt, { sessionId } = {}) {
     const args = [
       "-p",
@@ -14,6 +17,8 @@ export function createClaude({ command = "claude", cwd, maxBudgetUsd, timeoutMin
       "--append-system-prompt", SYSTEM_PROMPT,
     ];
     if (maxBudgetUsd) args.push("--max-budget-usd", String(maxBudgetUsd));
+    if (model) args.push("--model", model);
+    if (fallbackModel) args.push("--fallback-model", fallbackModel);
     if (sessionId) args.push("--resume", sessionId);
 
     const result = await runImpl(command, args, { cwd, timeoutMs: timeoutMinutes * 60 * 1000, input: prompt });

@@ -4,6 +4,8 @@
   "branch": "test",
   "testGreenTag": "test-green",
   "changelogFile": "Chalmers.ILL/changelog.json",
+  "model": "opus",
+  "fallbackModel": "sonnet",
   "buildCommand": "dotnet build Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj /p:Configuration=Debug /p:UseSharedCompilation=false /v:minimal && dotnet build claudeborgen/dotnet/Claudeborgen.Tests/Claudeborgen.Tests.csproj /p:Configuration=Debug /p:UseSharedCompilation=false /v:minimal",
   "testCommand": "dotnet test Chalmers.ILL.Tests/Chalmers.ILL.Tests.csproj /p:Configuration=Debug /v:minimal --no-build && dotnet test claudeborgen/dotnet/Claudeborgen.Tests/Claudeborgen.Tests.csproj /p:Configuration=Debug /v:minimal --no-build && node --test claudeborgen/runner/",
   "roundTimeoutMinutes": 45,
