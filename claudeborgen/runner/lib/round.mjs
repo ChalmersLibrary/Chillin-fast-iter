@@ -1,7 +1,7 @@
 // One round of a conversation (PROTOCOL.md, "Ett varv, sett från runnern"). The rules that must
 // not depend on the model live here as code: build before push, tests after, at most N build-fix
 // attempts, nothing pushed on failure, test-green only on green.
-import { RoundFailure } from "./errors.mjs";
+import { QuotaExhausted, RoundFailure } from "./errors.mjs";
 import { buildFixPrompt, buildPrompt } from "./prompt.mjs";
 
 export { RoundFailure };
@@ -15,25 +15,33 @@ export function guardRound({ conversation, round, guards, now = Date.now() }) {
   if (!newInput && !round.isFixRound)
     return "Inget nytt meddelande att svara på sedan Claudes senaste svar, så runnern startade inte Claude. Appen lämnade ut samtalet ändå - IT behöver titta på det.";
 
-  const recent = guards.roundsFor(conversation.id).filter((t) => now - t < 60 * 60 * 1000);
+  const hour = 60 * 60 * 1000;
+  const recent = guards.roundsFor(conversation.id).filter((t) => now - t < hour);
   if (recent.length >= guards.maxRoundsPerConversationPerHour)
     return `Samtalet har fått ${recent.length} varv den senaste timmen, vilket är runnerns tak (maxRoundsPerConversationPerHour). Runnern startar inga fler varv i det just nu.`;
 
-  if (guards.spentToday(now) >= guards.maxBudgetUsdPerDay)
+  const recentAll = guards.allRounds().filter((t) => now - t < hour);
+  if (recentAll.length >= guards.maxRoundsPerHour)
+    return `Runnern har kört ${recentAll.length} varv den senaste timmen, över alla samtal, vilket är taket (maxRoundsPerHour). Det tyder på en loop; inga fler varv startas just nu.`;
+
+  // Optional, for an API key with a real budget - off by default (null).
+  if (guards.maxBudgetUsdPerDay != null && guards.spentToday(now) >= guards.maxBudgetUsdPerDay)
     return `Dagens budgettak för runnern (${guards.maxBudgetUsdPerDay} USD, maxBudgetUsdPerDay) är nått. Inga fler varv startas förrän i morgon.`;
 
   return null;
 }
 
-// Per-process bookkeeping for the guards: rounds per conversation, spend per UTC day.
-export function createGuards({ maxRoundsPerConversationPerHour, maxBudgetUsdPerDay }) {
+// Per-process bookkeeping for the guards: rounds per conversation and in total, spend per UTC day.
+export function createGuards({ maxRoundsPerConversationPerHour, maxRoundsPerHour, maxBudgetUsdPerDay }) {
   const rounds = new Map();
   const spent = new Map();
   const day = (t) => new Date(t).toISOString().slice(0, 10);
   return {
     maxRoundsPerConversationPerHour,
+    maxRoundsPerHour,
     maxBudgetUsdPerDay,
     roundsFor: (id) => rounds.get(id) ?? [],
+    allRounds: () => [...rounds.values()].flat(),
     recordRound(id, now = Date.now()) { rounds.set(id, [...(rounds.get(id) ?? []), now]); },
     spentToday: (now = Date.now()) => spent.get(day(now)) ?? 0,
     recordCost(usd, now = Date.now()) { spent.set(day(now), (spent.get(day(now)) ?? 0) + usd); },
@@ -117,6 +125,24 @@ export async function runRound({ api, heartbeat, claude, workspace, conversation
       }
     }
   } catch (e) {
+    if (e instanceof QuotaExhausted) {
+      // Not the conversation's fault: keep whatever Claude got done, hand the conversation back to
+      // the queue, and tell the loop to pause.
+      log(`#${conversationId}: ${e.message}`);
+      try {
+        if (await workspace.hasChanges())
+          await workspace.stash(`claudeborgen #${conversationId} varv ${round?.number}: kvoten tog slut`);
+      } catch (stashError) {
+        log(`#${conversationId}: kunde inte stasha ändringarna: ${stashError.message}`);
+      }
+      try {
+        if (round) await api.release(conversationId);
+      } catch (releaseError) {
+        log(`#${conversationId}: kunde inte lämna tillbaka samtalet: ${releaseError.message}`);
+      }
+      return { paused: true, resetAt: e.resetAt };
+    }
+
     const summary = e instanceof RoundFailure ? e.message : `Runnern avbröt varvet: ${e.message}`;
     log(`#${conversationId}: varvet misslyckades: ${summary}`);
 
@@ -142,6 +168,7 @@ export async function runRound({ api, heartbeat, claude, workspace, conversation
   } finally {
     await heartbeat.idle();
   }
+  return { paused: false };
 }
 
 function round2(n) {

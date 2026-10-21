@@ -167,10 +167,13 @@ inte får bero på modellen:
 1. Hjärtslag var 20:e sekund, även mitt i ett varv, och direkt vid varje fasbyte.
 2. Committar väntande changelog-poster (se [Changelog](#changelog)).
 3. Frågar efter arbete (`GET work`) och tar ett samtal i taget (`claim`).
-4. **Skydd** innan Claude startas. Om något av dem slår till rapporteras varvet som kraschat:
+4. **Skydd mot loopar** innan Claude startas. De räknar varv, inte pengar, och gäller vilket konto
+   Claude än kör på. Om något av dem slår till rapporteras varvet som kraschat:
    - inget nytt meddelande sedan Claudes senaste svar, utom i rättningsvarv
    - fler än `maxRoundsPerConversationPerHour` varv i samtalet den senaste timmen (standard 8)
-   - dagens budget `maxBudgetUsdPerDay` är förbrukad (standard 50 USD, per process och UTC-dygn)
+   - fler än `maxRoundsPerHour` varv totalt den senaste timmen, över alla samtal (standard 20)
+   - *valfritt*, bara meningsfullt med API-nyckel: `maxBudgetUsdPerDay` per UTC-dygn och
+     `maxBudgetUsdPerRound` per varv. Båda är avstängda som standard.
 5. `git pull --rebase` på grenen. En arbetskatalog som inte är ren rörs inte, och varvet kraschar
    i stället.
 6. `claude -p --output-format json --dangerously-skip-permissions --max-budget-usd <per varv>`,
@@ -185,6 +188,21 @@ inte får bero på modellen:
 
 Tidsgränser finns per Claude-anrop (`roundTimeoutMinutes`) och per kommando
 (`commandTimeoutMinutes`). Alla inställningar står i `claudeborgen.json`.
+
+**När kontots kvot tar slut** blir det paus, inte krasch. Runnern känner igen felet från
+`claude -p` (HTTP 429 eller text om användningsgräns). Den sparar det Claude hunnit med i
+`git stash`, lämnar tillbaka samtalet till kön (`release`) och skickar hjärtslag med
+`paused` tills tiden Claude angav, eller `pauseRetryMinutes` (standard 30). Startsidan visar
+"Claude är pausad, försöker igen kl. 14:00". Inget markeras "behöver IT".
+
+**Konto:** runnern kör `claude` med den inloggning som finns i devcontainern. Det är troligen
+ObjektSpecialistIT:s eget konto, eller en API-nyckel via `ANTHROPIC_API_KEY`. Med ett personligt konto
+delar runnern kvot med personens eget arbete. Kontrollera att kontots villkor tillåter obevakade
+körningar som andra personer startar.
+
+**Bygget** körs utan delad kompileringsserver (`/p:UseSharedCompilation=false`). En kompileringsserver
+som hamnat i ett trasigt tillstånd gav 2026-10-21 röda byggen av korrekt kod, och då hade Claude
+försökt "rätta" något som inte var fel.
 
 **Claude får inte ändra sin egen runner eller vad som räknas som grönt.** Därför monteras
 `claudeborgen/runner/` och `claudeborgen.json` skrivskyddade i devcontainern, se
@@ -207,10 +225,10 @@ filerna på grenen. Sådana ändringar görs från värden, och där körs ocks�
   öppnas.
 - **Sandlådan kan inte ändra sig själv:** `.devcontainer`, runnern och `claudeborgen.json` monteras
   skrivskyddade.
-- **Kostnad:** tak per varv (`--max-budget-usd`), varv per timme och samtal, och per dygn. Kostnaden
-  per varv sparas i samtalet. Taken finns för att en loop annars snabbt blir dyr. Vid ett e2e-test
-  2026-10-20 körde ett tillståndsfel 62 varv (cirka 27 USD) innan det stoppades; skydden ovan
-  infördes då.
+- **Loopar och kostnad:** runnern begränsar antalet varv, inte pengar (se Runnern). Dollartak finns som
+  tillval för den som kör med API-nyckel. Vid ett e2e-test 2026-10-20 körde ett tillståndsfel 62 varv
+  i rad innan det stoppades (Claude Code rapporterade cirka 27 USD i listpris, förbrukat från ett
+  abonnemang). Skydden infördes då.
 
 ## Fejkad Claude
 
@@ -228,6 +246,8 @@ Båda styrs av markeringar i meddelandet:
 - `[röd!]`: testerna förblir röda, och samtalet markeras **behöver IT**.
 - `[krasch]`: varvet kraschar.
 - `[offline]`: hjärtslagen stannar en stund, så att statusen går till offline.
+- `[kvot]`: kvoten "tar slut" en gång. Samtalet går tillbaka till kön, Claude visas som pausad en
+  stund, och sedan körs varvet.
 - Utan markering blir varvet grönt och lyckat.
 
 Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
@@ -302,7 +322,7 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
 ## Öppna frågor
 
 - Vilken CI driftsätter `test` (GitHub Actions?), och hur snabbt kan det gå?
-- Budgettak: är 5 USD per varv och 50 USD per dygn rimligt?
+- Vilket konto runnern kör på: ObjektSpecialistIT:s eget (om villkoren tillåter) eller en API-nyckel.
 - Ska man kunna pausa runnern från appen (t.ex. under en demo)?
 - `.devcontainer` är gitignorerad i Chillin. Ska den versionshanteras nu när allt ska bo i Chillin?
 

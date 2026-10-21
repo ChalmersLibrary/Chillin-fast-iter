@@ -1,6 +1,7 @@
 // Claude Code, headless: `claude -p ... --output-format json`. Full permissions inside the
 // devcontainer (its firewall and repo-scoped deploy key are the sandbox), a budget and a time
 // limit per call, and --resume so a conversation keeps its memory across rounds.
+import { quotaFrom } from "./errors.mjs";
 import { run, tail } from "./exec.mjs";
 import { SYSTEM_PROMPT } from "./prompt.mjs";
 
@@ -22,9 +23,15 @@ export function createClaude({ command = "claude", cwd, maxBudgetUsd, timeoutMin
     try {
       json = JSON.parse(result.stdout);
     } catch {
+      const quota = quotaFrom({ text: result.output });
+      if (quota) throw quota;
       throw new Error(`Claude avslutades (kod ${result.code}) utan läsbart svar: ${tail(result.output, 1000)}`);
     }
-    if (json.is_error) throw new Error(`Claude rapporterade ett fel: ${tail(String(json.result ?? json.subtype), 1000)}`);
+    if (json.is_error) {
+      const quota = quotaFrom({ apiErrorStatus: json.api_error_status, text: json.result });
+      if (quota) throw quota;
+      throw new Error(`Claude rapporterade ett fel: ${tail(String(json.result ?? json.subtype), 1000)}`);
+    }
 
     return {
       text: json.result ?? "",

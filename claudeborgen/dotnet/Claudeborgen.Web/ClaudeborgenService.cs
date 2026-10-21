@@ -38,6 +38,7 @@ namespace Claudeborgen
         private ClaudeActivity _reportedActivity = ClaudeActivity.Idle;
         private int? _reportedConversationId;
         private string _reportedPhase;
+        private DateTime? _reportedPausedUntil;
 
         public ClaudeborgenService(ConversationStore store, ClaudeborgenSettings settings, Func<DateTime> now = null)
         {
@@ -186,12 +187,17 @@ namespace Claudeborgen
                     return status;
                 }
 
-                status.Activity = _reportedActivity == ClaudeActivity.Working ? ClaudeActivity.Working : ClaudeActivity.Idle;
+                status.Activity = _reportedActivity;
                 if (status.Activity == ClaudeActivity.Working)
                 {
                     status.ConversationId = _reportedConversationId;
                     status.ConversationTitle = conversations.FirstOrDefault(c => c.Id == _reportedConversationId)?.Title;
                     status.Phase = _reportedPhase;
+                }
+                else if (status.Activity == ClaudeActivity.Paused)
+                {
+                    status.Phase = _reportedPhase;
+                    status.PausedUntil = _reportedPausedUntil;
                 }
 
                 return status;
@@ -261,8 +267,14 @@ namespace Claudeborgen
 
         #region Claude (runner via agent API, or FakeClaude)
 
-        public void Heartbeat(ClaudeActivity activity, int? conversationId, string phase)
+        public void Heartbeat(ClaudeActivity activity, int? conversationId, string phase, DateTime? pausedUntil = null)
         {
+            // Offline is never reported - it's the absence of heartbeats.
+            if (activity == ClaudeActivity.Offline)
+                activity = ClaudeActivity.Idle;
+            if (activity != ClaudeActivity.Paused)
+                pausedUntil = null;
+
             bool changed;
             lock (_lock)
             {
@@ -270,12 +282,14 @@ namespace Claudeborgen
                 changed = wasOffline
                     || _reportedActivity != activity
                     || _reportedConversationId != conversationId
-                    || _reportedPhase != phase;
+                    || _reportedPhase != phase
+                    || _reportedPausedUntil != pausedUntil;
 
                 _lastHeartbeatAt = _now();
-                _reportedActivity = activity == ClaudeActivity.Working ? ClaudeActivity.Working : ClaudeActivity.Idle;
+                _reportedActivity = activity;
                 _reportedConversationId = conversationId;
                 _reportedPhase = phase;
+                _reportedPausedUntil = pausedUntil;
             }
 
             if (changed)
@@ -405,6 +419,27 @@ namespace Claudeborgen
                     }
                 }
 
+                _store.Save(conversation);
+            }
+
+            Changed(id);
+        }
+
+        // The runner took the conversation but couldn't run Claude (quota used up): hand it back to
+        // the queue untouched - no crash, no "behöver IT", the unstarted round is dropped.
+        public void Release(int id)
+        {
+            lock (_lock)
+            {
+                var conversation = LoadOrThrow(id);
+                if (conversation.State != ConversationState.ClaudeWorking)
+                    throw new ClaudeborgenException("Claude arbetar inte i samtalet.");
+
+                var round = conversation.CurrentRound;
+                if (round != null && round.Outcome == null)
+                    conversation.Rounds.Remove(round);
+                conversation.State = ConversationState.WaitingForClaude;
+                conversation.ClaimedAt = null;
                 _store.Save(conversation);
             }
 

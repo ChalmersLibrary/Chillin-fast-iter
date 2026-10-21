@@ -17,6 +17,8 @@ namespace Claudeborgen
     //   [röd!]    tests stay red -> "behöver IT" after MaxFixAttempts
     //   [krasch]  the round crashes
     //   [offline] heartbeats stop for a while, so the status goes offline
+    //   [kvot]    the account's quota is "used up": the conversation goes back to the queue and
+    //             Claude shows as paused for a while, then the round runs (once per conversation)
     public class FakeClaude : BackgroundService
     {
         public const string FakeCommitPrefix = "fejk";
@@ -26,6 +28,11 @@ namespace Claudeborgen
         private readonly TimeSpan _tick;
         private readonly ILogger _logger;
         private DateTime _silentUntil = DateTime.MinValue;
+        private DateTime _pausedUntil = DateTime.MinValue;
+        private readonly System.Collections.Generic.HashSet<int> _quotaPausedOnce = new System.Collections.Generic.HashSet<int>();
+
+        // How long a [kvot] pause lasts. Public for tests.
+        public TimeSpan QuotaPause { get; set; } = TimeSpan.FromSeconds(45);
 
         public FakeClaude(ClaudeborgenService service, ILogger<FakeClaude> logger = null)
             : this(service, service.Settings.FakePhaseDelay, TimeSpan.FromSeconds(2), logger)
@@ -67,6 +74,12 @@ namespace Claudeborgen
             if (DateTime.Now < _silentUntil)
                 return;
 
+            if (DateTime.Now < _pausedUntil)
+            {
+                _service.Heartbeat(ClaudeActivity.Paused, null, "kvoten är slut (fejk)", _pausedUntil);
+                return;
+            }
+
             Heartbeat(ClaudeActivity.Idle, null, null);
 
             // The real runner commits a done conversation's changelog entry to the repo; the fake
@@ -80,6 +93,14 @@ namespace Claudeborgen
 
             var round = _service.Claim(conversation.Id);
             var instruction = conversation.Messages.LastOrDefault(m => m.AuthorKind == MessageAuthorKind.Human)?.Body ?? "";
+
+            if (instruction.Contains("[kvot]") && _quotaPausedOnce.Add(conversation.Id))
+            {
+                _service.Release(conversation.Id);
+                _pausedUntil = DateTime.Now + QuotaPause;
+                _service.Heartbeat(ClaudeActivity.Paused, null, "kvoten är slut (fejk)", _pausedUntil);
+                return;
+            }
 
             if (instruction.Contains("[offline]") && !round.IsFixRound)
             {

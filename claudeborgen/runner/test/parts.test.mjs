@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createApi } from "../lib/api.mjs";
+import { QuotaExhausted, quotaFrom } from "../lib/errors.mjs";
+import { Heartbeat } from "../lib/heartbeat.mjs";
 import { createClaude } from "../lib/claude.mjs";
 import { loadConfig } from "../lib/config.mjs";
 import { createFakes } from "../lib/fake.mjs";
@@ -253,4 +255,60 @@ test("changelog: the runner reports each committed entry; a failure is only logg
 test("changelog: the fake runner never commits", async () => {
   const fakes = createFakes({ heartbeat: heartbeatRecorder(), offlineMs: 0, phaseDelayMs: 0 });
   assert.match(await fakes.workspace.commitChangelogEntry({ conversationId: 1, date: "d", text: "X" }), /^fejk/);
+});
+
+// --- quota ----------------------------------------------------------------------------------
+
+test("quota: recognized from HTTP 429 or limit wording, with the reset time when given", () => {
+  assert.ok(quotaFrom({ apiErrorStatus: 429, text: "Too many requests" }) instanceof QuotaExhausted);
+  const sub = quotaFrom({ text: "Claude AI usage limit reached|1761000000" });
+  assert.equal(sub.resetAt.getTime(), 1761000000 * 1000);
+  assert.equal(quotaFrom({ text: "Rate limit exceeded" }).resetAt, null);
+  assert.equal(quotaFrom({ apiErrorStatus: 500, text: "Internal server error" }), null);
+  assert.equal(quotaFrom({ text: "TypeError: x is undefined" }), null);
+});
+
+test("claude: a limit error becomes QuotaExhausted, both as JSON and as plain output", async () => {
+  const make = (result) => createClaude({ cwd: "/", timeoutMinutes: 1, runImpl: async () => result });
+  await assert.rejects(make({ code: 0, stdout: JSON.stringify({ is_error: true, api_error_status: 429, result: "rate limited" }), output: "" })("x"), QuotaExhausted);
+  await assert.rejects(make({ code: 1, stdout: "", output: "Claude AI usage limit reached|1761000000" })("x"), QuotaExhausted);
+});
+
+test("claude: no --max-budget-usd unless a per-round limit is configured", async () => {
+  let args;
+  const claude = createClaude({ cwd: "/", timeoutMinutes: 1, maxBudgetUsd: null, runImpl: async (c, a) => { args = a; return { code: 0, stdout: JSON.stringify({ result: "ok", session_id: "s" }), output: "" }; } });
+  await claude("x");
+  assert.ok(!args.includes("--max-budget-usd"));
+});
+
+test("heartbeat: paused carries the reason and when it tries again", async () => {
+  const sent = [];
+  const hb = new Heartbeat({ api: { heartbeat: async (...a) => { sent.push(a); } }, intervalSeconds: 60 });
+  const until = new Date("2026-10-21T14:00:00Z");
+  await hb.paused(until, "kvoten är slut");
+  assert.deepEqual(sent.at(-1), ["paused", null, "kvoten är slut", until]);
+});
+
+test("api: heartbeat sends pausedUntil as ISO", async () => {
+  let body;
+  const api = createApi({ apiUrl: "https://a/", token: "t", fetchImpl: async (u, init) => { body = JSON.parse(init.body); return new Response(null, { status: 204 }); } });
+  await api.heartbeat("paused", null, "kvoten är slut", new Date("2026-10-21T14:00:00Z"));
+  assert.equal(body.pausedUntil, "2026-10-21T14:00:00.000Z");
+});
+
+test("fake: [kvot] pauses once per conversation, then the round runs", async () => {
+  const heartbeat = heartbeatRecorder();
+  const fakes = createFakes({ heartbeat, offlineMs: 0, phaseDelayMs: 0, quotaPauseMs: 1000 });
+  const conv = conversation({ messages: [{ authorKind: "human", author: "agneta", body: "Gör X [kvot]" }] });
+
+  const first = fakeApi({ conversation: conv });
+  first.release = async () => { first.calls.push({ name: "release", args: [] }); };
+  const r1 = await runRound({ api: first, heartbeat, config: CONFIG, conversationId: 7, ...fakes });
+  assert.equal(r1.paused, true);
+  assert.ok(first.names().includes("release"));
+
+  const second = fakeApi({ conversation: conv });
+  const r2 = await runRound({ api: second, heartbeat, config: CONFIG, conversationId: 7, ...fakes });
+  assert.equal(r2.paused, false);
+  assert.ok(second.names().includes("reply"));
 });

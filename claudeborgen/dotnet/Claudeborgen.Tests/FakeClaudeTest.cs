@@ -99,6 +99,23 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task Kvot_PausesOnce_ThenTheRoundRuns()
+        {
+            _fake.QuotaPause = TimeSpan.FromMilliseconds(200);
+            var id = _service.Start("Ett", "Gör något [kvot]", "agneta").Id;
+
+            await RunAsync(1);
+            Assert.AreEqual(ClaudeActivity.Paused, _service.GetStatus().Activity);
+            Assert.AreEqual(ConversationState.WaitingForClaude, _service.Get(id).State);
+            Assert.AreEqual(0, _service.Get(id).Rounds.Count);
+
+            await Task.Delay(300);
+            await RunAsync(2);
+            Assert.AreEqual(ConversationState.WaitingForOwner, _service.Get(id).State);
+            Assert.AreEqual(TestStatus.Green, _service.Get(id).Rounds.Single().Tests);
+        }
+
+        [TestMethod]
         public async Task Crash_FlagsNeedsIt_WithoutDelivering()
         {
             var id = _service.Start("Ett", "Gör något [krasch]", "agneta").Id;

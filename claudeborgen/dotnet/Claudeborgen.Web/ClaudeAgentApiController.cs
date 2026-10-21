@@ -94,6 +94,7 @@ namespace Claudeborgen
             public ClaudeActivity Activity { get; set; }
             public int? ConversationId { get; set; }
             public string Phase { get; set; }
+            public DateTimeOffset? PausedUntil { get; set; }
         }
 
         public class ReplyRequest
@@ -131,7 +132,7 @@ namespace Claudeborgen
         public async Task<IActionResult> Heartbeat()
         {
             var request = await ReadBody<HeartbeatRequest>();
-            _service.Heartbeat(request?.Activity == ClaudeActivity.Working ? ClaudeActivity.Working : ClaudeActivity.Idle, request?.ConversationId, request?.Phase);
+            _service.Heartbeat(request?.Activity ?? ClaudeActivity.Idle, request?.ConversationId, request?.Phase, request?.PausedUntil?.LocalDateTime);
             return NoContent();
         }
 
@@ -162,6 +163,9 @@ namespace Claudeborgen
             var request = await ReadBody<TestsRequest>();
             return Guarded(() => _service.ReportTests(id, request?.Commit, request?.Green ?? false, request?.Summary));
         }
+
+        [HttpPost("conversations/{id:int}/release")]
+        public IActionResult Release(int id) => Guarded(() => _service.Release(id));
 
         [HttpPost("conversations/{id:int}/crash")]
         public async Task<IActionResult> Crash(int id)

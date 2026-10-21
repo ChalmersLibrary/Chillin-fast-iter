@@ -2,7 +2,16 @@
 @{
     var status = Model.Status;
 }
-<div class="panel @(status.Activity == ClaudeActivity.Offline ? "panel-default" : status.Activity == ClaudeActivity.Working ? "panel-primary" : "panel-success")" data-testid="claude-status">
+@{
+    var panelClass = status.Activity switch
+    {
+        ClaudeActivity.Working => "panel-primary",
+        ClaudeActivity.Idle => "panel-success",
+        ClaudeActivity.Paused => "panel-warning",
+        _ => "panel-default"
+    };
+}
+<div class="panel @panelClass" data-testid="claude-status" data-activity="@status.Activity">
     <div class="panel-heading">
         <strong>
             @switch (status.Activity)
@@ -13,12 +22,15 @@
                 case ClaudeActivity.Idle:
                     @:Claude är ledig
                     break;
+                case ClaudeActivity.Paused:
+                    @:Claude är pausad@(status.PausedUntil != null ? ", försöker igen kl. " + status.PausedUntil.Value.ToString("HH:mm") : "")
+                    break;
                 default:
                     @:Claude är offline@(status.LastHeartbeatAt != null ? " sedan " + ClaudeText.Time(status.LastHeartbeatAt) : "")
                     break;
             }
         </strong>
-        @if (status.Activity == ClaudeActivity.Working && !string.IsNullOrEmpty(status.Phase))
+        @if ((status.Activity == ClaudeActivity.Working || status.Activity == ClaudeActivity.Paused) && !string.IsNullOrEmpty(status.Phase))
         {
             <span> · @status.Phase</span>
         }
@@ -36,7 +48,7 @@
             {
                 @:Det här är snabbtestservern: svaren kommer från en fejk, ingenting ändras eller pushas.
             }
-            Styr den med <code>[röd]</code>, <code>[röd!]</code>, <code>[krasch]</code> eller <code>[offline]</code> i meddelandet.
+            Styr den med <code>[röd]</code>, <code>[röd!]</code>, <code>[krasch]</code>, <code>[offline]</code> eller <code>[kvot]</code> i meddelandet.
         </div>
     }
 </div>

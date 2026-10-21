@@ -111,7 +111,11 @@ namespace Claudeborgen
     {
         Idle,
         Working,
-        Offline
+        Offline,
+
+        // The runner is alive but can't use Claude right now (the account's quota is used up);
+        // it retries at PausedUntil. Conversations wait in the queue meanwhile.
+        Paused
     }
 
     public class ClaudeStatus
@@ -122,5 +126,8 @@ namespace Claudeborgen
         public string Phase { get; set; }
         public DateTime? LastHeartbeatAt { get; set; }
         public int QueueLength { get; set; }
+
+        // Paused only: when the runner tries again (null = it didn't say).
+        public DateTime? PausedUntil { get; set; }
     }
 }

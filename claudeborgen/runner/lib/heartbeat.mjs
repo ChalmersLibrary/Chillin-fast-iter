@@ -8,7 +8,7 @@ export class Heartbeat {
     this.log = log;
     this.state = { activity: "idle", conversationId: null, phase: null };
     this.timer = null;
-    this.paused = false;
+    this.silent = false;
   }
 
   start() {
@@ -32,15 +32,20 @@ export class Heartbeat {
     return this.send();
   }
 
+  paused(until, reason) {
+    this.state = { activity: "paused", conversationId: null, phase: reason, pausedUntil: until };
+    return this.send();
+  }
+
   // Only for the fake runner's [offline] marker: stop sending for a while.
-  pause() { this.paused = true; }
-  resume() { this.paused = false; return this.send(); }
+  pause() { this.silent = true; }
+  resume() { this.silent = false; return this.send(); }
 
   async send() {
-    if (this.paused) return;
-    const { activity, conversationId, phase } = this.state;
+    if (this.silent) return;
+    const { activity, conversationId, phase, pausedUntil } = this.state;
     try {
-      await this.api.heartbeat(activity, conversationId, phase);
+      await this.api.heartbeat(activity, conversationId, phase, pausedUntil);
     } catch (e) {
       this.log(`Hjärtslaget misslyckades: ${e.message}`);
     }

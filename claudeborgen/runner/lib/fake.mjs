@@ -5,24 +5,33 @@
 //   [röd!]    tests stay red -> "behöver IT" after maxFixAttempts
 //   [krasch]  the round crashes
 //   [offline] heartbeats stop for a while, so the app shows Claude offline
+//   [kvot]    the quota is "used up" once per conversation: back to the queue, runner paused
+import { QuotaExhausted } from "./errors.mjs";
 import { createFakeWorkspace } from "./workspace.mjs";
 
 export function createFakeContext() {
-  const ctx = { instruction: "", isFixRound: false };
+  const ctx = { instruction: "", isFixRound: false, conversationId: null, quotaPausedOnce: new Set() };
   return {
     markers: () => ctx,
     onRound({ conversation, round }) {
       const lastHuman = [...(conversation.messages ?? [])].reverse().find((m) => m.authorKind === "human");
       ctx.instruction = lastHuman?.body ?? "";
       ctx.isFixRound = !!round.isFixRound;
+      ctx.conversationId = conversation.id;
     },
   };
 }
 
-export function createFakeClaude({ markers, heartbeat, offlineMs, phaseDelayMs = 1500, sleep = defaultSleep }) {
+export function createFakeClaude({ markers, heartbeat, offlineMs, quotaPauseMs = 45000, phaseDelayMs = 1500, sleep = defaultSleep }) {
   return async function fakeClaude(prompt, { sessionId } = {}) {
-    const { instruction, isFixRound } = markers();
+    const ctx = markers();
+    const { instruction, isFixRound } = ctx;
     await sleep(phaseDelayMs);
+
+    if (instruction.includes("[kvot]") && !ctx.quotaPausedOnce.has(ctx.conversationId)) {
+      ctx.quotaPausedOnce.add(ctx.conversationId);
+      throw new QuotaExhausted("Fejkrunnern låtsades att kvoten tog slut ([kvot] i meddelandet).", new Date(Date.now() + quotaPauseMs));
+    }
 
     if (instruction.includes("[offline]") && !isFixRound) {
       heartbeat.pause();
@@ -38,11 +47,11 @@ export function createFakeClaude({ markers, heartbeat, offlineMs, phaseDelayMs =
   };
 }
 
-export function createFakes({ heartbeat, offlineMs, phaseDelayMs }) {
+export function createFakes({ heartbeat, offlineMs, phaseDelayMs, quotaPauseMs }) {
   const context = createFakeContext();
   return {
     onRound: context.onRound,
-    claude: createFakeClaude({ markers: context.markers, heartbeat, offlineMs, phaseDelayMs }),
+    claude: createFakeClaude({ markers: context.markers, heartbeat, offlineMs, phaseDelayMs, quotaPauseMs }),
     workspace: createFakeWorkspace({ markers: context.markers }),
   };
 }

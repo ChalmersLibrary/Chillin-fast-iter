@@ -161,6 +161,30 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             StringAssert.Contains(startPage, "data-testid=\"claude-changelog-entry\"");
         }
 
+        // The account's quota is used up: Claude shows as paused on the start page, the
+        // conversation waits in the queue, nothing is flagged for IT.
+        [TestMethod]
+        public async Task QuotaUsedUp_StartPageShowsClaudePaused()
+        {
+            using var factory = CreateFactory();
+            using var client = await LoginAsync(factory, "agneta");
+            await PostFormAsync(client, "/", "/Claude/Start", new Dictionary<string, string> { ["title"] = "Ett", ["body"] = "Gör något [kvot]" });
+
+            var stopwatch = Stopwatch.StartNew();
+            string html = null;
+            while (stopwatch.Elapsed < TimeSpan.FromSeconds(30))
+            {
+                html = await GetHtmlAsync(client, "/Claude/IndexContent");
+                if (html.Contains("data-activity=\"Paused\""))
+                    break;
+                await Task.Delay(200);
+            }
+
+            StringAssert.Contains(html, "Claude är pausad, försöker igen kl.");
+            StringAssert.Contains(html, "kvoten är slut");
+            Assert.IsFalse(html.Contains("claude-attention"), "A used-up quota is not something for IT.");
+        }
+
         [TestMethod]
         public async Task ItSpecialist_CanWriteInAConversation_ButNotStartOne()
         {

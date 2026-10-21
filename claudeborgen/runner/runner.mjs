@@ -25,6 +25,17 @@ function log(message) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// The account's quota is used up: show "paused" (heartbeats keep going, so it isn't "offline") and
+// wait until the reset time Claude gave, or pauseRetryMinutes, then carry on.
+async function pause(heartbeat, resetAt, config, log) {
+  const fallback = new Date(Date.now() + config.pauseRetryMinutes * 60 * 1000);
+  const until = resetAt && resetAt > new Date() ? resetAt : fallback;
+  log(`Pausar till ${until.toISOString()}: kvoten för kontot Claude kör på är slut.`);
+  await heartbeat.paused(until, "kvoten är slut");
+  await sleep(until - Date.now());
+  await heartbeat.idle();
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const { values } = parseArgs({
     args: argv,
@@ -78,7 +89,12 @@ export async function main(argv = process.argv.slice(2)) {
     }
 
     if (work.length > 0) {
-      await runRound({ api, heartbeat, claude, workspace, conversationId: work[0].id, config, guards, log, onRound });
+      const result = await runRound({ api, heartbeat, claude, workspace, conversationId: work[0].id, config, guards, log, onRound });
+      if (result.paused) {
+        await pause(heartbeat, result.resetAt, config, log);
+        if (values.once) break;
+        continue;
+      }
       if (values.once) break;
       // There may be more right away (a fix round, a message written meanwhile) - a short pause
       // only, so a round that keeps failing early can't spin.

@@ -49,12 +49,17 @@ En runner i normalläge ska vägra köra mot `FakeRunner`, och en runner i fejkl
 
 ### `POST heartbeat` → `204`
 ```json
-{ "activity": "idle" | "working", "conversationId": 12, "phase": "implementerar" }
+{ "activity": "idle" | "working" | "paused", "conversationId": 12, "phase": "implementerar",
+  "pausedUntil": "2026-10-21T14:00:00Z" }
 ```
 Skickas regelbundet (runnern: var 20:e sekund) och vid varje fasbyte. Appen visar Claude som offline
 när inget hjärtslag kommit på `OfflineAfter` (standard 60 s). `conversationId` och `phase` gäller bara
 `working`. Faserna är fritext; runnern använder: `läser in`, `implementerar`, `bygger`, `rättar bygget`,
-`pushar`, `kör tester`.
+`pushar`, `kör tester`, `uppdaterar changelogen`.
+
+`paused` betyder att runnern lever men inte kan använda Claude just nu, till exempel för att kontots
+kvot är slut. `phase` är då orsaken och `pausedUntil` är när runnern försöker igen. Hjärtslagen
+fortsätter under pausen, och utan dem visas Claude som offline som vanligt.
 
 ### `GET work` → `200`
 Samtal att arbeta med, i den ordning de ska tas. Ett samtal med ett pågående varv (`claudeWorking`)
@@ -103,6 +108,11 @@ Testresultatet för en levererad commit, som skickas efter `reply`.
 ```
 Röda tester skickar samtalet tillbaka till Claude för ett rättningsvarv, högst `maxFixAttempts` gånger i
 rad. Därefter markeras samtalet "behöver IT".
+
+### `POST conversations/{id}/release` → `204`
+Runnern tog samtalet men kunde inte köra Claude, till exempel för att kvoten tog slut. Samtalet läggs
+tillbaka i kön utan spår: varvet som aldrig kördes tas bort, och samtalet markeras inte "behöver IT".
+`409` om Claude inte arbetar i samtalet.
 
 ### `POST conversations/{id}/crash` → `204`
 Varvet kunde inte slutföras, till exempel för att Claude kraschade, bygget förblev rött eller push

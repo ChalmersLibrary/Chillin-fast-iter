@@ -8,12 +8,16 @@ import path from "node:path";
 export const DEFAULTS = {
   branch: "test",
   testGreenTag: "test-green",
-  maxBudgetUsdPerRound: 5,
+  // Dollar limits are optional (null = off): they only mean something with an API key. Loops are
+  // caught by the round limits below regardless of what account Claude runs on.
+  maxBudgetUsdPerRound: null,
   roundTimeoutMinutes: 45,
   commandTimeoutMinutes: 20,
   maxBuildFixAttempts: 2,
   maxRoundsPerConversationPerHour: 8,
-  maxBudgetUsdPerDay: 50,
+  maxRoundsPerHour: 20,
+  maxBudgetUsdPerDay: null,
+  pauseRetryMinutes: 30,
   heartbeatSeconds: 20,
   pollSeconds: 20,
   claudeCommand: "claude",

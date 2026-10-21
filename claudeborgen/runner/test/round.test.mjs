@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createGuards, guardRound, runRound } from "../lib/round.mjs";
+import { QuotaExhausted } from "../lib/errors.mjs";
 import { CONFIG, conversation, fakeApi, fakeClaude, fakeWorkspace, heartbeatRecorder } from "./helpers.mjs";
 
 async function round({ api = fakeApi({ conversation: conversation() }), workspace = fakeWorkspace(), claude = fakeClaude(), heartbeat = heartbeatRecorder() } = {}) {
@@ -130,7 +131,7 @@ test("fix round: commit message says so", async () => {
 // --- guards: never pay for rounds nobody asked for -------------------------------------------
 
 
-const GUARDS = { maxRoundsPerConversationPerHour: 3, maxBudgetUsdPerDay: 10 };
+const GUARDS = { maxRoundsPerConversationPerHour: 3, maxRoundsPerHour: 20, maxBudgetUsdPerDay: 10 };
 
 test("guard: no new message since Claude's last answer -> Claude is never started", async () => {
   const conv = conversation({
@@ -186,4 +187,43 @@ test("guard: spend is recorded per Claude call, including build-fix calls", asyn
   const claude = fakeClaude([{ text: "a", sessionId: "s", costUsd: 1.5, durationMs: 1 }, { text: "b", sessionId: "s", costUsd: 0.5, durationMs: 1 }]);
   await runRound({ api: fakeApi({ conversation: conversation() }), heartbeat: heartbeatRecorder(), claude, workspace: fakeWorkspace({ builds: [false, true] }), conversationId: 7, config: CONFIG, guards });
   assert.equal(guards.spentToday(), 2);
+});
+
+test("guard: too many rounds in an hour across all conversations stops new ones", async () => {
+  const guards = createGuards({ maxRoundsPerConversationPerHour: 10, maxRoundsPerHour: 2, maxBudgetUsdPerDay: null });
+  const crashed = [];
+  for (const id of [1, 2, 3]) {
+    const api = fakeApi({ conversation: conversation({ id }) });
+    await runRound({ api, heartbeat: heartbeatRecorder(), claude: fakeClaude(), workspace: fakeWorkspace(), conversationId: id, config: CONFIG, guards });
+    crashed.push(api.names().includes("crash"));
+  }
+  assert.deepEqual(crashed, [false, false, true]);
+});
+
+test("guard: no dollar limit unless configured", () => {
+  const guards = createGuards({ maxRoundsPerConversationPerHour: 10, maxRoundsPerHour: 20, maxBudgetUsdPerDay: null });
+  guards.recordCost(10000);
+  assert.equal(guardRound({ conversation: conversation(), round: { isFixRound: false }, guards }), null);
+});
+
+// --- quota used up: pause, don't crash -------------------------------------------------------
+
+test("quota used up: the conversation goes back to the queue, nothing is reported as crashed", async () => {
+  const resetAt = new Date(Date.now() + 60_000);
+  const api = fakeApi({ conversation: conversation() });
+  api.release = async (id) => { api.calls.push({ name: "release", args: [id] }); };
+  const workspace = fakeWorkspace({ changes: true });
+  const heartbeat = heartbeatRecorder();
+
+  const result = await runRound({ api, heartbeat, claude: fakeClaude([new QuotaExhausted("slut", resetAt)]), workspace, conversationId: 7, config: CONFIG });
+
+  assert.deepEqual(result, { paused: true, resetAt });
+  assert.deepEqual(api.names(), ["claim", "conversation", "release"]);
+  assert.ok(workspace.names().includes("stash"), "whatever Claude got done is kept, the tree left clean");
+  assert.equal(heartbeat.states.at(-1).activity, "idle");
+});
+
+test("a normal round reports not paused", async () => {
+  const result = await runRound({ api: fakeApi({ conversation: conversation() }), heartbeat: heartbeatRecorder(), claude: fakeClaude(), workspace: fakeWorkspace(), conversationId: 7, config: CONFIG });
+  assert.deepEqual(result, { paused: false });
 });

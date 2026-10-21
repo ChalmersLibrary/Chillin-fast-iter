@@ -212,6 +212,37 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public void Release_PutsTheConversationBackInTheQueue_WithoutTrace()
+        {
+            var id = _service.Start("Ett", "a", "agneta").Id;
+            _service.Claim(id);
+
+            _service.Release(id);
+
+            var conversation = _service.Get(id);
+            Assert.AreEqual(ConversationState.WaitingForClaude, conversation.State);
+            Assert.AreEqual(0, conversation.Rounds.Count, "The round never ran - it's dropped, not crashed.");
+            Assert.IsFalse(conversation.NeedsIt);
+            Assert.AreEqual(id, _service.Work().Single().Id);
+            Assert.AreEqual(1, _service.Claim(id).Number, "The next claim starts the same round over.");
+        }
+
+        [TestMethod]
+        public void PausedHeartbeat_ShowsPausedWithReasonAndRetryTime_NotOffline()
+        {
+            var until = _now.AddMinutes(30);
+            _service.Heartbeat(ClaudeActivity.Paused, null, "kvoten är slut", until);
+
+            var status = _service.GetStatus();
+            Assert.AreEqual(ClaudeActivity.Paused, status.Activity);
+            Assert.AreEqual("kvoten är slut", status.Phase);
+            Assert.AreEqual(until, status.PausedUntil);
+
+            Tick(61);
+            Assert.AreEqual(ClaudeActivity.Offline, _service.GetStatus().Activity, "Paused still needs heartbeats - a dead runner is offline.");
+        }
+
+        [TestMethod]
         public void Crash_MarksRoundCrashed_AndFlagsNeedsIt()
         {
             var id = _service.Start("Ett", "a", "agneta").Id;

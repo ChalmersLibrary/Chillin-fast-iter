@@ -207,6 +207,23 @@ namespace Claudeborgen.Tests
         }
 
         [TestMethod]
+        public async Task QuotaUsedUp_ReleaseAndPausedHeartbeat()
+        {
+            await StartAsync(ClaudeborgenMode.Agent);
+            var id = _service.Start("Ett", "a", "agneta").Id;
+            await PostAsync($"/api/claude/conversations/{id}/claim");
+
+            Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync($"/api/claude/conversations/{id}/release")).StatusCode);
+            Assert.AreEqual("waitingForClaude", (await JsonAsync(await _client.GetAsync($"/api/claude/conversations/{id}"))).GetProperty("state").GetString());
+
+            var until = DateTimeOffset.UtcNow.AddMinutes(30);
+            Assert.AreEqual(HttpStatusCode.NoContent, (await PostAsync("/api/claude/heartbeat", new { activity = "paused", phase = "kvoten är slut", pausedUntil = until })).StatusCode);
+            var status = _service.GetStatus();
+            Assert.AreEqual(ClaudeActivity.Paused, status.Activity);
+            Assert.AreEqual(until.LocalDateTime.ToString("HH:mm"), status.PausedUntil?.ToString("HH:mm"));
+        }
+
+        [TestMethod]
         public async Task InvalidStateChange_Is409WithMessage()
         {
             await StartAsync(ClaudeborgenMode.Agent);
