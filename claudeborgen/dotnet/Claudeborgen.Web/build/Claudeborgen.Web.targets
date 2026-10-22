@@ -2,8 +2,9 @@
 
   <!-- Claudeborgen: stamps the git commit the app is built from into claudeborgen-version.txt next to
        the app, so /claudeborgen/version can tell the runner what's deployed (DESIGN.md, "Driftsatt").
-       Works whatever the host's assembly-info setup is. Order: CLAUDEBORGEN_COMMIT, then CI's own
-       variables (GitHub Actions, Azure DevOps), then `git rev-parse HEAD`. Without any of them the
+       Works whatever the host's assembly-info setup is. Order: CLAUDEBORGEN_COMMIT, then the build
+       service's own variables (Azure App Service/Kudu, GitHub Actions, Azure DevOps), then
+       `git rev-parse HEAD`. Without any of them the
        file is empty and the app reports the commit as unknown - the runner then just never sees a
        change as deployed, nothing breaks.
 
@@ -12,6 +13,7 @@
   <Target Name="ClaudeborgenStampCommit" BeforeTargets="AssignTargetPaths">
     <PropertyGroup>
       <_ClaudeborgenCommit>$(CLAUDEBORGEN_COMMIT)</_ClaudeborgenCommit>
+      <_ClaudeborgenCommit Condition="'$(_ClaudeborgenCommit)' == ''">$(SCM_COMMIT_ID)</_ClaudeborgenCommit>
       <_ClaudeborgenCommit Condition="'$(_ClaudeborgenCommit)' == ''">$(GITHUB_SHA)</_ClaudeborgenCommit>
       <_ClaudeborgenCommit Condition="'$(_ClaudeborgenCommit)' == ''">$(BUILD_SOURCEVERSION)</_ClaudeborgenCommit>
     </PropertyGroup>

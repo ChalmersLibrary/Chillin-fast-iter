@@ -33,6 +33,11 @@ export const DEFAULTS = {
   changelogFile: null,
   // Where the fast test server says which commit it runs; default <testServerUrl>/claudeborgen/version.
   testServerVersionUrl: null,
+  // Azure App Service "Local Git" (DESIGN.md, "Driftsättning"): a file outside the repo holding the
+  // app's git URL *with* deployment credentials. Every push to `branch` is then pushed there too,
+  // which builds and deploys it. null = the runner doesn't deploy (something else does).
+  deployGitUrlFile: null,
+  deployGitBranch: "master",
   tokenFile: "~/.claudeborgen/token",
 };
 
@@ -55,6 +60,21 @@ export function loadConfig({ configPath, env = process.env, readFile = fs.readFi
   if (env.CLAUDEBORGEN_API_URL) config.apiUrl = env.CLAUDEBORGEN_API_URL;
   if (env.CLAUDEBORGEN_TOKEN_FILE) config.tokenFile = env.CLAUDEBORGEN_TOKEN_FILE;
   if (env.CLAUDEBORGEN_TEST_SERVER_URL) config.testServerUrl = env.CLAUDEBORGEN_TEST_SERVER_URL;
+
+  if (env.CLAUDEBORGEN_DEPLOY_GIT_URL_FILE) config.deployGitUrlFile = env.CLAUDEBORGEN_DEPLOY_GIT_URL_FILE;
+  if (config.deployGitUrlFile) {
+    const deployPath = expandHome(config.deployGitUrlFile);
+    try {
+      config.deployGitUrl = readFile(deployPath, "utf8").trim();
+    } catch (e) {
+      // Not there (yet, or in a container used only for --fake): the runner starts, but says loudly
+      // that it won't deploy.
+      config.deployGitUrl = null;
+      config.deployGitWarning = `Ingen Azure-adress i ${deployPath} (deployGitUrlFile) - runnern driftsätter inte.`;
+    }
+    if (config.deployGitUrl && !/^https:\/\/[^/]+@/.test(config.deployGitUrl))
+      throw new Error(`${deployPath} ska innehålla appens Local Git-adress med uppgifter: https://<användare>:<lösenord>@<app>.scm.azurewebsites.net/<app>.git`);
+  }
 
   const missing = REQUIRED.filter((k) => !config[k]);
   if (missing.length) throw new Error(`${file} saknar: ${missing.join(", ")}`);

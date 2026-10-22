@@ -79,7 +79,8 @@ export async function main(argv = process.argv.slice(2)) {
       model: config.model,
       fallbackModel: config.fallbackModel,
     });
-    workspace = createWorkspace({ cwd: config.projectRoot, ...config });
+    workspace = createWorkspace({ cwd: config.projectRoot, ...config, log });
+    log(config.deployGitUrl ? "Driftsätter via Azure Local Git efter varje push." : (config.deployGitWarning ?? "Ingen deployGitUrlFile - runnern driftsätter inte själv."));
   }
 
   const deployedUrl = versionUrl(config);

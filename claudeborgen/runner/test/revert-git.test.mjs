@@ -71,3 +71,20 @@ test("revert: already undone by hand -> nothing to do, nothing pushed", async ()
   assert.equal(result, head);
   assert.equal(git(origin, "rev-parse", "test"), head);
 });
+
+test("deploy: Azure Local Git (here a bare repo) gets exactly what was pushed, even if it had diverged", async () => {
+  const { work, commit } = repo();
+  const azure = path.join(path.dirname(work), "azure.git");
+  git(path.dirname(work), "init", "-q", "--bare", "-b", "master", azure);
+  git(work, "push", "-q", azure, "HEAD:master");
+  // Someone pushed something else there by hand meanwhile.
+  git(work, "commit", "-q", "--allow-empty", "-m", "bara i azure");
+  git(work, "push", "-q", "-f", azure, "HEAD:master");
+  git(work, "reset", "-q", "--hard", "HEAD~1");
+
+  const ws = createWorkspace({ cwd: work, branch: "test", buildCommand: "true", testCommand: "true", testGreenTag: "test-green", commandTimeoutMinutes: 1, deployGitUrl: azure });
+  fs.writeFileSync(path.join(work, "ny.txt"), "x\n");
+  const sha = await ws.commitAndPush("#7: Ny fil");
+
+  assert.equal(git(azure, "rev-parse", "master"), sha);
+});

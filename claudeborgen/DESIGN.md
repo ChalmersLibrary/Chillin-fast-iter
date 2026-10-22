@@ -189,6 +189,32 @@ Därför finns en lösare väg in: en **chattruta på startsidan**, "Bolla en id
 - **Snabbtestservern** committar aldrig något. Fejken i appen och fejkrunnern låtsas, och posten visas
   med "(fejk)".
 
+### Driftsättning
+
+Snabbtestservern driftsätts via **Azure App Service "Local Git"**: appen har ett eget git-repo hos
+Azure, och en push dit bygger (App Service Build Service) och driftsätter. **Runnern pushar dit
+efter varje push till `test`** (`deployGitUrlFile` i `claudeborgen.json`).
+
+Varför inte GitHub-webhooken eller GitHub Actions (avstämt med Lars 2026-10-22):
+- **Webhooken från GitHub fungerar inte:** GitHub skickar API-adressen
+  (`https://api.github.com/repos/…`) som `repository.url` i push-payloaden, och Azures byggtjänst
+  kör `git fetch` mot den och får 403. En manuell synk fungerar, eftersom den använder den adress
+  som är inställd i Deployment Center.
+- **GitHub Actions** drar minuter från en kvot om repot blir privat, och runnern pushar ofta.
+- **Local Git beter sig likadant oavsett om GitHub-repot är publikt eller privat**, kräver ingen
+  webhook och inga Actions-minuter.
+
+Detaljer:
+- Pushen till Azure görs med `--force`. Azure-repot är ett mål för driftsättning, inte en källa, så
+  det får exakt det `test` har. Grenen där är `master` (`deployGitBranch`), som Azure driftsätter
+  som standard.
+- Om pushen till Azure misslyckas loggas det, men varvet misslyckas inte, eftersom ändringen redan
+  finns på GitHub. Nästa push driftsätter allt.
+- Lösenordet skrivs aldrig ut. Adresser med uppgifter maskeras i loggarna.
+- **En push till `test` för hand driftsätts inte automatiskt.** Då trycker man Sync i Deployment
+  Center, eller pushar till Azure-remoten själv.
+- Azure sätter `SCM_COMMIT_ID` när den bygger, och commit-stämpeln använder den (se nedan).
+
 ### Driftsatt
 
 Objektspecialisten ska kunna se när en ändring faktiskt går att prova, inte bara när den är pushad.
@@ -196,8 +222,8 @@ Ingen koppling till Azure eller CI behövs:
 
 1. **Appen vet sin commit.** `build/Claudeborgen.Web.targets` skriver vid bygget commiten till
    `claudeborgen-version.txt` bredvid appen. Commiten tas, i den ordningen, från
-   `CLAUDEBORGEN_COMMIT`, `GITHUB_SHA` (GitHub Actions), `BUILD_SOURCEVERSION` (Azure DevOps) eller
-   `git rev-parse HEAD`. `GET /claudeborgen/version` visar den, utan inloggning.
+   `CLAUDEBORGEN_COMMIT`, `SCM_COMMIT_ID` (Azure App Service), `GITHUB_SHA` (GitHub Actions),
+   `BUILD_SOURCEVERSION` (Azure DevOps) eller `git rev-parse HEAD`. `GET /claudeborgen/version` visar den, utan inloggning.
 2. **Runnern bevakar.** Vid varje förfrågan hämtar den de varv som väntar på driftsättning, frågar
    snabbtestservern (`testServerUrl` + `claudeborgen/version`) och kontrollerar med
    `git merge-base --is-ancestor` om varvets commit ingår. Det gäller även när CI hoppat över
@@ -404,6 +430,20 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
    ```sh
    CLAUDEBORGEN_API_URL=https://<snabbtestservern>/ node claudeborgen/runner/runner.mjs --fake
    ```
+
+### Driftsättning av snabbtestservern via Local Git
+1. Deployment Center för snabbtestservern: koppla bort GitHub och välj **Local Git** (App Service
+   Build Service). Under *Local Git/FTPS credentials* finns användarnamn och lösenord.
+2. På värden: skriv appens Local Git-adress *med* uppgifterna i en fil som bara du kan läsa:
+   ```sh
+   echo 'https://<användare>:<lösenord>@<app>.scm.azurewebsites.net/<app>.git' > ~/.claudeborgen/azure-deploy-url
+   chmod 600 ~/.claudeborgen/azure-deploy-url
+   ```
+   Om användarnamnet börjar med `$`, som Azures automatiska uppgifter gör, ska det stå som det är.
+   Enkelfnuttarna hindrar skalet från att tolka det.
+3. Tillåt `<app>.scm.azurewebsites.net` i devcontainerns brandvägg.
+4. Kontrollera efter första driftsättningen att `https://<app>.azurewebsites.net/claudeborgen/version`
+   visar rätt commit.
 
 ### Riktig drift mot integrerad test
 1. App Settings på integrerad test: `Claudeborgen__Enabled=true` och

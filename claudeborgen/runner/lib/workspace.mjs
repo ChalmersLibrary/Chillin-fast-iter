@@ -22,7 +22,12 @@ export function addChangelogEntry(file, { conversationId, date, text }, { readFi
   return true;
 }
 
-export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGreenTag, commandTimeoutMinutes, changelogFile, runImpl = run, shellImpl = runShell, files }) {
+// Hides the credentials of a URL like https://user:password@host/… in anything logged.
+export function redact(text) {
+  return String(text ?? "").replace(/(https?:\/\/)[^@\s/]+@/g, "$1***@");
+}
+
+export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGreenTag, commandTimeoutMinutes, changelogFile, deployGitUrl = null, deployGitBranch = "master", log = () => {}, runImpl = run, shellImpl = runShell, files }) {
   const timeoutMs = commandTimeoutMinutes * 60 * 1000;
 
   async function git(...args) {
@@ -65,7 +70,18 @@ export function createWorkspace({ cwd, branch, buildCommand, testCommand, testGr
         await git("pull", "--rebase", "origin", branch);
         await git("push", "origin", `HEAD:${branch}`);
       }
+      await this.deploy();
       return git("rev-parse", "HEAD");
+    },
+
+    // Azure Local Git: pushing there builds and deploys (DESIGN.md, "Driftsättning"). Forced - it's a
+    // deploy target, not a source of truth, so it simply gets exactly what the branch has. A failure
+    // doesn't fail the round (the change is on GitHub); the next push deploys everything anyway.
+    async deploy() {
+      if (!deployGitUrl) return;
+      const r = await runImpl("git", ["push", "--force", deployGitUrl, `HEAD:${deployGitBranch}`], { cwd, timeoutMs: 10 * 60 * 1000 });
+      if (r.code !== 0) log(`Kunde inte pusha till Azure för driftsättning: ${redact(tail(r.output, 800))}`);
+      else log("Pushat till Azure för driftsättning.");
     },
 
     // Keeps a failed round's changes without leaving the tree dirty for the next round.
@@ -141,6 +157,7 @@ export function createFakeWorkspace({ markers }) {
       return red ? { ok: false, summary: "Fejkrunnern låtsades att 1 test är rött." } : { ok: true, summary: "Alla tester gröna (fejkat)." };
     },
     commitAndPush: async () => `fejk${Date.now().toString(16).slice(-5)}${++counter}`,
+    deploy: async () => {},
     commitChangelogEntry: async () => `fejk-changelog${++counter}`,
     revertWork: async () => `fejk-revert${++counter}`,
     isDeployed: async () => true,

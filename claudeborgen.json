@@ -11,5 +11,7 @@
   "roundTimeoutMinutes": 45,
   "commandTimeoutMinutes": 20,
   "maxBuildFixAttempts": 2,
-  "tokenFile": "~/.claudeborgen/token"
+  "tokenFile": "~/.claudeborgen/token",
+  "deployGitUrlFile": "~/.claudeborgen/azure-deploy-url",
+  "deployGitBranch": "master"
 }
