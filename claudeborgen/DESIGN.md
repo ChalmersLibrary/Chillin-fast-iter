@@ -436,7 +436,14 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
 
 ### Driftsättning av snabbtestservern via Local Git
 1. Deployment Center för snabbtestservern: koppla bort GitHub och välj **Local Git** (App Service
-   Build Service). Under *Local Git/FTPS credentials* finns användarnamn och lösenord.
+   Build Service). Under *Local Git/FTPS credentials* finns användarnamn och lösenord. **Ta dem
+   under *Application scope*** (användarnamnet ser ut som `$<app>`). De gäller bara den här appen
+   och kan återställas för just den. Använd *aldrig* *User scope*: de uppgifterna hör till ditt
+   Azure-konto och gäller alla appar du har åtkomst till. Uppgifterna ger också tillgång till appens
+   Kudu-sida (konsol, filer, inställningar). Det är acceptabelt för snabbtestservern, som saknar
+   riktiga hemligheter, men lägg aldrig in sådana uppgifter för integrerad test eller produktion.
+   SCM Basic Auth behöver vara påslaget, under *Configuration → General settings*, men bara för
+   den här appen.
 2. På värden: skriv appens Local Git-adress *med* uppgifterna i en fil som bara du kan läsa:
    ```sh
    echo 'https://<användare>:<lösenord>@<app>.scm.azurewebsites.net/<app>.git' > ~/.claudeborgen/azure-deploy-url
