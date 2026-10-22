@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loadConfig } from "../lib/config.mjs";
+import { loadConfig, loadDeployConfig } from "../lib/config.mjs";
 import { createWorkspace, redact } from "../lib/workspace.mjs";
 
 const URL_WITH_CREDS = "https://$chillin-snabbtest:hemligt@chillin-snabbtest.scm.azurewebsites.net/chillin-snabbtest.git";
@@ -59,5 +59,18 @@ test("config: the Azure URL comes from a file outside the repo, and must carry c
 
   const missing = loadConfig({ configPath: "/p/claudeborgen.json", env: { CLAUDEBORGEN_TOKEN: "t" }, readFile: files({ "claudeborgen.json": base }) });
   assert.equal(missing.deployGitUrl, null, "A missing file doesn't stop the runner...");
-  assert.match(missing.deployGitWarning, /driftsätter inte/, "...but it says so.");
+  assert.match(missing.deployGitWarning, /ingen driftsättning/, "...but it says so.");
+});
+
+
+test("deploy config: needs no agent token or app address - just claudeborgen.json and the Azure URL", () => {
+  const files = (map) => (p) => { for (const [k, v] of Object.entries(map)) if (p.endsWith(k)) return v; throw new Error("ENOENT"); };
+  const config = loadDeployConfig({
+    configPath: "/p/claudeborgen.json",
+    env: {},
+    readFile: files({ "claudeborgen.json": JSON.stringify({ deployGitUrlFile: "/secrets/azure", deployGitBranch: "master" }), "/secrets/azure": URL_WITH_CREDS }),
+  });
+  assert.equal(config.deployGitUrl, URL_WITH_CREDS);
+  assert.equal(config.deployGitBranch, "master");
+  assert.equal(config.projectRoot, "/p");
 });

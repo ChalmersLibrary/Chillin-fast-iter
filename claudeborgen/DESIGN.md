@@ -211,8 +211,11 @@ Detaljer:
 - Om pushen till Azure misslyckas loggas det, men varvet misslyckas inte, eftersom ändringen redan
   finns på GitHub. Nästa push driftsätter allt.
 - Lösenordet skrivs aldrig ut. Adresser med uppgifter maskeras i loggarna.
-- **En push till `test` för hand driftsätts inte automatiskt.** Då trycker man Sync i Deployment
-  Center, eller pushar till Azure-remoten själv.
+- **Alla andra som pushar** driftsätter med samma kommando som runnern använder:
+  `node claudeborgen/runner/deploy.mjs`. Det gäller till exempel en interaktiv Claude-session (se
+  projektets `CLAUDE.md`) eller en människa i devcontainern. Kommandot pushar den aktuella commiten
+  till Azure, och vägrar commitar som inte finns på GitHub än, så att snabbtestservern aldrig kör
+  kod som ingen annan kan se. Den som inte har uppgifterna kan trycka Sync i Deployment Center.
 - Azure sätter `SCM_COMMIT_ID` när den bygger, och commit-stämpeln använder den (se nedan).
 
 ### Driftsatt
@@ -441,8 +444,16 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
    ```
    Om användarnamnet börjar med `$`, som Azures automatiska uppgifter gör, ska det stå som det är.
    Enkelfnuttarna hindrar skalet från att tolka det.
-3. Tillåt `<app>.scm.azurewebsites.net` i devcontainerns brandvägg.
-4. Kontrollera efter första driftsättningen att `https://<app>.azurewebsites.net/claudeborgen/version`
+3. Montera katalogen i devcontainern (skrivskyddad) och tillåt Azure i brandväggen. Ändringarna görs
+   på värden, eftersom `.devcontainer` är skrivskyddad inifrån:
+   - `devcontainer.json` under `mounts`:
+     `"source=${localEnv:HOME}/.claudeborgen,target=/home/node/.claudeborgen,type=bind,readonly"`
+   - `init-firewall.sh`, i listan med domäner: `"<app>.scm.azurewebsites.net"` (driftsättning) och
+     `"<app>.azurewebsites.net"` (`/claudeborgen/version`)
+
+   Bygg sedan om containern med `devcontainer up --workspace-folder . --remove-existing-container`.
+4. Prova: `node claudeborgen/runner/deploy.mjs` i devcontainern.
+5. Kontrollera efter första driftsättningen att `https://<app>.azurewebsites.net/claudeborgen/version`
    visar rätt commit.
 
 ### Riktig drift mot integrerad test

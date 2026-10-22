@@ -61,20 +61,7 @@ export function loadConfig({ configPath, env = process.env, readFile = fs.readFi
   if (env.CLAUDEBORGEN_TOKEN_FILE) config.tokenFile = env.CLAUDEBORGEN_TOKEN_FILE;
   if (env.CLAUDEBORGEN_TEST_SERVER_URL) config.testServerUrl = env.CLAUDEBORGEN_TEST_SERVER_URL;
 
-  if (env.CLAUDEBORGEN_DEPLOY_GIT_URL_FILE) config.deployGitUrlFile = env.CLAUDEBORGEN_DEPLOY_GIT_URL_FILE;
-  if (config.deployGitUrlFile) {
-    const deployPath = expandHome(config.deployGitUrlFile);
-    try {
-      config.deployGitUrl = readFile(deployPath, "utf8").trim();
-    } catch (e) {
-      // Not there (yet, or in a container used only for --fake): the runner starts, but says loudly
-      // that it won't deploy.
-      config.deployGitUrl = null;
-      config.deployGitWarning = `Ingen Azure-adress i ${deployPath} (deployGitUrlFile) - runnern driftsätter inte.`;
-    }
-    if (config.deployGitUrl && !/^https:\/\/[^/]+@/.test(config.deployGitUrl))
-      throw new Error(`${deployPath} ska innehålla appens Local Git-adress med uppgifter: https://<användare>:<lösenord>@<app>.scm.azurewebsites.net/<app>.git`);
-  }
+  Object.assign(config, readDeployUrl(config, { env, readFile }));
 
   const missing = REQUIRED.filter((k) => !config[k]);
   if (missing.length) throw new Error(`${file} saknar: ${missing.join(", ")}`);
@@ -89,4 +76,29 @@ export function loadConfig({ configPath, env = process.env, readFile = fs.readFi
   if (!config.token) throw new Error(`Agent-tokenen i ${tokenPath} är tom.`);
 
   return config;
+}
+
+// The Azure Local Git URL with deployment credentials, from a file outside the repo (DESIGN.md,
+// "Driftsättning"). A missing file isn't an error - whoever uses it says it won't deploy.
+export function readDeployUrl(config, { env = process.env, readFile = fs.readFileSync } = {}) {
+  const file = env.CLAUDEBORGEN_DEPLOY_GIT_URL_FILE || config.deployGitUrlFile;
+  if (!file) return { deployGitUrl: null };
+  const deployPath = expandHome(file);
+  let url;
+  try {
+    url = readFile(deployPath, "utf8").trim();
+  } catch {
+    return { deployGitUrl: null, deployGitWarning: `Ingen Azure-adress i ${deployPath} (deployGitUrlFile) - ingen driftsättning.` };
+  }
+  if (!/^https:\/\/[^/]+@/.test(url))
+    throw new Error(`${deployPath} ska innehålla appens Local Git-adress med uppgifter: https://<användare>:<lösenord>@<app>.scm.azurewebsites.net/<app>.git`);
+  return { deployGitUrl: url };
+}
+
+// Just what deploy.mjs needs: the project's claudeborgen.json and the Azure URL - no agent token or
+// app address, so it works in any session that can push.
+export function loadDeployConfig({ configPath, env = process.env, readFile = fs.readFileSync } = {}) {
+  const file = path.resolve(configPath ?? "claudeborgen.json");
+  const config = { ...DEFAULTS, ...JSON.parse(readFile(file, "utf8")), projectRoot: path.dirname(file) };
+  return { ...config, ...readDeployUrl(config, { env, readFile }) };
 }

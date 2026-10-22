@@ -58,6 +58,13 @@ oskäligt stort.
 [claudeborgen/DESIGN.md](claudeborgen/DESIGN.md)) gäller runnerns regler i stället för stycket nedan:
 committa och pusha inte själv, utan låt runnern göra det. Den bygger före push och kör testerna efter.
 
+**Driftsätt snabbtestservern efter push** till den gren den kör (just nu `claudeborgen`, efter
+sammanslagningen `test`): `node claudeborgen/runner/deploy.mjs`. Det pushar commiten till Azure
+Local Git, precis som runnern gör, och vägrar commitar som inte finns på GitHub. Om kommandot
+säger att Azure-adressen saknas är devcontainern inte uppsatt för det än (se
+[claudeborgen/DESIGN.md](claudeborgen/DESIGN.md), "Komma igång"). Säg det, men låt det inte stoppa
+arbetet.
+
 Committa och pusha alltid ändringar direkt när en avgränsad uppgift är klar och testerna är gröna
 (se [Testrutiner](#testrutiner)) — utan att fråga om lov varje gång. Detta gäller enbart grenen
 `remove-dotnet-framework`; pusha aldrig till `master` (se [Driftläge](#driftläge)). Skriv commit-
