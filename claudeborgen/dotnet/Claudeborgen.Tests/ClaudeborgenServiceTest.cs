@@ -425,6 +425,50 @@ namespace Claudeborgen.Tests
             Assert.ThrowsException<ClaudeborgenException>(() => _service.AddMessage(id, "en sak till", "agneta"));
         }
 
+        // Claude suggests the changelog text after every round, until the owner writes their own;
+        // emptying it hands it back to Claude.
+        [TestMethod]
+        public void ChangelogText_ClaudeSuggestsEachRound_UntilTheOwnerWritesTheirOwn()
+        {
+            var id = _service.Start("Exportknapp", "Lägg till en exportknapp", "agneta").Id;
+            _service.Claim(id);
+            _service.Reply(id, "Klart", new[] { "c1" }, null, "s", null, null, changelogText: "Export\n av listan");
+            Assert.AreEqual("Export av listan", _service.Get(id).ChangelogText);
+
+            _service.AddMessage(id, "Som Excel också", "agneta");
+            _service.Claim(id);
+            _service.Reply(id, "Klart", new[] { "c2" }, null, "s", null, null, changelogText: "Export av listan till CSV och Excel");
+            Assert.AreEqual("Export av listan till CSV och Excel", _service.Get(id).ChangelogText);
+
+            _service.SetChangelogText(id, "Exportknapp på listan");
+            _service.AddMessage(id, "Grön knapp", "agneta");
+            _service.Claim(id);
+            _service.Reply(id, "Klart", new[] { "c3" }, null, "s", null, null, changelogText: "Grön exportknapp");
+            Assert.AreEqual("Exportknapp på listan", _service.Get(id).ChangelogText);
+            Assert.IsTrue(_service.Get(id).ChangelogTextByHuman);
+
+            _service.SetChangelogText(id, " ");
+            Assert.IsNull(_service.Get(id).ChangelogText);
+            Assert.IsFalse(_service.Get(id).ChangelogTextByHuman);
+
+            // No suggestion this round (e.g. a question): the last one stays.
+            _service.SetChangelogText(id, " ");
+            _service.AddMessage(id, "Och en till", "agneta");
+            _service.Claim(id);
+            _service.Reply(id, "Klart", new[] { "c4" }, null, "s", null, null, changelogText: "Grön exportknapp");
+            _service.AddMessage(id, "Fråga", "agneta");
+            _service.Claim(id);
+            _service.Reply(id, "Vilken?", null, null, "s", null, null, question: true);
+            Assert.AreEqual("Grön exportknapp", _service.Get(id).ChangelogText);
+        }
+
+        [TestMethod]
+        public void ChangelogText_CannotBeSetOnAnIdea()
+        {
+            var idea = _service.StartIdea("Tänk om", "agneta");
+            Assert.ThrowsException<ClaudeborgenException>(() => _service.SetChangelogText(idea.Id, "Text"));
+        }
+
         [TestMethod]
         public void MarkDone_WithoutText_UsesTheTitle()
         {

@@ -151,6 +151,14 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             StringAssert.Contains(delivered, "Fejkad Claude");
             StringAssert.Contains(delivered, "Gröna tester");
 
+            // Claude's changelog suggestion is in the box, until the owner writes their own.
+            var page = await GetHtmlAsync(client, conversationUrl);
+            StringAssert.Contains(page, "Avsluta arbete och markera som färdigt");
+            StringAssert.Contains(page, "value=\"(Fejkat förslag) Lägg till en exportknapp på listan\"");
+            var own = await PostFormAsync(client, conversationUrl, $"/Claude/ChangelogText/{id}", new Dictionary<string, string> { ["changelogText"] = "Min egen text" });
+            Assert.AreEqual(HttpStatusCode.Redirect, own.StatusCode);
+            StringAssert.Contains(await GetHtmlAsync(client, $"/Claude/ConversationContent/{id}"), "data-claude-changelog-current=\"Min egen text\"");
+
             var done = await PostFormAsync(client, conversationUrl, $"/Claude/Done/{id}", new Dictionary<string, string>
             {
                 ["changelogText"] = "Exportknapp på beställningslistan",

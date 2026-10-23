@@ -6,7 +6,7 @@ import { Heartbeat } from "../lib/heartbeat.mjs";
 import { createClaude } from "../lib/claude.mjs";
 import { loadConfig } from "../lib/config.mjs";
 import { createFakes } from "../lib/fake.mjs";
-import { buildPrompt, parseQuestion, SYSTEM_PROMPT } from "../lib/prompt.mjs";
+import { buildPrompt, parseChangelog, parseQuestion, SYSTEM_PROMPT } from "../lib/prompt.mjs";
 import { commitChangelog, runRound } from "../lib/round.mjs";
 import { addChangelogEntry, createWorkspace } from "../lib/workspace.mjs";
 import { CONFIG, conversation, fakeApi, heartbeatRecorder } from "./helpers.mjs";
@@ -321,6 +321,19 @@ test("question marker: FRÅGA:/fråga:/FRAGA: at the start, nowhere else", () =>
   assert.deepEqual(parseQuestion("  fråga:\nVilken färg?"), { body: "Vilken färg?", question: true });
   assert.equal(parseQuestion("FRAGA: utan prickar").question, true);
   assert.equal(parseQuestion("Klart. En fråga: ska den vara grön?").question, false);
+});
+
+test("changelog line: the last CHANGELOG: line is taken out of the reply", () => {
+  assert.deepEqual(parseChangelog("Klart!\nCHANGELOG: Exportknapp."), { body: "Klart!", changelogText: "Exportknapp." });
+  assert.deepEqual(parseChangelog("Klart!\n**CHANGELOG:** Fet"), { body: "Klart!", changelogText: "Fet" });
+  assert.deepEqual(parseChangelog("Bara ett svar."), { body: "Bara ett svar.", changelogText: null });
+  assert.equal(parseChangelog("Om changelog: inget").changelogText, null);
+});
+
+test("prompt: the changelog text so far is there to improve on, marked when the owner wrote it", () => {
+  assert.match(buildPrompt(conversation({ changelogText: "Exportknapp" }), { resume: false }), /Nuvarande changelog-text: "Exportknapp"$/);
+  assert.match(buildPrompt(conversation({ changelogText: "Min text", changelogTextByHuman: true }), { resume: false }), /skriven av objektspecialisten/);
+  assert.doesNotMatch(buildPrompt(conversation(), { resume: false }), /changelog-text/);
 });
 
 test("system prompt: big ambiguities ask without changing files, small ones are decided", () => {

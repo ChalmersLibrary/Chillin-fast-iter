@@ -108,8 +108,12 @@ väntar på Claude, eller om Claude redan arbetar i ett annat samtal (ett i tage
 Avslutar varvet som levererat.
 ```json
 { "body": "Svaret till objektspecialisten", "commits": ["<sha>"], "links": ["https://…"],
-  "sessionId": "…", "costUsd": 0.42, "durationSeconds": 120, "question": false }
+  "sessionId": "…", "costUsd": 0.42, "durationSeconds": 120, "question": false,
+  "changelogText": "Exportknapp på beställningslistan" }
 ```
+`changelogText` (valfritt) är Claudes förslag på changelog-text för arbetet. Appen sparar det om
+objektspecialisten inte har skrivit en egen text, och ignorerar det för idéer. Samtalet har fälten
+`changelogText` och `changelogTextByHuman`, så att runnern kan visa Claude den nuvarande texten.
 `question: true` betyder att Claude behöver svar innan arbetet fortsätter. Samtalet går då till
 `questionForOwner` i stället för `waitingForOwner`, och nästa meddelande startar ett nytt varv.
 `commits` får vara tom om varvet inte ändrade något, till exempel när Claude bara svarade på en fråga.

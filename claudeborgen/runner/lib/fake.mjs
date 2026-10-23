@@ -50,7 +50,7 @@ export function createFakeClaude({ markers, heartbeat, offlineMs, quotaPauseMs =
 
     const text = isFixRound
       ? "(Fejkad runner) Jag har rättat testerna."
-      : `(Fejkad runner) Klart: "${shorten(instruction)}". Inget har ändrats på riktigt.`;
+      : `(Fejkad runner) Klart: "${shorten(instruction)}". Inget har ändrats på riktigt.\nCHANGELOG: (Fejkat förslag) ${shorten(instruction)}`;
     return { text, sessionId: sessionId ?? `fejk-session-${Date.now()}`, costUsd: 0, durationMs: phaseDelayMs };
   };
 }

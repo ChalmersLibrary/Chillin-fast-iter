@@ -3,6 +3,9 @@
     var c = Model.Conversation;
 }
 @await Html.PartialAsync("~/Views/Claudeborgen/_StatusPanel.cshtml", Model)
+@* The changelog box sits outside this live part (so typing survives a refresh); claude.js moves
+   Claude's latest suggestion into it from here. *@
+<span hidden data-claude-changelog-current="@(c.ChangelogText ?? c.Title)"></span>
 
 <h3>
     #@c.Id @c.Title

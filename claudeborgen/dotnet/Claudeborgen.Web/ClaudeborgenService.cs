@@ -211,6 +211,34 @@ namespace Claudeborgen
             Changed(id);
         }
 
+        // The owner's own changelog text: Claude stops suggesting. Emptied, Claude suggests again.
+        public void SetChangelogText(int id, string text)
+        {
+            lock (_lock)
+            {
+                var conversation = LoadOrThrow(id);
+                if (!conversation.IsOpen || conversation.IsIdea)
+                    throw new ClaudeborgenException("Samtalet är inte ett pågående arbete.");
+
+                var own = CleanChangelogText(text);
+                conversation.ChangelogText = own;
+                conversation.ChangelogTextByHuman = own != null;
+                _store.Save(conversation);
+            }
+
+            Changed(id);
+        }
+
+        // One line in the changelog: no line breaks, not endless.
+        private static string CleanChangelogText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            var line = string.Join(" ", text.Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+            return line.Length > ChangelogTextMaxLength ? line.Substring(0, ChangelogTextMaxLength).TrimEnd() : line;
+        }
+
+        public const int ChangelogTextMaxLength = 200;
+
         public void Cancel(int id, string author)
         {
             lock (_lock)
@@ -664,7 +692,7 @@ namespace Claudeborgen
         }
 
         // `question`: Claude asks the owner something and waits for the answer (DESIGN.md, "Frågor").
-        public void Reply(int id, string body, IEnumerable<string> commits, IEnumerable<string> links, string sessionId, decimal? costUsd, int? durationSeconds, bool question = false)
+        public void Reply(int id, string body, IEnumerable<string> commits, IEnumerable<string> links, string sessionId, decimal? costUsd, int? durationSeconds, bool question = false, string changelogText = null)
         {
             if (string.IsNullOrWhiteSpace(body))
                 throw new ClaudeborgenException("Svaret är tomt.");
@@ -687,6 +715,9 @@ namespace Claudeborgen
                 round.AskedQuestion = question;
                 if (!string.IsNullOrWhiteSpace(sessionId))
                     conversation.SessionId = sessionId;
+                // Claude's suggestion for the changelog, better each round - a human's own text wins.
+                if (!conversation.IsIdea && !conversation.ChangelogTextByHuman && CleanChangelogText(changelogText) is string suggested)
+                    conversation.ChangelogText = suggested;
 
                 conversation.Messages.Add(new ConversationMessage { AuthorKind = MessageAuthorKind.Claude, Author = "Claude", Body = body.Trim(), At = now, IsQuestion = question });
                 conversation.State = HumanMessageAfter(conversation, round.MessageCountAtStart)

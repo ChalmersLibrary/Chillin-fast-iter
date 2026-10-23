@@ -183,7 +183,12 @@ Därför finns en lösare väg in: en **chattruta på startsidan**, "Bolla en id
   är driftsatt (`ClaudeborgenSettings.ChangelogPath`).
 - **Handskrivna poster** läggs direkt i filen. Visningen sorterar efter datum, så det spelar ingen
   roll var i filen de hamnar.
-- **Klar:** samtalet väntar på en changelog-commit. Runnern lägger in posten överst i filen,
+- **Texten** föreslås av Claude, som avslutar varje arbetsvarv med en rad `CHANGELOG: …` om hela
+  arbetet så här långt. Runnern tar bort raden ur svaret och skickar den som `changelogText`, och
+  förslaget står i rutan vid "Avsluta arbete och markera som färdigt" och uppdateras live. Ändrar
+  objektspecialisten texten sparas den direkt som hens egen, och då låter Claudes förslag den vara.
+  En tömd ruta lämnar texten till Claude igen.
+- **Klar** ("Avsluta arbete och markera som färdigt"): samtalet väntar på en changelog-commit. Runnern lägger in posten överst i filen,
   committar `Changelog: #<id> <text>` till grenen och rapporterar commiten. Ingen Claude och inget
   bygge, eftersom det bara är data som appen läser. Ett misslyckande loggas och görs om vid nästa
   förfrågan.

@@ -24,6 +24,7 @@
         });
 
         Promise.all(requests).then(function () {
+            syncChangelogText();
             refreshing = false;
             if (pending) {
                 pending = false;
@@ -156,6 +157,41 @@
             showError(form, "Meddelandet kunde inte skickas. Försök igen.");
         });
     });
+
+    // The changelog text when marking work done: Claude's suggestion, improved after every round
+    // (the live part carries the latest, data-claude-changelog-current). It replaces what's in the
+    // box only while the box shows what the server last gave it - never what someone is typing.
+    // A changed text is saved at once as the owner's own, which Claude then leaves alone.
+    var changelogBox = document.querySelector("input[data-claude-changelog]");
+    if (changelogBox) {
+        changelogBox.setAttribute("data-shown", changelogBox.value);
+        changelogBox.addEventListener("change", function () {
+            var value = changelogBox.value;
+            fetch(changelogBox.getAttribute("data-claude-changelog"), {
+                method: "POST",
+                body: new FormData(changelogBox.form),
+                credentials: "same-origin",
+                headers: { "X-Claudeborgen-Send": "1" }
+            }).then(function (res) {
+                // Not saved (e.g. the login expired): the text still goes with the done button.
+                if (res.status === 204 && !res.redirected) {
+                    changelogBox.setAttribute("data-shown", value);
+                    refreshAll();
+                }
+            }).catch(function () { });
+        });
+    }
+
+    function syncChangelogText() {
+        var current = document.querySelector("[data-claude-changelog-current]");
+        if (!changelogBox || !current || document.activeElement === changelogBox
+            || changelogBox.value !== changelogBox.getAttribute("data-shown")) {
+            return;
+        }
+        var text = current.getAttribute("data-claude-changelog-current");
+        changelogBox.value = text;
+        changelogBox.setAttribute("data-shown", text);
+    }
 
     function showError(form, message) {
         var el = form.querySelector("[data-claude-send-error]");

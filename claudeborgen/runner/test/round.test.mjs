@@ -29,6 +29,23 @@ test("a normal round: claim, Claude, build, push, reply, tests, test-green", asy
   assert.equal(heartbeat.states.at(-1).activity, "idle");
 });
 
+test("changelog suggestion: the CHANGELOG: line goes as changelogText, not in the reply", async () => {
+  const claude = fakeClaude([{ text: "Klart!\n\nCHANGELOG: Exportknapp på beställningslistan.", sessionId: "s-1", costUsd: 0.25, durationMs: 1 }]);
+  const { api } = await round({ claude });
+  const reply = api.call("reply").args[1];
+  assert.equal(reply.body, "Klart!");
+  assert.equal(reply.changelogText, "Exportknapp på beställningslistan.");
+});
+
+test("changelog suggestion survives a build fix whose answer has none", async () => {
+  const claude = fakeClaude([
+    { text: "Första försöket\nCHANGELOG: Exportknapp", sessionId: "s-1", costUsd: 0.2, durationMs: 1 },
+    { text: "Rättat bygget, klart!", sessionId: "s-1", costUsd: 0.1, durationMs: 1 },
+  ]);
+  const { api } = await round({ claude, workspace: fakeWorkspace({ builds: [false, true] }) });
+  assert.equal(api.call("reply").args[1].changelogText, "Exportknapp");
+});
+
 test("reply comes before the tests (tests run after the push)", async () => {
   const { api } = await round();
   assert.ok(api.names().indexOf("reply") < api.names().indexOf("tests"));

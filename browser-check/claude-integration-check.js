@@ -122,6 +122,10 @@ async function waitForState(page, state, timeoutMs) {
     await waitForState(page, "WaitingForOwner", 60000);
     await page.waitForFunction(() => /Gröna tester/.test(document.querySelector("[data-testid=claude-rounds]")?.textContent || ""), { timeout: 30000, polling: 250 });
     await shoot(page, "03-delivered.png");
+    const suggestion = await page.$eval("#claude-changelog", (el) => el.value);
+    if (!suggestion.startsWith("(Fejkat förslag)")) problem("No changelog suggestion from Claude in the box: " + suggestion);
+    const doneRow = await page.evaluateHandle(() => document.querySelector("[data-testid=claude-done-form]").closest(".row"));
+    await doneRow.screenshot({ path: path.join(outDir, "03b-done-row.png") });
 
     // 2. Done -> changelog on the start page.
     await page.evaluate(() => { document.getElementById("claude-changelog").value = "Exportknapp på beställningslistan"; });
@@ -141,6 +145,21 @@ async function waitForState(page, state, timeoutMs) {
     await page.type("#claude-reply", "Överst, tack.");
     await sendInPlace(page, () => page.click("[data-testid=claude-reply-form] button[type=submit]"), "Conversation reply");
     await waitForState(page, "WaitingForOwner", 60000);
+    // Claude's new suggestion moves into the box live, without a reload.
+    await page.waitForFunction(() => document.getElementById("claude-changelog")?.value === "(Fejkat förslag) Överst, tack.", { timeout: 30000, polling: 250 })
+      .catch(() => problem("The changelog suggestion didn't update live."));
+    // The owner's own text is saved on change and stays through Claude's next round.
+    await page.click("#claude-changelog", { clickCount: 3 });
+    await page.type("#claude-changelog", "Knapp överst på sidan");
+    await page.click("#claude-reply");
+    await page.waitForResponse((r) => r.url().includes("/Claude/ChangelogText/"), { timeout: NAV_TIMEOUT });
+    await page.type("#claude-reply", "Gör den grön också.");
+    await sendInPlace(page, () => page.click("[data-testid=claude-reply-form] button[type=submit]"), "Second conversation reply");
+    await waitForState(page, "ClaudeWorking", 30000).catch(() => {});
+    await waitForState(page, "WaitingForOwner", 60000);
+    await new Promise((r) => setTimeout(r, 1500));
+    const kept = await page.$eval("#claude-changelog", (el) => el.value);
+    if (kept !== "Knapp överst på sidan") problem("The owner's own changelog text was replaced: " + kept);
     if (qId === id) problem("Question conversation got the same id as the first one.");
 
     // 3. A crashing round -> Behöver IT, seen by the IT specialist.

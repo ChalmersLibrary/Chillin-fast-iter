@@ -121,7 +121,12 @@ namespace Claudeborgen
         public DateTime? ClaimedAt { get; set; }
         public DateTime? DoneAt { get; set; }
         public string DoneBy { get; set; }
+
+        // While the work is open: the suggested changelog text, which Claude improves after every
+        // round - until a human writes their own (ChangelogTextByHuman), which then stays. Once done:
+        // the entry itself.
         public string ChangelogText { get; set; }
+        public bool ChangelogTextByHuman { get; set; }
 
         // The commit that added this conversation's entry to the changelog file (the runner does it
         // after "klar"); null = not yet. A FakeClaude.FakeCommitPrefix value means a fake did it.

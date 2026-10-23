@@ -2,7 +2,7 @@
 // not depend on the model live here as code: build before push, tests after, at most N build-fix
 // attempts, nothing pushed on failure, test-green only on green.
 import { QuotaExhausted, RoundFailure } from "./errors.mjs";
-import { buildFixPrompt, buildPrompt, parseQuestion } from "./prompt.mjs";
+import { buildFixPrompt, buildPrompt, parseChangelog, parseQuestion } from "./prompt.mjs";
 
 export { RoundFailure };
 
@@ -72,6 +72,8 @@ export async function runRound({ api, heartbeat, claude, workspace, conversation
 
     await heartbeat.working(conversationId, "implementerar");
     let answer = await claude(buildPrompt(conversation, { resume: !!sessionId }), { sessionId });
+    // Kept in case a build-fix answer (which then becomes the reply) has no changelog line.
+    const suggestedChangelog = parseChangelog(answer.text).changelogText;
     costUsd += answer.costUsd;
     guards?.recordCost(answer.costUsd);
     sessionId = answer.sessionId ?? sessionId;
@@ -101,10 +103,12 @@ export async function runRound({ api, heartbeat, claude, workspace, conversation
       commit = await workspace.commitAndPush(`#${conversationId}: ${conversation.title}${round.isFixRound ? " (rättning)" : ""}`);
     }
 
-    const { body, question } = parseQuestion(answer.text);
+    const { body: withoutChangelog, changelogText } = parseChangelog(answer.text);
+    const { body, question } = parseQuestion(withoutChangelog);
     await api.reply(conversationId, {
       body: body || "(Claude lämnade inget svar.)",
       question,
+      changelogText: changelogText ?? suggestedChangelog,
       commits: commit ? [commit] : [],
       links: commit && config.testServerUrl ? [config.testServerUrl] : [],
       sessionId,

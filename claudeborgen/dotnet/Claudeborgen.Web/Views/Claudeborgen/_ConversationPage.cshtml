@@ -55,17 +55,24 @@
         <div class="col-md-8">
             @if (!reverting)
             {
-            <form method="post" action="/Claude/Done/@c.Id" class="form-inline" data-testid="claude-done-form">
+            @* The text is Claude's suggestion, improved after every round, until you change it: your
+               own text is saved right away (claude.js, data-claude-changelog) and then stays. *@
+            <form method="post" action="/Claude/Done/@c.Id" data-testid="claude-done-form">
                 @Html.AntiForgeryToken()
-                <div class="form-group">
-                    <label for="claude-changelog">Text i changelogen</label>
-                    <input type="text" class="form-control" id="claude-changelog" name="changelogText" value="@c.Title" size="50">
+                <label for="claude-changelog">Text i changelogen</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="claude-changelog" name="changelogText" value="@(c.ChangelogText ?? c.Title)" maxlength="@ClaudeborgenService.ChangelogTextMaxLength"
+                           data-claude-changelog="/Claude/ChangelogText/@c.Id">
+                    <span class="input-group-btn">
+                        <button type="submit" class="btn btn-success">Avsluta arbete och markera som färdigt</button>
+                    </span>
                 </div>
-                <button type="submit" class="btn btn-success">Klar</button>
+                <p class="help-block">Claude föreslår texten och förbättrar den efter varje varv, tills du ändrar den själv. Töm rutan så föreslår Claude igen.</p>
             </form>
             }
         </div>
-        <div class="col-md-4 text-right">
+        @* padding-top: level with the box, below the label on the left. *@
+        <div class="col-md-4 text-right" style="@(reverting ? "" : "padding-top: 25px;")">
             @* Everything the work pushed is reverted, then it's removed (DESIGN.md, "Avbryta ett arbete"). *@
             <form method="post" action="/Claude/Cancel/@c.Id" onsubmit="return confirm('Avbryta och ta bort arbetet? Allt det har ändrat tas bort från testgrenen, och samtalet raderas.');" data-testid="claude-cancel-form">
                 @Html.AntiForgeryToken()

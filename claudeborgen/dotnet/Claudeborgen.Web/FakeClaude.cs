@@ -167,7 +167,8 @@ namespace Claudeborgen
             var body = round.IsFixRound
                 ? $"(Fejkad Claude) Jag har rättat testerna i varv {round.Number}. Fejkad commit {commit}."
                 : $"(Fejkad Claude) Klart: \"{Shorten(instruction)}\". Fejkad commit {commit}. Inget har ändrats på riktigt.";
-            _service.Reply(conversation.Id, body, new[] { commit }, new[] { "/" }, "fejk-session-" + conversation.Id, 0m, (int)(_phaseDelay.TotalSeconds * 4));
+            _service.Reply(conversation.Id, body, new[] { commit }, new[] { "/" }, "fejk-session-" + conversation.Id, 0m, (int)(_phaseDelay.TotalSeconds * 4),
+                changelogText: round.IsFixRound ? null : $"(Fejkat förslag) {Shorten(instruction)}");
 
             Heartbeat(ClaudeActivity.Working, conversation.Id, "kör tester");
             await Task.Delay(_phaseDelay, cancellationToken);

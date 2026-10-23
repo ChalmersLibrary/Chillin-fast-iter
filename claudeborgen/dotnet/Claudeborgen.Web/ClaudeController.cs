@@ -197,6 +197,23 @@ namespace Claudeborgen
             }, () => RedirectToAction(nameof(Conversation), new { id }));
         }
 
+        // The owner's own changelog text, saved as soon as it's changed (claude.js) so that Claude's
+        // suggestions after later rounds leave it alone.
+        [HttpPost("ChangelogText/{id:int}")]
+        [ValidateAntiForgeryToken]
+        public IActionResult ChangelogText(int id, string changelogText)
+        {
+            if (IsOff) return NotFound();
+            if (!Access.CanStartAndClose) return Forbid();
+
+            var back = RedirectToAction(nameof(Conversation), new { id });
+            return Attempt(() =>
+            {
+                _service.SetChangelogText(id, changelogText);
+                return SentFromScript ? NoContent() : back;
+            }, () => back);
+        }
+
         // Also "Rensa diskussion" - clearing an idea is open to whoever may bounce ideas.
         [HttpPost("Cancel/{id:int}")]
         [ValidateAntiForgeryToken]
