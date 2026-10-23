@@ -454,6 +454,10 @@ underkatalog per projekt, och bara projektets egen monteras skrivskyddad i dess 
    ```sh
    echo 'https://<användare>:<lösenord>@<app>.scm.azurewebsites.net/<app>.git' > ~/.claudeborgen/chillin/azure-deploy-url
    chmod 600 ~/.claudeborgen/chillin/azure-deploy-url
+   Ta adressen exakt som Deployment Center visar den. Nyare appar har ett värdnamn med region, och
+   då ligger `scm` *före* regionen: `<app>-<hash>.scm.<region>.azurewebsites.net` (till exempel
+   `…hsckeffcaeafacfv.scm.northeurope-01.azurewebsites.net`), inte `<app>.scm.azurewebsites.net`.
+   Fel värdnamn ger "Could not resolve host".
    ```
    Om användarnamnet börjar med `$`, som Azures automatiska uppgifter gör, ska det stå som det är.
    Enkelfnuttarna hindrar skalet från att tolka det.
