@@ -618,9 +618,11 @@ namespace Claudeborgen.Tests
             _service.ResumeDevelopment();
 
             Assert.IsNull(_service.GetStatus().DevelopmentPause);
-            Assert.AreEqual(task, _service.Work(ConversationKind.Task).Single().Id);
             Assert.AreEqual(1, _service.PendingChangelog().Count);
             Assert.AreEqual(1, _service.PendingReverts().Count);
+            Assert.AreEqual(0, _service.Work(ConversationKind.Task).Count, "The cancelled work is reverted first.");
+            _service.MarkReverted(cancelled, "r1");
+            Assert.AreEqual(task, _service.Work(ConversationKind.Task).Single().Id);
         }
 
         // DESIGN.md, "Avbryta ett arbete"
@@ -646,6 +648,31 @@ namespace Claudeborgen.Tests
             Assert.IsNull(_service.Get(id));
             Assert.AreEqual(0, _service.PendingReverts().Count);
             Assert.AreEqual(0, _service.ChangelogView().Count, "Cancelled work never reaches the changelog.");
+        }
+
+        // No new round is built on top of work that is about to be removed - a round already
+        // running finishes, and a failed revert (waiting for IT) doesn't hold anything back.
+        [TestMethod]
+        public void NewWork_WaitsUntilCancelledWorkIsReverted()
+        {
+            var running = StartAndDeliver(commit: "c0");
+            var cancelled = StartAndDeliver(commit: "c1");
+            _service.AddMessage(running, "En sak till", "agneta");
+            _service.Claim(running);
+            _service.Cancel(cancelled, "agneta");
+            var next = _service.Start("Nästa", "b", "agneta").Id;
+            var idea = _service.StartIdea("En idé", "agneta").Id;
+
+            CollectionAssert.AreEqual(new[] { running, idea }, _service.Work().Select(c => c.Id).ToList());
+            Assert.ThrowsException<ClaudeborgenException>(() => _service.Claim(next));
+
+            _service.MarkRevertFailed(cancelled, "konflikt");
+            Assert.IsTrue(_service.Work(ConversationKind.Task).Any(c => c.Id == next));
+
+            _service.Cancel(cancelled, "ivar");
+            Assert.IsFalse(_service.Work(ConversationKind.Task).Any(c => c.Id == next));
+            _service.MarkReverted(cancelled, "r1");
+            Assert.IsTrue(_service.Work(ConversationKind.Task).Any(c => c.Id == next));
         }
 
         [TestMethod]

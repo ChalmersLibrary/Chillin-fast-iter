@@ -281,6 +281,10 @@ det inte finns något läge där man vill behålla ändringarna från ett avbrut
   rött bygge, pushas ingenting, arbetskatalogen lämnas ren och arbetet hamnar under "Behöver IT".
   Ett nytt tryck på knappen försöker igen. Har någon redan tagit bort ändringarna för hand finns
   inget kvar att revertera, och då räknas det som klart.
+- **Inget nytt varv startar innan reverten är klar.** Annars kunde ett nytt arbete byggas ovanpå
+  ändringar som strax tas bort, och reverten då krocka med det. Ett varv som redan pågår får köra
+  klart, och reverten görs direkt efteråt. En revert som misslyckats och väntar på IT håller inte
+  tillbaka något.
 - **Har arbetet inte pushat något** tas det bort direkt.
 - Ändringar som IT redan har fört vidare från `test` till ett annat repo påverkas inte.
 

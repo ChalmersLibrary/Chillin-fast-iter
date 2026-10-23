@@ -639,15 +639,23 @@ namespace Claudeborgen
             {
                 // Paused development: no task work is handed out (ideas don't touch git, they go on).
                 var paused = _store.LoadPause() != null;
-                var conversations = _store.LoadAll()
+                var all = _store.LoadAll();
+                // Cancelled work is reverted before a new round starts, so that no new work is built
+                // on top of what is about to be removed. A round already running isn't held back.
+                var reverting = AwaitingRevert(all);
+                var conversations = all
                     .Where(c => kind == null || c.Kind == kind)
                     .Where(c => !(paused && c.Kind == ConversationKind.Task))
                     .ToList();
                 return conversations.Where(c => c.State == ConversationState.ClaudeWorking)
-                    .Concat(conversations.Where(c => c.State == ConversationState.WaitingForClaude).OrderBy(c => c.LastActivityAt))
+                    .Concat(conversations.Where(c => c.State == ConversationState.WaitingForClaude && !(reverting && c.Kind == ConversationKind.Task)).OrderBy(c => c.LastActivityAt))
                     .ToList();
             }
         }
+
+        // The same conversations as PendingReverts: a failed revert waits for IT, not in the way.
+        private static bool AwaitingRevert(IEnumerable<Conversation> conversations) =>
+            conversations.Any(c => c.State == ConversationState.Reverting && !c.NeedsIt);
 
         public Round Claim(int id)
         {
@@ -662,6 +670,8 @@ namespace Claudeborgen
                     throw new ClaudeborgenException("Samtalet väntar inte på Claude.");
                 if (conversation.Kind == ConversationKind.Task && _store.LoadPause() != null)
                     throw new ClaudeborgenException("Utvecklingen är pausad.");
+                if (conversation.Kind == ConversationKind.Task && AwaitingRevert(_store.LoadAll()))
+                    throw new ClaudeborgenException("Ett avbrutet arbete tas bort först.");
 
                 // One at a time per kind: an idea reply (read-only) may run alongside a task round.
                 var busy = _store.LoadAll().FirstOrDefault(c => c.State == ConversationState.ClaudeWorking && c.Kind == conversation.Kind);

@@ -74,6 +74,9 @@ kommer först, så att en omstartad runner tar upp det igen. Därefter kommer sa
 ```json
 [ { "id": 12, "kind": "task" | "idea", "title": "Exportknapp", "state": "waitingForClaude", "sessionId": "…" } ]
 ```
+Medan ett avbrutet arbete väntar på att revertas (`GET reverts/pending`) delas inga nya arbetsvarv
+ut, och `claim` av ett arbete ger `409`. Ett pågående varv returneras som vanligt.
+
 En **idé** besvaras som i en chatt: runnern kör Claude utan rätt att ändra filer eller köra kommandon,
 och svarar med `reply` utan commits. En idé blir ett arbete i appen ("Gå vidare och bygg detta"),
 och samma samtal, med samma `sessionId`, dyker sedan upp som `kind: "task"`. Högst ett idésvar och ett

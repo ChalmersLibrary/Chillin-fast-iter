@@ -74,7 +74,7 @@
         @* padding-top: level with the box, below the label on the left. *@
         <div class="col-md-4 text-right" style="@(reverting ? "" : "padding-top: 25px;")">
             @* Everything the work pushed is reverted, then it's removed (DESIGN.md, "Avbryta ett arbete"). *@
-            <form method="post" action="/Claude/Cancel/@c.Id" onsubmit="return confirm('Avbryta och ta bort arbetet? Allt det har ändrat tas bort från testgrenen, och samtalet raderas.');" data-testid="claude-cancel-form">
+            <form method="post" action="/Claude/Cancel/@c.Id" onsubmit="return confirm('Avbryta och ta bort arbetet? Allt som har ändrats tas bort från testgrenen, och samtalet raderas.');" data-testid="claude-cancel-form">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-danger">Avbryt och ta bort arbete</button>
             </form>
