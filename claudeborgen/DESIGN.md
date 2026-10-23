@@ -413,6 +413,12 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
 
 ## Komma igång
 
+**`~/.claudeborgen/<projekt>/` på värden** håller det som hör till claudeborgen men inte får ligga i
+repot: agent-tokenen (`token`) och Azure-adressen med uppgifter (`azure-deploy-url`). Det finns en
+underkatalog per projekt, och bara projektets egen monteras skrivskyddad i dess devcontainer, på
+`/home/node/.claudeborgen`. Varje container ser alltså bara sina egna hemligheter, och sökvägarna i
+`claudeborgen.json` (`~/.claudeborgen/token` och så vidare) är desamma för alla projekt.
+
 ### Prova på snabbtestservern med fejken i appen
 1. Driftsätt grenen till snabbtestservern (isolerat läge). Ingen extra konfiguration behövs, eftersom
    `InAppFake` är standard.
@@ -423,9 +429,9 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
 ### Prova hela kedjan på snabbtestservern med fejkrunnern
 1. Skapa en token på värden och räkna ut hashen:
    ```sh
-   mkdir -p ~/.claudeborgen && chmod 700 ~/.claudeborgen
-   openssl rand -hex 32 > ~/.claudeborgen/token && chmod 600 ~/.claudeborgen/token
-   printf %s "$(cat ~/.claudeborgen/token)" | sha256sum | cut -d' ' -f1
+   mkdir -p ~/.claudeborgen/chillin && chmod 700 ~/.claudeborgen ~/.claudeborgen/chillin
+   openssl rand -hex 32 > ~/.claudeborgen/chillin/token && chmod 600 ~/.claudeborgen/chillin/token
+   printf %s "$(cat ~/.claudeborgen/chillin/token)" | sha256sum | cut -d' ' -f1
    ```
 2. App Settings på snabbtestservern: `Claudeborgen__IsolatedMode=FakeRunner` och
    `Claudeborgen__AgentTokenSha256=<hashen>`.
@@ -446,15 +452,15 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
    den här appen.
 2. På värden: skriv appens Local Git-adress *med* uppgifterna i en fil som bara du kan läsa:
    ```sh
-   echo 'https://<användare>:<lösenord>@<app>.scm.azurewebsites.net/<app>.git' > ~/.claudeborgen/azure-deploy-url
-   chmod 600 ~/.claudeborgen/azure-deploy-url
+   echo 'https://<användare>:<lösenord>@<app>.scm.azurewebsites.net/<app>.git' > ~/.claudeborgen/chillin/azure-deploy-url
+   chmod 600 ~/.claudeborgen/chillin/azure-deploy-url
    ```
    Om användarnamnet börjar med `$`, som Azures automatiska uppgifter gör, ska det stå som det är.
    Enkelfnuttarna hindrar skalet från att tolka det.
 3. Montera katalogen i devcontainern (skrivskyddad) och tillåt Azure i brandväggen. Ändringarna görs
    på värden, eftersom `.devcontainer` är skrivskyddad inifrån:
    - `devcontainer.json` under `mounts`:
-     `"source=${localEnv:HOME}/.claudeborgen,target=/home/node/.claudeborgen,type=bind,readonly"`
+     `"source=${localEnv:HOME}/.claudeborgen/chillin,target=/home/node/.claudeborgen,type=bind,readonly"`
    - `init-firewall.sh`, i listan med domäner: `"<app>.scm.azurewebsites.net"` (driftsättning) och
      `"<app>.azurewebsites.net"` (`/claudeborgen/version`)
 
@@ -473,7 +479,7 @@ Svaren, commit-id:na och sidan är tydligt märkta som fejkade.
      // … befintliga …
      "source=${localWorkspaceFolder}/claudeborgen/runner,target=/workspace/claudeborgen/runner,type=bind,readonly",
      "source=${localWorkspaceFolder}/claudeborgen.json,target=/workspace/claudeborgen.json,type=bind,readonly",
-     "source=${localEnv:HOME}/.claudeborgen,target=/home/node/.claudeborgen,type=bind,readonly"
+     "source=${localEnv:HOME}/.claudeborgen/chillin,target=/home/node/.claudeborgen,type=bind,readonly"
    ]
    ```
    Lägg dessutom till adresserna till integrerad test och snabbtestservern i `init-firewall.sh`.
