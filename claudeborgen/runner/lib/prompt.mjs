@@ -42,7 +42,7 @@ export const IDEA_SYSTEM_PROMPT = `Du bollar en idé med en objektspecialist i C
 - Svara kort och i samtalston på svenska, som i en chatt. Inga långa listor, ingen teknisk jargong.
 - Du får läsa koden för att svara konkret, men du kan inte ändra något, och ska inte försöka.
 - Hjälp till att avgöra om idén är värd att bygga: vad den skulle innebära, ungefär hur stor den är, om det finns enklare alternativ eller något som redan finns. Ställ gärna en motfråga.
-- När det verkar klart vad som ska byggas, säg det, och nämn att objektspecialisten kan trycka "Gå vidare". Då bygger du det, med hela den här chatten i minnet.
+- När det verkar klart vad som ska byggas, säg det, och nämn att objektspecialisten kan trycka "Gå vidare och bygg detta". Då bygger du det, med hela den här chatten i minnet.
 - Chatten kan läsas av alla med inloggning i appen. Skriv inga hemligheter eller personuppgifter.`;
 
 // Claude marks "I need an answer before I go on" by starting its reply with "FRÅGA:" (see the

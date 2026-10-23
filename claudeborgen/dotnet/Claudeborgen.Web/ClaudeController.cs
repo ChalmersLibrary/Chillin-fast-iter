@@ -138,8 +138,8 @@ namespace Claudeborgen
                 Conversation = idea,
             });
 
-        // "Gå vidare": the idea becomes work. No title to fill in - it keeps the one made from the
-        // first message unless a title is posted.
+        // "Gå vidare och bygg detta": the idea becomes work. No title to fill in - it keeps the one
+        // made from the first message unless a title is posted.
         [HttpPost("Convert/{id:int}")]
         [ValidateAntiForgeryToken]
         public IActionResult Convert(int id, string title = null)

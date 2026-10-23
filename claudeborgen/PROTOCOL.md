@@ -75,7 +75,7 @@ kommer först, så att en omstartad runner tar upp det igen. Därefter kommer sa
 [ { "id": 12, "kind": "task" | "idea", "title": "Exportknapp", "state": "waitingForClaude", "sessionId": "…" } ]
 ```
 En **idé** besvaras som i en chatt: runnern kör Claude utan rätt att ändra filer eller köra kommandon,
-och svarar med `reply` utan commits. En idé blir ett arbete i appen ("Gå vidare"),
+och svarar med `reply` utan commits. En idé blir ett arbete i appen ("Gå vidare och bygg detta"),
 och samma samtal, med samma `sessionId`, dyker sedan upp som `kind: "task"`. Högst ett idésvar och ett
 arbetsvarv kan pågå samtidigt (`claim` ger `409` per sort).
 ```json

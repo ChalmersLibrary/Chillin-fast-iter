@@ -163,8 +163,8 @@ Därför finns en lösare väg in: en **chattruta på startsidan**, "Bolla en id
 - **Chatten fortsätter på startsidan** och uppdateras live, med "Claude skriver…" medan Claude tänker.
   Andra pågående idéer listas under "Idéer", och alla med inloggning kan läsa dem. Alla som får skriva
   i samtal (`ObjektSpecialist`, `ObjektSpecialistIT`) kan bolla idéer.
-- **"Gå vidare"** (objektspecialisten) gör idén till ett
-  vanligt arbete. Objektspecialistens "Nu bygger vi det här: …" blir ett meddelande i samtalet, och
+- **"Gå vidare och bygg detta"** (objektspecialisten) gör idén till ett vanligt arbete.
+  Objektspecialistens "Nu bygger vi det här: …" blir ett meddelande i samtalet, och
   nästa varv bygger det i *samma* Claude-session, alltså med hela idédiskussionen i minnet.
 - **"Rensa diskussion"** tar bort idén. Idéer som legat orörda i 14 dagar (`IdeaRetention`) tas bort
   automatiskt, med Claude-sessionen, enligt samma princip som i [Samtal tas bort](#samtal-tas-bort).

@@ -186,7 +186,7 @@ namespace Claudeborgen
             var replies = idea.Messages.Count(m => m.AuthorKind == MessageAuthorKind.Claude);
             var body = replies == 0
                 ? $"(Fejkad Claude) Spännande! Om jag förstår dig rätt: \"{Shorten(said)}\". Det ser ut att vara en ganska liten ändring. Vem skulle ha mest nytta av det?"
-                : "(Fejkad Claude) Då låter det värt att bygga. Tryck \"Gå vidare\" när du vill, så sätter jag igång.";
+                : "(Fejkad Claude) Då låter det värt att bygga. Tryck \"Gå vidare och bygg detta\" när du vill, så sätter jag igång.";
             _service.Reply(idea.Id, body, null, null, "fejk-session-" + idea.Id, 0m, (int)_phaseDelay.TotalSeconds);
         }
 
