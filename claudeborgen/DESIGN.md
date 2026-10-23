@@ -135,6 +135,11 @@ ihop dem är `PROTOCOL.md`.
 - **Live:** SignalR-hubben `/claudeborgenHub` skickar bara "något ändrades", och
   `_content/Claudeborgen.Web/claude.js` hämtar om delarna. Sidorna hämtas också om var 15:e sekund,
   eftersom offline är frånvaron av hjärtslag och inte en händelse som kan skickas ut.
+- **Skicka utan omladdning:** chattrutorna (idérutan och svarsrutan i ett samtal, märkta
+  `data-claude-send`) postas av `claude.js` med huvudet `X-Claudeborgen-Send`. Då svarar
+  kontrollern utan redirect (204 för ett svar, idérutan som HTML för en ny idé, 409 med texten vid
+  fel), och skriptet tömmer rutan och hämtar om de levande delarna. Utan skriptet fungerar samma
+  formulär som vanliga poster.
 - **Agent-API:** `/api/claude/...`, se `PROTOCOL.md`. Det använder camelCase-JSON oavsett värdens
   inställningar.
 - **Lagring:** en JSON-fil per samtal under `<DataPath>/claudeborgen/conversations/`, med ett enda

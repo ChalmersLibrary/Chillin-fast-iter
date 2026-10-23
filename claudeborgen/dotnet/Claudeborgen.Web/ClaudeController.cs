@@ -85,7 +85,8 @@ namespace Claudeborgen
             return Attempt(() =>
             {
                 _service.AddMessage(id, body, Author);
-                return back;
+                // claude.js re-fetches the conversation itself - nothing to redirect to.
+                return SentFromScript ? NoContent() : back;
             }, () => back);
         }
 
@@ -101,7 +102,8 @@ namespace Claudeborgen
             return Attempt(() =>
             {
                 var idea = _service.StartIdea(body, Author);
-                return Redirect(IdeaUrl(idea.Id));
+                // claude.js swaps the chat box for the new idea's in place.
+                return SentFromScript ? IdeaPanelFor(idea) : Redirect(IdeaUrl(idea.Id));
             }, () => Redirect("/"));
         }
 
@@ -116,6 +118,25 @@ namespace Claudeborgen
                 return PartialView(ViewRoot + "_IdeaGone.cshtml", model.Conversation);
             return PartialView(ViewRoot + "_IdeaChat.cshtml", model);
         }
+
+        // The chat box for an open idea, as on the start page (see _IdeaPanel.cshtml).
+        [HttpGet("IdeaPanel/{id:int}")]
+        public IActionResult IdeaPanel(int id)
+        {
+            if (IsOff) return NotFound();
+            var idea = _service.Get(id);
+            if (idea == null || !idea.IsIdea || !idea.IsOpen) return NotFound();
+            return IdeaPanelFor(idea);
+        }
+
+        private IActionResult IdeaPanelFor(Conversation idea) =>
+            PartialView(ViewRoot + "_IdeaPanel.cshtml", new ClaudePageModel
+            {
+                Settings = _service.Settings,
+                Access = Access,
+                Status = _service.GetStatus(),
+                Conversation = idea,
+            });
 
         // "Gå vidare": the idea becomes work. No title to fill in - it keeps the one made from the
         // first message unless a title is posted.
@@ -192,6 +213,12 @@ namespace Claudeborgen
             }, () => RedirectToAction(nameof(Conversation), new { id }));
         }
 
+        // The chat boxes (forms marked data-claude-send) are posted by claude.js, which asks for no
+        // redirect: the page stays put and only its live parts are re-fetched. Without the script,
+        // the same actions answer a plain form post as before.
+        public const string SentFromScriptHeader = "X-Claudeborgen-Send";
+        private bool SentFromScript => Request.Headers.ContainsKey(SentFromScriptHeader);
+
         private IActionResult Attempt(Func<IActionResult> action, Func<IActionResult> onError)
         {
             try
@@ -200,6 +227,8 @@ namespace Claudeborgen
             }
             catch (ClaudeborgenException e)
             {
+                // The script shows the message by the box, and the text written stays in it.
+                if (SentFromScript) return Conflict(e.Message);
                 TempData[ErrorKey] = e.Message;
                 return onError();
             }

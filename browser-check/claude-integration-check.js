@@ -56,6 +56,15 @@ async function startConversation(page, title, body) {
   return parseInt(page.url().match(/Conversation\/(\d+)/)[1], 10);
 }
 
+// The chat boxes send without reloading the page: a marker set on window before survives.
+async function sendInPlace(page, send, what) {
+  await page.evaluate(() => { window.__claudeNoReload = true; });
+  await send();
+  await page.waitForFunction(() => document.querySelector("[data-claude-send] textarea")?.value === "", { timeout: NAV_TIMEOUT, polling: 100 })
+    .catch(() => problem(what + ": the box wasn't emptied."));
+  if (!(await page.evaluate(() => window.__claudeNoReload === true))) problem(what + ": the page reloaded.");
+}
+
 async function waitForState(page, state, timeoutMs) {
   await page.waitForFunction(
     (s) => { const el = document.querySelector("[data-testid=claude-conversation-state]"); return el && el.getAttribute("data-state") === s; },
@@ -71,6 +80,7 @@ async function waitForState(page, state, timeoutMs) {
   await page.setViewport({ width: 1280, height: 900 });
   page.on("console", (msg) => { if (msg.type() === "error") consoleErrors.push(msg.text()); });
   page.on("pageerror", (err) => consoleErrors.push(err.message));
+  page.on("response", (res) => { if (res.status() >= 400) consoleErrors.push(res.status() + " " + res.url()); });
   page.on("dialog", (d) => d.accept());
 
   try {
@@ -86,16 +96,11 @@ async function waitForState(page, state, timeoutMs) {
     const typed = await page.$eval("[data-testid=claude-idea-form] textarea", (t) => t.value);
     if (!typed.includes("\n")) problem("Shift+Enter didn't make a new line.");
     if (page.url().includes("idea=")) problem("Shift+Enter sent the message.");
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
-      page.keyboard.press("Enter"),
-    ]);
+    await sendInPlace(page, () => page.keyboard.press("Enter"), "First idea message");
+    if (!/[?]idea=\d+/.test(page.url())) problem("The address doesn't point at the new idea: " + page.url());
     await page.waitForFunction(() => document.querySelector("[data-testid=claude-idea-chat]")?.getAttribute("data-state") === "WaitingForOwner", { timeout: 60000, polling: 250 });
     await page.type("[data-testid=claude-idea-form] textarea", "Det är mest för handläggarna, så de ser vad som fastnat.");
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
-      page.click("[data-testid=claude-idea-form] button[type=submit]"),
-    ]);
+    await sendInPlace(page, () => page.click("[data-testid=claude-idea-form] button[type=submit]"), "Idea reply");
     await page.waitForFunction(() => document.querySelectorAll("[data-testid=claude-idea-chat] > div").length >= 4 && document.querySelector("[data-testid=claude-idea-chat]")?.getAttribute("data-state") === "WaitingForOwner", { timeout: 60000, polling: 250 });
     await shoot(page, "00-idea-chat.png");
     await Promise.all([
@@ -134,10 +139,7 @@ async function waitForState(page, state, timeoutMs) {
     await page.waitForSelector("[data-testid=claude-question]", { timeout: 60000 });
     await shoot(page, "04b-question.png");
     await page.type("#claude-reply", "Överst, tack.");
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "load", timeout: NAV_TIMEOUT }),
-      page.click("[data-testid=claude-reply-form] button[type=submit]"),
-    ]);
+    await sendInPlace(page, () => page.click("[data-testid=claude-reply-form] button[type=submit]"), "Conversation reply");
     await waitForState(page, "WaitingForOwner", 60000);
     if (qId === id) problem("Question conversation got the same id as the first one.");
 

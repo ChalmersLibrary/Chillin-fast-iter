@@ -37,7 +37,7 @@
 @* Outside the live-refreshed part, so a half-written message survives a refresh. *@
 @if (c.IsOpen && !reverting && Model.Access.CanWrite)
 {
-    <form method="post" action="/Claude/Reply/@c.Id" data-testid="claude-reply-form">
+    <form method="post" action="/Claude/Reply/@c.Id" data-testid="claude-reply-form" data-claude-send>
         @Html.AntiForgeryToken()
         <div class="form-group">
             <label for="claude-reply">Nästa meddelande till Claude</label>

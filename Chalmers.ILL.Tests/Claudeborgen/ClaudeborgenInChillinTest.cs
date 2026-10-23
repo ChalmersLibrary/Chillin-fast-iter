@@ -204,6 +204,57 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             StringAssert.Contains(delivered, "Gröna tester");
         }
 
+        // The chat boxes are posted by claude.js without reloading the page: no redirect, the new
+        // idea's chat box to swap in, errors as text by the box.
+        [TestMethod]
+        public async Task ChatSentFromTheScript_AnswersWithoutRedirect()
+        {
+            using var factory = CreateFactory();
+            using var client = await LoginAsync(factory, "agneta");
+
+            async Task<HttpResponseMessage> SendAsync(string postUrl, string body)
+            {
+                var token = AntiForgeryToken(await (await client.GetAsync("/")).Content.ReadAsStringAsync());
+                var request = new HttpRequestMessage(HttpMethod.Post, postUrl)
+                {
+                    Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["body"] = body, ["__RequestVerificationToken"] = token })
+                };
+                request.Headers.Add("X-Claudeborgen-Send", "1");
+                return await client.SendAsync(request);
+            }
+
+            var started = await SendAsync("/Claude/Idea", "Tänk om listan gick att sortera");
+            Assert.AreEqual(HttpStatusCode.OK, started.StatusCode);
+            var panel = WebUtility.HtmlDecode(await started.Content.ReadAsStringAsync());
+            var id = int.Parse(Regex.Match(panel, "data-idea-id=\"(\\d+)\"").Groups[1].Value);
+            StringAssert.Contains(panel, $"action=\"/Claude/Reply/{id}\"");
+            StringAssert.Contains(panel, "Tänk om listan gick att sortera");
+            StringAssert.Contains(panel, "__RequestVerificationToken");
+
+            await WaitForIdeaStateAsync(client, id, "WaitingForOwner");
+            var replied = await SendAsync($"/Claude/Reply/{id}", "Och filtrera");
+            Assert.AreEqual(HttpStatusCode.NoContent, replied.StatusCode);
+            StringAssert.Contains(await GetHtmlAsync(client, $"/Claude/IdeaChat/{id}"), "Och filtrera");
+
+            var empty = await SendAsync($"/Claude/Reply/{id}", " ");
+            Assert.AreEqual(HttpStatusCode.Conflict, empty.StatusCode);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(await empty.Content.ReadAsStringAsync()));
+
+            Assert.AreEqual(HttpStatusCode.OK, (await client.GetAsync($"/Claude/IdeaPanel/{id}")).StatusCode);
+        }
+
+        private static async Task WaitForIdeaStateAsync(HttpClient client, int id, string state)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            while (stopwatch.Elapsed < TimeSpan.FromSeconds(30))
+            {
+                if ((await GetHtmlAsync(client, $"/Claude/IdeaChat/{id}")).Contains($"data-state=\"{state}\""))
+                    return;
+                await Task.Delay(200);
+            }
+            Assert.Fail($"Idea {id} never reached {state}.");
+        }
+
         [TestMethod]
         public async Task Viewer_SeesIdeas_ButCannotStartOne()
         {
