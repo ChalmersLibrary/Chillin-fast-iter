@@ -30,6 +30,10 @@
         {
             <div class="alert alert-danger" data-testid="claude-error">@claude.Error</div>
         }
+        @if (TempData[ClaudeController.NoticeKey] is string notice)
+        {
+            <div class="alert alert-info" data-testid="claude-notice">@notice</div>
+        }
 
         @await Html.PartialAsync("~/Views/Claudeborgen/_IdeaPanel.cshtml", ideaModel)
 

@@ -195,7 +195,10 @@ Därför finns en lösare väg in: en **chattruta på startsidan**, "Bolla en id
 - **Startsidan** visar filens poster och dessutom klara samtal som ännu inte finns i den driftsatta
   filen, märkta "(på väg)". Posten flyttar alltså inte och försvinner inte mellan Klar och driftsättning.
   Bara ett klart samtal som ännu inte committats har länk. Poster i filen länkar aldrig, eftersom
-  samtalet är borttaget och samma nummer kan vara ett annat samtal på en annan server.
+  samtalet är borttaget och samma nummer kan vara ett annat samtal på en annan server. Länken lever
+  bara tills runnern committat posten (sekunder), så en sida som ritades dessförinnan har kvar en
+  länk till ett borttaget samtal. Den leder till startsidan med ett besked om vad som hänt, inte
+  till en 404.
 - **Snabbtestservern** committar aldrig något. Fejken i appen och fejkrunnern låtsas, och posten visas
   med "(fejk)".
 

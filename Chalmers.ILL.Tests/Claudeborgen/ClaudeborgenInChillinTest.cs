@@ -599,6 +599,13 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             var html = await GetHtmlAsync(client, "/");
             Assert.IsFalse(html.Contains($"/Claude/Conversation/{id}\""), "Nothing to link to any more.");
 
+            // A page drawn before the removal still has the link: it leads to the start page with
+            // what happened, not to a 404.
+            var stale = await client.GetAsync($"/Claude/Conversation/{id}");
+            Assert.AreEqual(HttpStatusCode.Redirect, stale.StatusCode);
+            Assert.AreEqual("/", stale.Headers.Location.ToString());
+            StringAssert.Contains(await GetHtmlAsync(client, "/"), $"Arbete #{id} är klart och ligger i changelogen.");
+
             var claudeEntry = html.IndexOf("Exportknapp på listan");
             Assert.IsTrue(claudeEntry > 0);
             Assert.IsTrue(claudeEntry < html.IndexOf("2025-09-09 - v2.6.3"), "Newest first: today's entry above the 2025 one.");

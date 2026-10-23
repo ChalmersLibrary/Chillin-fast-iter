@@ -14,6 +14,7 @@ namespace Claudeborgen
     public class ClaudeController : Controller
     {
         public const string ErrorKey = "ClaudeborgenError";
+        public const string NoticeKey = "ClaudeborgenNotice";
         private const string ViewRoot = "~/Views/Claudeborgen/";
 
         private readonly ClaudeborgenService _service;
@@ -38,7 +39,7 @@ namespace Claudeborgen
         {
             if (IsOff) return NotFound();
             var model = BuildModel(conversationId: id);
-            if (model.Conversation == null) return NotFound();
+            if (model.Conversation == null) return Gone(id);
             if (model.Conversation.IsIdea) return Redirect(IdeaUrl(id)); // ideas are chatted on the start page
             return _host.ConversationPage(this, model);
         }
@@ -172,6 +173,18 @@ namespace Claudeborgen
             if (IsOff) return NotFound();
             if (!Access.IsIt) return Forbid();
             _service.ResumeDevelopment();
+            return Redirect("/");
+        }
+
+        // A link to a conversation that has been removed since the page was drawn - typically the
+        // changelog's link right after "klar", which lives only until the runner has committed the
+        // entry (seconds). Back to the start page with what happened, rather than a bare 404.
+        private IActionResult Gone(int id)
+        {
+            var removed = _service.Removed(id);
+            TempData[NoticeKey] = removed == null ? $"Samtal #{id} finns inte längre."
+                : removed.Cancelled ? $"Arbete #{id} är avbrutet och borttaget."
+                : $"Arbete #{id} är klart och ligger i changelogen. Själva samtalet sparas inte längre än det behövs och är borttaget.";
             return Redirect("/");
         }
 

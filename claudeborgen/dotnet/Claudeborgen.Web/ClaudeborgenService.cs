@@ -348,6 +348,15 @@ namespace Claudeborgen
             }
         }
 
+        // What's left of a removed conversation, while it's kept (see RemovedConversation); else null.
+        public RemovedConversation Removed(int id)
+        {
+            lock (_lock)
+            {
+                return _store.LoadRemoved().FirstOrDefault(r => r.ConversationId == id);
+            }
+        }
+
         public ClaudeStatus GetStatus()
         {
             lock (_lock)
