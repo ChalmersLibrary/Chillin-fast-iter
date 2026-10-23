@@ -20,16 +20,7 @@
             <ul>
                 @foreach (var item in entry.Items)
                 {
-                    <li>
-                        @if (entry.Linkable && ClaudeService.Settings.IsOn)
-                        {
-                            <a href="/Claude/Conversation/@entry.ConversationId">@item</a>
-                        }
-                        else
-                        {
-                            @item
-                        }
-                    </li>
+                    <li>@item</li>
                 }
             </ul>
         </li>

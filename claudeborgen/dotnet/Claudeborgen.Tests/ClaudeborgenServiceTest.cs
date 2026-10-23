@@ -525,7 +525,6 @@ namespace Claudeborgen.Tests
             var entry = _service.ChangelogView().Single();
             Assert.AreEqual("Exportknapp", entry.Items.Single());
             Assert.IsTrue(entry.Pending, "Committed but not yet in the deployed file: shown as on its way.");
-            Assert.IsFalse(entry.Linkable, "There's nothing to open any more.");
         }
 
         [TestMethod]
@@ -551,7 +550,7 @@ namespace Claudeborgen.Tests
         }
 
         // Regression (seen on the fast test server): conversations done or cancelled with a version
-        // from before removal existed stayed in the store, and were shown linked in the changelog.
+        // from before removal existed stayed in the store.
         [TestMethod]
         public void LeftoversFromBeforeRemovalExisted_AreCleanedUp()
         {
@@ -566,8 +565,7 @@ namespace Claudeborgen.Tests
             Assert.IsNull(_service.Get(1));
             Assert.IsNull(_service.Get(2));
             Assert.IsNotNull(_service.Get(3), "Not committed yet - still needed.");
-            Assert.IsFalse(view.Single(e => e.ConversationId == 1).Linkable);
-            Assert.IsTrue(view.Single(e => e.ConversationId == 3).Linkable);
+            Assert.AreEqual(2, view.Count(e => e.ConversationId != null));
             Assert.IsFalse(File.ReadAllText(Path.Combine(_dataDirectory, "removed.json")).Contains("hemligt"));
         }
 

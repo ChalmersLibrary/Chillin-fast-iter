@@ -168,6 +168,7 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             var startPage = await GetHtmlAsync(client, "/");
             StringAssert.Contains(startPage, "Exportknapp på beställningslistan");
             StringAssert.Contains(startPage, "data-testid=\"claude-changelog-entry\"");
+            Assert.IsFalse(startPage.Contains($"/Claude/Conversation/{id}\""), "Done work isn't linked from the changelog.");
         }
 
         // DESIGN.md, "Idéer": bounce an idea on the start page, then turn it into work.
@@ -599,8 +600,8 @@ namespace Chalmers.ILL.Tests.Claudeborgen
             var html = await GetHtmlAsync(client, "/");
             Assert.IsFalse(html.Contains($"/Claude/Conversation/{id}\""), "Nothing to link to any more.");
 
-            // A page drawn before the removal still has the link: it leads to the start page with
-            // what happened, not to a 404.
+            // An old link (a bookmark, a tab left open) leads to the start page with what happened,
+            // not to a 404.
             var stale = await client.GetAsync($"/Claude/Conversation/{id}");
             Assert.AreEqual(HttpStatusCode.Redirect, stale.StatusCode);
             Assert.AreEqual("/", stale.Headers.Location.ToString());

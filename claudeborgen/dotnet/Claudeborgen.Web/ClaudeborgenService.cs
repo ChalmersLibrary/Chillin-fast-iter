@@ -446,15 +446,9 @@ namespace Claudeborgen
                     ChangelogCommit = r.ChangelogCommit,
                 });
 
-                var entries = ChangelogFile.Merge(file, done.Concat(committed), _settings.IsFake);
-
-                // Only a done conversation still waiting here can be opened. Never an entry from the
-                // file: its number may be another server's conversation (the fast test server has
-                // its own #12).
-                var existing = new HashSet<int>(done.Select(c => c.Id));
-                foreach (var entry in entries)
-                    entry.Linkable = entry.Pending && entry.ConversationId != null && existing.Contains(entry.ConversationId.Value);
-                return entries;
+                // No links: done work is finished, and its conversation is removed as soon as the
+                // entry is committed (DESIGN.md, "Changelog").
+                return ChangelogFile.Merge(file, done.Concat(committed), _settings.IsFake);
             }
         }
 
