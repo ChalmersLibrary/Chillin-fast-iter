@@ -2650,6 +2650,9 @@ tjänst ur driften och testservern.
   `/home`, och sökning upplevs som mycket snabb utan konstigheter — öppning, mmap och att ta
   `write.lock` fungerar alltså över SMB. Kvar: samma sak vid driftens volym (testserverns
   datamängd är liten), tiden för en full ombyggnad där, och att låset släpps vid en omstart.
+  Mäts med de tillfälliga adresserna i `Isolated/LoadTestDataController.cs` (`/LoadTestData/
+  Generate?count=100000`, `/Status`, `/Remove`; bara isolerat läge). **Ta bort den filen och dess
+  test när mätningen är gjord** — den hör inte hemma i det som driftsätts.
 - [ ] **Kör migreringsverktyget med `--elasticsearch-url` vid driftsättningen** — 🖐️ mot den
   gamla ES-servern, så att mallar och chillin-texter följer med. Kontrollera antalet mallar i
   rapporten mot mallsidan i den gamla appen.

@@ -14,11 +14,12 @@ using Newtonsoft.Json;
 
 namespace Chalmers.ILL.Isolated
 {
-    // TEMPORARY, claudeborgen only - never merge into remove-dotnet-framework. Measures Lucene on
-    // Azure Files at production volume ("Verifiera Lucene på Azure Files" in
-    // TODO-remove-dotnet-framework.md): generates fake orders straight into DataPath/orders on the
+    // TEMPORARY - remove once measured ("Verifiera Lucene på Azure Files" in
+    // TODO-remove-dotnet-framework.md, which also lists the removal). Measures Lucene on Azure
+    // Files at production volume: generates fake orders straight into DataPath/orders on the
     // isolated test server, then rebuilds the search index and times both. Plain GETs so it's just
-    // a URL in the browser; administrators only (no [AllowViewer]), isolated mode only.
+    // a URL in the browser; administrators only (no [AllowViewer]). Isolated mode only, which is
+    // what keeps it inert in production until it's removed.
     //
     //   /LoadTestData/Generate?count=100000   start generating + rebuild (runs in the background)
     //   /LoadTestData/Status                  progress and timings
