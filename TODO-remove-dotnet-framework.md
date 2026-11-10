@@ -2646,6 +2646,10 @@ tjänst ur driften och testservern.
   varje uppstart — orderfilerna under `/home` är ändå sanningen. Kontrollera också att en första
   ombyggnad ryms inom App Services starttidsgräns (230 s som standard,
   `WEBSITES_CONTAINER_START_TIME_LIMIT`), eller bygg indexet med migreringsverktyget i förväg.
+  **Delvis verifierat 2026-11-10:** på snabbtestservern (`24b6585`) startar appen med indexet på
+  `/home`, och sökning upplevs som mycket snabb utan konstigheter — öppning, mmap och att ta
+  `write.lock` fungerar alltså över SMB. Kvar: samma sak vid driftens volym (testserverns
+  datamängd är liten), tiden för en full ombyggnad där, och att låset släpps vid en omstart.
 - [ ] **Kör migreringsverktyget med `--elasticsearch-url` vid driftsättningen** — 🖐️ mot den
   gamla ES-servern, så att mallar och chillin-texter följer med. Kontrollera antalet mallar i
   rapporten mot mallsidan i den gamla appen.
