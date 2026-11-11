@@ -16,5 +16,19 @@ namespace Chalmers.ILL.OrderItems
 
         // Replaces the whole index with these orders; returns how many were indexed.
         int Rebuild(IEnumerable<OrderItemModel> items);
+
+        // Whether the index is still being built from the order files in the background - until
+        // then searches only see part of the orders, newest first.
+        SearchIndexStatus Status => SearchIndexStatus.Ready;
+    }
+
+    public class SearchIndexStatus
+    {
+        public static readonly SearchIndexStatus Ready = new SearchIndexStatus();
+
+        public bool Rebuilding { get; init; }
+        public bool Failed { get; init; }
+        public int Indexed { get; init; }
+        public int Total { get; init; }
     }
 }

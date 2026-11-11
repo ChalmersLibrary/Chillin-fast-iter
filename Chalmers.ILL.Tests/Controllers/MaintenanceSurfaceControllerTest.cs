@@ -74,10 +74,12 @@ namespace Chalmers.ILL.Tests.Controllers
         {
             var dataPath = Path.Combine(Path.GetTempPath(), "chillin-rebuild-" + Guid.NewGuid());
             var ordersDirectory = Path.Combine(dataPath, "orders");
-            Directory.CreateDirectory(ordersDirectory);
-            File.WriteAllText(Path.Combine(ordersDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1 }));
-            File.WriteAllText(Path.Combine(ordersDirectory, "2.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 2 }));
-            File.WriteAllText(Path.Combine(ordersDirectory, "corrupt.json"), "{ not valid json");
+            // FileOrderItemManager's layout: orders/{NodeId/1000:D3}/{NodeId}.json.
+            var bucketDirectory = Path.Combine(ordersDirectory, "000");
+            Directory.CreateDirectory(bucketDirectory);
+            File.WriteAllText(Path.Combine(bucketDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1 }));
+            File.WriteAllText(Path.Combine(bucketDirectory, "2.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 2 }));
+            File.WriteAllText(Path.Combine(bucketDirectory, "corrupt.json"), "{ not valid json");
             var searcher = new RecordingOrderItemSearcher();
             var controller = NewController(new StubOrderItemManager(), new StubMediaItemManager(new List<MediaItemIdAndOrderItemId>()), dataPath, searcher);
 
@@ -102,8 +104,10 @@ namespace Chalmers.ILL.Tests.Controllers
             // existed - see TODO-remove-dotnet-framework.md's testdata-for-dev-environment point.
             var dataPath = Path.Combine(Path.GetTempPath(), "chillin-rebuild-" + Guid.NewGuid());
             var ordersDirectory = Path.Combine(dataPath, "orders");
-            Directory.CreateDirectory(ordersDirectory);
-            File.WriteAllText(Path.Combine(ordersDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1, Status = "01:Ny" }));
+            // FileOrderItemManager's layout: orders/{NodeId/1000:D3}/{NodeId}.json.
+            var bucketDirectory = Path.Combine(ordersDirectory, "000");
+            Directory.CreateDirectory(bucketDirectory);
+            File.WriteAllText(Path.Combine(bucketDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1, Status = "01:Ny" }));
             File.WriteAllText(Path.Combine(ordersDirectory, "orderid-index.json"), JsonConvert.SerializeObject(new Dictionary<string, int> { ["cthb-abc-1"] = 1 }));
             File.WriteAllText(Path.Combine(ordersDirectory, "next-node-id.txt"), "2");
             var searcher = new RecordingOrderItemSearcher();
@@ -123,8 +127,10 @@ namespace Chalmers.ILL.Tests.Controllers
         {
             var dataPath = Path.Combine(Path.GetTempPath(), "chillin-rebuild-" + Guid.NewGuid());
             var ordersDirectory = Path.Combine(dataPath, "orders");
-            Directory.CreateDirectory(ordersDirectory);
-            File.WriteAllText(Path.Combine(ordersDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1 }));
+            // FileOrderItemManager's layout: orders/{NodeId/1000:D3}/{NodeId}.json.
+            var bucketDirectory = Path.Combine(ordersDirectory, "000");
+            Directory.CreateDirectory(bucketDirectory);
+            File.WriteAllText(Path.Combine(bucketDirectory, "1.json"), JsonConvert.SerializeObject(new OrderItemModel { NodeId = 1 }));
             var controller = NewController(new StubOrderItemManager(), new StubMediaItemManager(new List<MediaItemIdAndOrderItemId>()), dataPath, new ThrowingOrderItemSearcher());
 
             var result = controller.RebuildSearchIndex() as JsonResult;

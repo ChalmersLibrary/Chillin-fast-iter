@@ -6,6 +6,7 @@
     // chalmers.ill.{main,print}.css eller chalmers.ill.js ändras.
     const string staticAssetVersion = "1";
 }
+@inject Chalmers.ILL.OrderItems.IOrderItemSearcher SearchIndex
 
 @{
     var isNotLocalhost = Request.Host.Host != "localhost";
@@ -101,6 +102,21 @@
                             </ul>
                         </div>
                     </form>
+
+                    @{ var searchIndex = SearchIndex.Status; }
+                    @if (searchIndex.Rebuilding)
+                    {
+                        <p class="navbar-text" id="search-index-rebuilding">
+                            @if (searchIndex.Failed)
+                            {
+                                <span class="label label-danger">Sökindexet kunde inte byggas klart - sökningar och statistik visar bara en del av ordrarna</span>
+                            }
+                            else
+                            {
+                                <span class="label label-warning">Sökindexet byggs om (@searchIndex.Indexed av @searchIndex.Total ordrar, nyaste först) - sökningar och statistik visar bara dem än så länge</span>
+                            }
+                        </p>
+                    }
 
                     <!-- Logged in Member info and links -->
                     @if (User.Identity.IsAuthenticated)

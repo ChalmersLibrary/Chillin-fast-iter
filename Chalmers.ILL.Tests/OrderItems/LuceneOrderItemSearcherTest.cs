@@ -23,9 +23,9 @@ namespace Chalmers.ILL.Tests.OrderItems
 
         private static string NewDataPath() => Path.Combine(Path.GetTempPath(), "chillin-lucenesearcher-test-" + Guid.NewGuid());
 
-        private LuceneOrderItemSearcher CreateSearcher(string dataPath = null)
+        private LuceneOrderItemSearcher CreateSearcher(string dataPath = null, bool rebuildInBackground = false)
         {
-            var searcher = new LuceneOrderItemSearcher(new StubChillinConfiguration { DataPath = dataPath ?? NewDataPath() });
+            var searcher = new LuceneOrderItemSearcher(dataPath ?? NewDataPath(), rebuildInBackground: rebuildInBackground);
             _opened.Add(searcher);
             return searcher;
         }
@@ -445,6 +445,130 @@ namespace Chalmers.ILL.Tests.OrderItems
 
             Assert.AreEqual(2, count);
             CollectionAssert.AreEquivalent(new[] { 2, 3 }, searcher.Search("*").Select(o => o.NodeId).ToList());
+        }
+
+        // --- Local index, copy on DataPath -----------------------------------------------------
+
+        private static string BackupPath(string dataPath) => LuceneOrderItemSearcher.IndexDirectory(dataPath);
+        private static string PendingPath(string dataPath) => Path.Combine(dataPath, "search-index-pending.txt");
+
+        // What's on DataPath at this moment, as a new DataPath - what the next process would find
+        // if this one died right now, without its final sync.
+        private static string CopyAsIfCrashedNow(string dataPath)
+        {
+            var copy = NewDataPath();
+            foreach (var file in Directory.EnumerateFiles(dataPath, "*", SearchOption.AllDirectories))
+            {
+                var target = Path.Combine(copy, Path.GetRelativePath(dataPath, file));
+                Directory.CreateDirectory(Path.GetDirectoryName(target));
+                File.Copy(file, target);
+            }
+            return copy;
+        }
+
+        [TestMethod]
+        public void Restart_RestoresTheCopy_WithoutReadingTheOrderFiles()
+        {
+            var dataPath = NewDataPath();
+            WriteOrderFile(dataPath, NewOrder(42, status: "Ny"));
+            WriteOrderFile(dataPath, NewOrder(1042, status: "Beställd"));
+            var first = CreateSearcher(dataPath);
+            first.EnsureOpen();
+            first.Dispose();
+            _opened.Remove(first);
+            Directory.Delete(Path.Combine(dataPath, "orders"), recursive: true);
+
+            var reopened = CreateSearcher(dataPath);
+
+            Assert.AreEqual(2, reopened.Search("*").Count());
+        }
+
+        [TestMethod]
+        public void Crash_ChangesAfterTheLastSyncAreReindexedFromTheOrderFiles()
+        {
+            var dataPath = NewDataPath();
+            var gone = NewOrder(3, status: "Levererad");
+            WriteOrderFile(dataPath, gone);
+            var searcher = CreateSearcher(dataPath);
+            searcher.EnsureOpen();
+            searcher.SyncToBackup();
+
+            var added = NewOrder(5, status: "Ny");
+            WriteOrderFile(dataPath, added);
+            searcher.Added(added);
+            File.Delete(Path.Combine(dataPath, "orders", "000", "3.json"));
+            searcher.Deleted(gone);
+
+            var afterCrash = CreateSearcher(CopyAsIfCrashedNow(dataPath));
+
+            CollectionAssert.AreEqual(new[] { 5 }, afterCrash.Search("*").Select(o => o.NodeId).ToList());
+        }
+
+        [TestMethod]
+        public void Sync_ClearsThePendingList_AndTheCopyStaysComplete()
+        {
+            var dataPath = NewDataPath();
+            var searcher = CreateSearcher(dataPath);
+            for (var i = 1; i <= 30; i++)
+            {
+                searcher.Added(NewOrder(i, status: "Ny"));
+                if (i % 10 == 0)
+                    searcher.SyncToBackup();
+            }
+            searcher.Rebuild(new[] { NewOrder(100, status: "Beställd") });
+            searcher.Added(NewOrder(101, status: "Beställd"));
+            searcher.SyncToBackup();
+
+            Assert.AreEqual(0, new FileInfo(PendingPath(dataPath)).Length);
+            // No order files and an empty pending list: everything comes from the copy.
+            var restored = CreateSearcher(CopyAsIfCrashedNow(dataPath));
+            CollectionAssert.AreEquivalent(new[] { 100, 101 }, restored.Search("*").Select(o => o.NodeId).ToList());
+        }
+
+        [TestMethod]
+        public void Sync_KeepsChangesItDidNotCoverInThePendingList()
+        {
+            var dataPath = NewDataPath();
+            var searcher = CreateSearcher(dataPath);
+            searcher.Added(NewOrder(1, status: "Ny"));
+            searcher.SyncToBackup();
+            searcher.Added(NewOrder(2, status: "Ny"));
+
+            CollectionAssert.AreEqual(new[] { "2" }, File.ReadAllLines(PendingPath(dataPath)));
+        }
+
+        [TestMethod]
+        public void BackgroundRebuild_IndexesEverything_AndKeepsChangesMadeMeanwhile()
+        {
+            var dataPath = NewDataPath();
+            for (var i = 1; i <= 3000; i++)
+                WriteOrderFile(dataPath, NewOrder(i, status: "Gammal"));
+            var searcher = CreateSearcher(dataPath, rebuildInBackground: true);
+
+            searcher.EnsureOpen();
+            var during = searcher.Status;
+            // Order 1 is the oldest, so the rebuild reads its (now stale) file last.
+            searcher.Modified(NewOrder(1, status: "Ny"));
+            searcher.WaitForRebuild();
+
+            Assert.IsTrue(during.Rebuilding);
+            Assert.IsFalse(searcher.Status.Rebuilding);
+            Assert.AreEqual(3000, searcher.Search("*").Count());
+            CollectionAssert.AreEqual(new[] { 1 }, searcher.Search("status:Ny").Select(o => o.NodeId).ToList());
+            Assert.IsTrue(Directory.EnumerateFiles(BackupPath(dataPath), "segments_*").Any(), "Kopian skrivs när ombyggnaden är klar.");
+        }
+
+        [TestMethod]
+        public void FilesNewestFirst_OrdersByNodeIdDescendingAcrossBuckets()
+        {
+            var dataPath = NewDataPath();
+            foreach (var id in new[] { 5, 1500, 999, 2001, 1000 })
+                WriteOrderFile(dataPath, NewOrder(id));
+            File.WriteAllText(Path.Combine(dataPath, "orders", "orderid-index.json"), "{}");
+
+            var ids = OrderFileReader.FilesNewestFirst(dataPath).Select(f => int.Parse(Path.GetFileNameWithoutExtension(f))).ToList();
+
+            CollectionAssert.AreEqual(new[] { 2001, 1500, 1000, 999, 5 }, ids);
         }
     }
 }

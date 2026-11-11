@@ -59,7 +59,11 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
 
             try
             {
-                if (IsRequestAuthorized())
+                if (IsRequestAuthorized() && IndexIsRebuilding("den regelbundna uppdateringen"))
+                {
+                    // Nothing - the next call after the rebuild does it.
+                }
+                else if (IsRequestAuthorized())
                 {
                     ConvertOrdersWithExpiredFollowUpDateAndCertainStatusToNewStatus();
 
@@ -100,7 +104,12 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
 
             try
             {
-                if (IsRequestAuthorized())
+                if (IsRequestAuthorized() && IndexIsRebuilding("utskicket av automatiska mail"))
+                {
+                    res.Success = false;
+                    res.Message = "Sökindexet byggs om - inga mail skickas förrän det är klart.";
+                }
+                else if (IsRequestAuthorized())
                 {
                     var mailOperationResults = _automaticMailSendingEngine.SendOutMailsThatAreDue();
                     res.Success = true;
@@ -153,6 +162,18 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
         }
 
         #region Private methods.
+
+        // Every job here finds its orders through the search index (and the mail source binds
+        // incoming mail to orders through it), so while it's being rebuilt they'd only see part
+        // of the orders - a missed reminder, or a mail not bound to its order. They wait instead.
+        private bool IndexIsRebuilding(string job)
+        {
+            if (!_orderItemsSearcher.Status.Rebuilding)
+                return false;
+
+            _log.Warn("Hoppar över " + job + ": sökindexet byggs om.");
+            return true;
+        }
 
         private bool IsRequestAuthorized()
         {
