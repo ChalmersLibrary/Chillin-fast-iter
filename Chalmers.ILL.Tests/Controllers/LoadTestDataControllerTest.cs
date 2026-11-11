@@ -85,6 +85,33 @@ namespace Chalmers.ILL.Tests.Controllers
         }
 
         [TestMethod]
+        public void ReadOrders_CountsTheOrderFiles_WithoutTouchingTheIndex()
+        {
+            Controller().ReadOrders();
+            var status = WaitUntilDone();
+
+            Assert.AreEqual("klart", (string)status["phase"], (string)status["error"]);
+            Assert.AreEqual(1, (int)status["read"]);
+            Assert.IsNotNull(status["readSeconds"].ToObject<double?>());
+            Assert.AreEqual(JTokenType.Null, status["indexed"].Type);
+        }
+
+        [TestMethod]
+        public void LocalRebuild_TimesBuildAndCopy_AndLeavesNothingBehind()
+        {
+            var before = Directory.GetFileSystemEntries(_dataPath).OrderBy(e => e).ToArray();
+
+            Controller().LocalRebuild();
+            var status = WaitUntilDone();
+
+            Assert.AreEqual("klart", (string)status["phase"], (string)status["error"]);
+            Assert.AreEqual(1, (int)status["indexed"]);
+            Assert.IsNotNull(status["copySeconds"].ToObject<double?>());
+            CollectionAssert.AreEqual(before, Directory.GetFileSystemEntries(_dataPath).OrderBy(e => e).ToArray());
+            Assert.AreEqual(1, _searcher.Search("*").Count());
+        }
+
+        [TestMethod]
         public void OutsideIsolatedMode_Is404_AndWritesNothing()
         {
             Assert.IsInstanceOfType(Controller(isolated: false).Generate(10), typeof(NotFoundResult));

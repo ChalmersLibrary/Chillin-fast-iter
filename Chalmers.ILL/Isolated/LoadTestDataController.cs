@@ -24,6 +24,9 @@ namespace Chalmers.ILL.Isolated
     //   /LoadTestData/Generate?count=100000   start generating + rebuild (runs in the background)
     //   /LoadTestData/Status                  progress and timings
     //   /LoadTestData/Remove                  delete the generated orders + rebuild
+    //   /LoadTestData/ReadOrders              only read every order file (time the SMB reads)
+    //   /LoadTestData/LocalRebuild            build an index on local disk, copy it to /home,
+    //                                         delete both - the live index is untouched
     //
     // The generated orders get NodeIds from FirstNodeId up, in their own buckets (orders/10000/
     // and up), so the test server's own orders are untouched and Remove can delete exactly them.
@@ -60,6 +63,20 @@ namespace Chalmers.ILL.Isolated
             return Start(job => job.Remove());
         }
 
+        public ActionResult ReadOrders()
+        {
+            if (!_config.Isolated) return NotFound();
+
+            return Start(job => job.ReadOrders(), rebuild: false);
+        }
+
+        public ActionResult LocalRebuild()
+        {
+            if (!_config.Isolated) return NotFound();
+
+            return Start(job => job.LocalRebuild(), rebuild: false);
+        }
+
         public ActionResult Status()
         {
             if (!_config.Isolated) return NotFound();
@@ -68,7 +85,7 @@ namespace Chalmers.ILL.Isolated
                 return Json(_job?.Snapshot() ?? new { phase = "inget körts sedan appen startade" });
         }
 
-        private ActionResult Start(Action<LoadTestJob> work)
+        private ActionResult Start(Action<LoadTestJob> work, bool rebuild = true)
         {
             lock (_jobLock)
             {
@@ -77,7 +94,7 @@ namespace Chalmers.ILL.Isolated
 
                 var job = new LoadTestJob(_config.DataPath, _orderItemSearcher);
                 _job = job;
-                Task.Run(() => job.Run(work));
+                Task.Run(() => job.Run(work, rebuild));
                 return Json(job.Snapshot());
             }
         }
@@ -94,6 +111,11 @@ namespace Chalmers.ILL.Isolated
             private double? _removeSeconds;
             private double? _rebuildSeconds;
             private int? _indexed;
+            private double? _readSeconds;
+            private int? _read;
+            private double? _localRebuildSeconds;
+            private double? _copySeconds;
+            private long? _indexMegabytes;
             private long _bytes;
             private string _error;
 
@@ -116,17 +138,23 @@ namespace Chalmers.ILL.Isolated
                 removeSeconds = _removeSeconds,
                 rebuildSeconds = _rebuildSeconds,
                 indexed = _indexed,
+                readSeconds = _readSeconds,
+                read = _read,
+                localRebuildSeconds = _localRebuildSeconds,
+                copySeconds = _copySeconds,
+                indexMegabytes = _indexMegabytes,
                 totalSeconds = Math.Round(_total.Elapsed.TotalSeconds, 1),
                 error = _error,
             };
 
-            public void Run(Action<LoadTestJob> work)
+            public void Run(Action<LoadTestJob> work, bool rebuild)
             {
                 _total.Start();
                 try
                 {
                     work(this);
-                    Rebuild();
+                    if (rebuild)
+                        Rebuild();
                     _phase = "klart";
                 }
                 catch (Exception e)
@@ -167,6 +195,52 @@ namespace Chalmers.ILL.Isolated
                 foreach (var bucket in GeneratedBuckets(_dataPath))
                     Directory.Delete(bucket, recursive: true);
                 _removeSeconds = Math.Round(sw.Elapsed.TotalSeconds, 1);
+            }
+
+            public void ReadOrders()
+            {
+                _phase = "läser orderfilerna";
+                var sw = Stopwatch.StartNew();
+                _read = OrderFileReader.ReadAll(_dataPath, _log).Count();
+                _readSeconds = Math.Round(sw.Elapsed.TotalSeconds, 1);
+            }
+
+            // The proposed fix for the slow rebuild on /home: build on local disk, then copy the
+            // finished index over in one pass.
+            public void LocalRebuild()
+            {
+                var scratch = Path.Combine(Path.GetTempPath(), "chillin-loadtest-" + Guid.NewGuid().ToString("N"));
+                var copy = Path.Combine(_dataPath, "search-index-copytest");
+                try
+                {
+                    _phase = "bygger index på lokal disk";
+                    var sw = Stopwatch.StartNew();
+                    using (var local = new LuceneOrderItemSearcher(scratch))
+                    {
+                        local.EnsureOpen();
+                        _indexed = local.Rebuild(OrderFileReader.ReadAll(_dataPath, _log));
+                    }
+                    _localRebuildSeconds = Math.Round(sw.Elapsed.TotalSeconds, 1);
+
+                    _phase = "kopierar indexet till /home";
+                    sw.Restart();
+                    var source = LuceneOrderItemSearcher.IndexDirectory(scratch);
+                    Directory.CreateDirectory(copy);
+                    long bytes = 0;
+                    foreach (var file in Directory.EnumerateFiles(source))
+                    {
+                        System.IO.File.Copy(file, Path.Combine(copy, Path.GetFileName(file)), overwrite: true);
+                        bytes += new FileInfo(file).Length;
+                    }
+                    _copySeconds = Math.Round(sw.Elapsed.TotalSeconds, 1);
+                    _indexMegabytes = bytes / 1048576;
+                }
+                finally
+                {
+                    _phase = "städar";
+                    if (Directory.Exists(scratch)) Directory.Delete(scratch, recursive: true);
+                    if (Directory.Exists(copy)) Directory.Delete(copy, recursive: true);
+                }
             }
 
             private void Rebuild()
