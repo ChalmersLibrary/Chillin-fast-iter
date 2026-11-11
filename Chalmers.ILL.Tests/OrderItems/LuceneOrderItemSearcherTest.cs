@@ -570,5 +570,35 @@ namespace Chalmers.ILL.Tests.OrderItems
 
             CollectionAssert.AreEqual(new[] { 2001, 1500, 1000, 999, 5 }, ids);
         }
+
+        [TestMethod]
+        public void ReadInParallel_ReadsEveryFile_SkippingCorruptOnes()
+        {
+            var dataPath = NewDataPath();
+            for (var i = 1; i <= 500; i++)
+                WriteOrderFile(dataPath, NewOrder(i));
+            File.WriteAllText(Path.Combine(dataPath, "orders", "000", "7.json"), "{ trasig");
+
+            var ids = OrderFileReader.ReadInParallel(OrderFileReader.FilesNewestFirst(dataPath), null, readers: 4, buffered: 8)
+                .Select(o => o.NodeId).ToList();
+
+            Assert.AreEqual(499, ids.Count);
+            CollectionAssert.AllItemsAreUnique(ids);
+            Assert.IsFalse(ids.Contains(7));
+        }
+
+        [TestMethod]
+        public void ReadInParallel_StoppingEarly_DoesNotHang()
+        {
+            var dataPath = NewDataPath();
+            for (var i = 1; i <= 500; i++)
+                WriteOrderFile(dataPath, NewOrder(i));
+
+            var task = System.Threading.Tasks.Task.Run(() =>
+                OrderFileReader.ReadInParallel(OrderFileReader.FilesNewestFirst(dataPath), null, readers: 4, buffered: 2).Take(3).Count());
+
+            Assert.IsTrue(task.Wait(TimeSpan.FromSeconds(10)), "Läsarna väntar på en full kö som ingen tömmer.");
+            Assert.AreEqual(3, task.Result);
+        }
     }
 }

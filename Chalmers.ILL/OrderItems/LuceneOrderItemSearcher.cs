@@ -182,7 +182,8 @@ namespace Chalmers.ILL.OrderItems
             else if (_rebuildInBackground)
             {
                 _rebuilding = true;
-                _rebuildTask = Task.Run(() => RebuildFromFiles(writer, searchers));
+                // Its own thread for the whole rebuild, not one borrowed from the thread pool.
+                _rebuildTask = Task.Factory.StartNew(() => RebuildFromFiles(writer, searchers), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             }
             else
             {

@@ -2675,6 +2675,11 @@ tjänst ur driften och testservern.
   Verifierat lokalt i webbläsare med 20 000 ordrar: ombyggnad i bakgrunden med meddelandet (sidor
   svarar under tiden), omstart svarar efter 3 s utan ombyggnad, och en ändring följd av `kill -9`
   finns kvar efter omstart.
+  Läsningen under ombyggnaden har en begränsad kö (8 egna lästrådar, högst 256 ordrar i förväg).
+  Första versionen läste med PLINQ utan gräns: läsningen hann före indexeringen och fyllde minnet,
+  och snabbtestservern slutade svara (2026-11-11). Lokalt med 100 000 ordrar: gamla versionen 2 GB
+  och inget svar på 20 s; nya 6,5 min, högst 1 010 MB, inloggningssidan högst 0,5 s och sökning
+  0,3–1,1 s under hela ombyggnaden.
 - [ ] **Verifiera lokalt index med kopia på snabbtestservern** — 🖐️ med de 100 000 testordrarna:
   tid för återläsning vid omstart, tid för ombyggnad i bakgrunden med parallell läsning (ta bort
   `search-index/`), och en ändring följd av omstart. Ta sedan bort testordrarna

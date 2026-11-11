@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using Chalmers.ILL.Models;
 using Newtonsoft.Json;
 
@@ -58,16 +59,59 @@ namespace Chalmers.ILL.OrderItems
                 .ToList();
         }
 
-        // The files read several at a time, results still in the files' order. On Azure Files
-        // (/home) every file costs a network round trip of ~10 ms whatever its size - one at a
-        // time that's 15+ minutes for 100k orders (measured on the test server 2026-11-11), so
-        // the wait has to overlap.
-        public static IEnumerable<OrderItemModel> ReadInParallel(IEnumerable<string> files, log4net.ILog log, CancellationToken cancellation = default) =>
-            files.AsParallel().AsOrdered()
-                .WithDegreeOfParallelism(16)
-                .WithCancellation(cancellation)
-                .Select(f => Read(f, log))
-                .Where(item => item != null);
+        // The files read several at a time, roughly in the files' order. On Azure Files (/home)
+        // every file costs a network round trip of ~10 ms whatever its size - one at a time that's
+        // 15+ minutes for 100k orders (measured on the test server 2026-11-11), so the waits have
+        // to overlap. Bounded: reading outpaces indexing, and an unbounded read-ahead (PLINQ did
+        // this) fills memory with orders until the app stops answering. The readers are their own
+        // threads, not the thread pool's, which ASP.NET needs for requests.
+        public static IEnumerable<OrderItemModel> ReadInParallel(IReadOnlyList<string> files, log4net.ILog log, CancellationToken cancellation = default, int readers = 8, int buffered = 256)
+        {
+            // Not disposed: the readers may still be finishing a file when the caller is done.
+            var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+            var queue = Channel.CreateBounded<OrderItemModel>(buffered);
+            var next = -1;
+            var running = readers;
+
+            for (var r = 0; r < readers; r++)
+            {
+                new Thread(() =>
+                {
+                    try
+                    {
+                        int i;
+                        while (!stop.IsCancellationRequested && (i = Interlocked.Increment(ref next)) < files.Count)
+                        {
+                            var item = Read(files[i], log);
+                            if (item != null)
+                                queue.Writer.WriteAsync(item, stop.Token).AsTask().GetAwaiter().GetResult();
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                    finally
+                    {
+                        if (Interlocked.Decrement(ref running) == 0)
+                            queue.Writer.TryComplete();
+                    }
+                }) { IsBackground = true, Name = "order-file-reader" }.Start();
+            }
+
+            try
+            {
+                while (queue.Reader.WaitToReadAsync(cancellation).AsTask().GetAwaiter().GetResult())
+                {
+                    while (queue.Reader.TryRead(out var item))
+                        yield return item;
+                }
+            }
+            finally
+            {
+                // Also when the caller stops early: the readers mustn't wait on a full queue forever.
+                stop.Cancel();
+            }
+        }
 
         public static string OrderFilePath(string dataPath, int nodeId) =>
             Path.Combine(dataPath, "orders", (nodeId / 1000).ToString("D3"), nodeId + ".json");
