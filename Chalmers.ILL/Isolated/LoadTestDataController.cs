@@ -27,6 +27,8 @@ namespace Chalmers.ILL.Isolated
     //   /LoadTestData/ReadOrders              only read every order file (time the SMB reads)
     //   /LoadTestData/LocalRebuild            build an index on local disk, copy it to /home,
     //                                         delete both - the live index is untouched
+    //   /LoadTestData/CopyIndex               copy the live index /home -> local disk -> /home,
+    //                                         delete both copies
     //
     // The generated orders get NodeIds from FirstNodeId up, in their own buckets (orders/10000/
     // and up), so the test server's own orders are untouched and Remove can delete exactly them.
@@ -77,6 +79,13 @@ namespace Chalmers.ILL.Isolated
             return Start(job => job.LocalRebuild(), rebuild: false);
         }
 
+        public ActionResult CopyIndex()
+        {
+            if (!_config.Isolated) return NotFound();
+
+            return Start(job => job.CopyIndex(), rebuild: false);
+        }
+
         public ActionResult Status()
         {
             if (!_config.Isolated) return NotFound();
@@ -116,6 +125,8 @@ namespace Chalmers.ILL.Isolated
             private double? _localRebuildSeconds;
             private double? _copySeconds;
             private long? _indexMegabytes;
+            private int? _indexFiles;
+            private double? _copyToLocalSeconds;
             private long _bytes;
             private string _error;
 
@@ -143,6 +154,8 @@ namespace Chalmers.ILL.Isolated
                 localRebuildSeconds = _localRebuildSeconds,
                 copySeconds = _copySeconds,
                 indexMegabytes = _indexMegabytes,
+                indexFiles = _indexFiles,
+                copyToLocalSeconds = _copyToLocalSeconds,
                 totalSeconds = Math.Round(_total.Elapsed.TotalSeconds, 1),
                 error = _error,
             };
@@ -241,6 +254,51 @@ namespace Chalmers.ILL.Isolated
                     if (Directory.Exists(scratch)) Directory.Delete(scratch, recursive: true);
                     if (Directory.Exists(copy)) Directory.Delete(copy, recursive: true);
                 }
+            }
+
+            // Restoring a saved index at startup (/home -> local) and saving it back (local ->
+            // /home). Copies the live index while the app has it open: Lucene never changes a
+            // file once written, so this is fine on a test server nobody is writing to.
+            public void CopyIndex()
+            {
+                var local = Path.Combine(Path.GetTempPath(), "chillin-loadtest-" + Guid.NewGuid().ToString("N"));
+                var copy = Path.Combine(_dataPath, "search-index-copytest");
+                try
+                {
+                    _phase = "kopierar indexet från /home till lokal disk";
+                    var sw = Stopwatch.StartNew();
+                    var (files, bytes) = CopyFiles(LuceneOrderItemSearcher.IndexDirectory(_dataPath), local);
+                    _copyToLocalSeconds = Math.Round(sw.Elapsed.TotalSeconds, 1);
+                    _indexFiles = files;
+                    _indexMegabytes = bytes / 1048576;
+
+                    _phase = "kopierar indexet från lokal disk till /home";
+                    sw.Restart();
+                    CopyFiles(local, copy);
+                    _copySeconds = Math.Round(sw.Elapsed.TotalSeconds, 1);
+                }
+                finally
+                {
+                    _phase = "städar";
+                    if (Directory.Exists(local)) Directory.Delete(local, recursive: true);
+                    if (Directory.Exists(copy)) Directory.Delete(copy, recursive: true);
+                }
+            }
+
+            private static (int Files, long Bytes) CopyFiles(string from, string to)
+            {
+                Directory.CreateDirectory(to);
+                int files = 0;
+                long bytes = 0;
+                foreach (var file in Directory.EnumerateFiles(from))
+                {
+                    if (Path.GetFileName(file) == "write.lock")
+                        continue;
+                    System.IO.File.Copy(file, Path.Combine(to, Path.GetFileName(file)), overwrite: true);
+                    files++;
+                    bytes += new FileInfo(file).Length;
+                }
+                return (files, bytes);
             }
 
             private void Rebuild()

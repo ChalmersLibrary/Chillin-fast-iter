@@ -112,6 +112,23 @@ namespace Chalmers.ILL.Tests.Controllers
         }
 
         [TestMethod]
+        public void CopyIndex_TimesBothDirections_AndLeavesNothingBehind()
+        {
+            _searcher.EnsureOpen();
+            var before = Directory.GetFileSystemEntries(_dataPath).OrderBy(e => e).ToArray();
+
+            Controller().CopyIndex();
+            var status = WaitUntilDone();
+
+            Assert.AreEqual("klart", (string)status["phase"], (string)status["error"]);
+            Assert.IsTrue((int)status["indexFiles"] > 0);
+            Assert.IsNotNull(status["copyToLocalSeconds"].ToObject<double?>());
+            Assert.IsNotNull(status["copySeconds"].ToObject<double?>());
+            CollectionAssert.AreEqual(before, Directory.GetFileSystemEntries(_dataPath).OrderBy(e => e).ToArray());
+            Assert.AreEqual(1, _searcher.Search("*").Count());
+        }
+
+        [TestMethod]
         public void OutsideIsolatedMode_Is404_AndWritesNothing()
         {
             Assert.IsInstanceOfType(Controller(isolated: false).Generate(10), typeof(NotFoundResult));
