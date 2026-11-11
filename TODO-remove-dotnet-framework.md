@@ -46,7 +46,7 @@ Dessa är avstämda med användaren 2026-09-09/10 och ska inte omprövas utan ny
 |---|---|
 | Target framework | **`net10.0`** (LTS), men via `net48` som mellanstation — se fas 1a/1b. OBS: bara SDK 9.0.109 finns installerat på maskinen, SDK 10 måste installeras före fas 1b. |
 | Lagring | **Ta bort databasen helt.** EF6, SQL Server och de 19 migrationerna ersätts av en fil per order på disk. Motiverat av att datamodellen redan är ett dokumentaggregat och att all sökning sker i Elasticsearch — se fas 7. *(Ersätter tidigare beslut om att behålla EF6; det föll när datamodellen granskades närmare.)* |
-| Sökning | **Lucene.NET-index på disk under `DataPath`, Elasticsearch borttaget helt** — även mallarna och chillin-texterna, som nu är filer. Indexet är den enda vägen för sökning, statistik, bulkdata och de få icke-nyckelbaserade uppslagen, och byggs om från orderfilerna när det saknas. Se "Ersätt Elasticsearch med Lucene.NET" före fas 11. *(Ersätter beslutet "Elasticsearch är oförändrat"; avstämt 2026-11-09 efter ett mätförsök.)* |
+| Sökning | **Lucene.NET-index på lokal disk med en kopia under `DataPath`, Elasticsearch borttaget helt** — även mallarna och chillin-texterna, som nu är filer. Indexet är den enda vägen för sökning, statistik, bulkdata och de få icke-nyckelbaserade uppslagen. Uppstart läser tillbaka kopian; saknas den byggs indexet om från orderfilerna i bakgrunden. Se "Ersätt Elasticsearch med Lucene.NET" före fas 11. *(Ersätter beslutet "Elasticsearch är oförändrat"; avstämt 2026-11-09 efter ett mätförsök. Lokal disk med kopia avstämt 2026-11-11, efter mätningar på snabbtestservern.)* |
 | Driftmiljö | **Azure App Service för Linux** (webbapp, inte container). Byte från dagens Windows-plan — valt för dev/drift-paritet, se fas 10. Kräver ny App Service-plan; kod­arbetet är identiskt oavsett. |
 | Utvecklingsmiljö | **Linux**, direkt och i devcontainer. Samma OS som drift, vilket är hela poängen. |
 | Skalning | **Enkelinstans.** Liten app. Ingen SignalR-backplane behövs, inga utskalningsproblem för filbaserad lagring. Dokumenteras som förutsättning så att en framtida utskalning inte tyst bryter funktionalitet. |
@@ -196,7 +196,7 @@ appen. Det är den egenskapen som gör dem värda att ta tidigt.
     opåverkad.
   **Skärpt 2026-10-19 (Lars):** "De enda som ska ha skrivrätt på ordrar är Administrator." Nu är det
   bara rollen `Administrator` som är opåverkad; alla andra roller (`Desk`, `SuperAdmin` utan
-  `Administrator`, claudeborgens `ObjektSpecialist`/`ObjektSpecialistIT`) behandlas som "Viewer" ovan.
+  `Administrator`) behandlas som "Viewer" ovan.
   Layouten dolde redan redigeringsknapparna för icke-administratörer (kosmetiskt); nu stämmer servern
   med det. Diskappen, som `Desk` var till för, används inte längre.
   Medvetet default-deny (spärra allt, öppna upp läsningar) snarare än default-allow (lista alla
@@ -2639,20 +2639,47 @@ tjänst ur driften och testservern.
   --elasticsearch-templates-index <index>` läser mallarna och chillin-texten ur den gamla ES-servern
   (vanlig HTTP mot `_search`, bara läsning) och skriver dem som filer — de låg aldrig i SQL och
   följer annars inte med. `ElasticsearchExport.cs`.
-- [ ] **Verifiera Lucene på Azure Files** — 🖐️ görs på den isolerade testservern, före fas 11.
-  `/home` på Linux-planen är en SMB-montering. Ej uppmätt: öppning och sökning (mmap över SMB),
-  hur lång en full ombyggnad tar där, och att `write.lock` (native fil-lås) fungerar och släpps
-  vid omstart. Faller något av det: lägg indexet på lokal disk (t.ex. `/tmp`) och bygg om det vid
-  varje uppstart — orderfilerna under `/home` är ändå sanningen. Kontrollera också att en första
-  ombyggnad ryms inom App Services starttidsgräns (230 s som standard,
-  `WEBSITES_CONTAINER_START_TIME_LIMIT`), eller bygg indexet med migreringsverktyget i förväg.
-  **Delvis verifierat 2026-11-10:** på snabbtestservern (`24b6585`) startar appen med indexet på
-  `/home`, och sökning upplevs som mycket snabb utan konstigheter — öppning, mmap och att ta
-  `write.lock` fungerar alltså över SMB. Kvar: samma sak vid driftens volym (testserverns
-  datamängd är liten), tiden för en full ombyggnad där, och att låset släpps vid en omstart.
-  Mäts med de tillfälliga adresserna i `Isolated/LoadTestDataController.cs` (`/LoadTestData/
-  Generate?count=100000`, `/Status`, `/Remove`; bara isolerat läge). **Ta bort den filen och dess
-  test när mätningen är gjord** — den hör inte hemma i det som driftsätts.
+- [x] **Verifiera Lucene på Azure Files** — mätt på snabbtestservern 2026-11-10/11 med 100 000
+  genererade ordrar (samma generator som mätförsöket, tillfälliga mätadresser på `claudeborgen`):
+  | Mätning | Resultat |
+  |---|---|
+  | Sökning med indexet direkt på `/home` | fungerar, 1–2 s i värsta fall (lokalt högst 160 ms) |
+  | `write.lock` på `/home` | tas vid start och släpps vid omstart |
+  | Skriva 100 000 orderfiler till `/home` (4 parallellt) | 552 s |
+  | Full ombyggnad med indexet på `/home` | **3 394 s** — 16 ggr långsammare än lokalt |
+  | Läsa 100 000 orderfiler en i taget | över 800 s (avbrutet) — ~8+ ms per fil |
+  | Indexet | 1 456 MB i 59 filer (mätförsökets 400 MB saknade `_source`) |
+  | Kopiera indexet `/home` → lokal disk | 27,8 s |
+  | Kopiera indexet lokal disk → `/home` | 7,7 s |
+
+  Slutsats: fördröjningen per fil på `/home` (SMB) är flaskhalsen, inte bandbredden. En ombyggnad
+  vid uppstart hade gjort att appen aldrig hann starta (230 s-gränsen). Löst nedan.
+- [x] **Indexet på lokal disk, kopia på `/home`** — avstämt 2026-11-11.
+  `LuceneOrderItemSearcher` arbetar mot ett index under temp-katalogen (`/tmp` i App Service) och
+  håller en kopia i `DataPath/search-index/` (samma katalog som indexet låg i förut, så ett
+  befintligt index där läses tillbaka som vilken kopia som helst):
+  - Uppstart: kopian kopieras till lokal disk (~30 s för 100 000 ordrar) — orderfilerna läses inte.
+  - Sparning: ~30 s efter första osparade ändringen, och vid avstängning. Bara filer som är nya
+    sedan förra sparningen kopieras (Lucene ändrar aldrig en skriven fil); `segments_N` sist, så
+    kopian alltid är en hel commit.
+  - Krasch: varje ändring skriver först sitt NodeId till `DataPath/search-index-pending.txt`, och
+    en sparning tömmer det den täcker. Uppstart indexerar om de ordrarna från orderfilerna.
+  - Ingen kopia, eller en från äldre `SchemaVersion`: ombyggnad i bakgrunden, nyaste först, 16
+    filer läses parallellt. Sidhuvudet visar "Sökindexet byggs om (X av Y ordrar)", och
+    `SystemSurfaceController` hoppar över de schemalagda jobben (`Update`, automatiska mail) tills
+    den är klar — de hittar sina ordrar via indexet, och mailkällan kopplar inkommande mail till
+    ordrar via det. Ändringar under ombyggnaden skrivs inte över av den äldre filversion
+    ombyggnaden kan ha läst. Migreringsverktyget bygger om synkront.
+  - `write.lock` hålls på `DataPath/search-index/` hela processens livstid, så en överlappande
+    omstart väntar på föregående process sista sparning.
+  Verifierat lokalt i webbläsare med 20 000 ordrar: ombyggnad i bakgrunden med meddelandet (sidor
+  svarar under tiden), omstart svarar efter 3 s utan ombyggnad, och en ändring följd av `kill -9`
+  finns kvar efter omstart.
+- [ ] **Verifiera lokalt index med kopia på snabbtestservern** — 🖐️ med de 100 000 testordrarna:
+  tid för återläsning vid omstart, tid för ombyggnad i bakgrunden med parallell läsning (ta bort
+  `search-index/`), och en ändring följd av omstart. Ta sedan bort testordrarna
+  (`/LoadTestData/Remove`) och revertera mätkoden på `claudeborgen` (`f206104`, `8b5aedb`,
+  `6b7ae10`, `36c4375`).
 - [ ] **Kör migreringsverktyget med `--elasticsearch-url` vid driftsättningen** — 🖐️ mot den
   gamla ES-servern, så att mallar och chillin-texter följer med. Kontrollera antalet mallar i
   rapporten mot mallsidan i den gamla appen.

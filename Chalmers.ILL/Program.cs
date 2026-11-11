@@ -101,9 +101,10 @@ if (app.Services.GetRequiredService<Chalmers.ILL.OrderItems.IOrderItemManager>()
     fileOrderItemManager.SetNotifier(app.Services.GetRequiredService<Chalmers.ILL.SignalR.INotifier>());
 }
 
-// Open the search index now rather than on the first search: if it's missing or was built by an
-// older schema it's rebuilt from the order files here, at startup (minutes for ~100k orders).
-// Closed on shutdown so the next process (a restart can overlap this one) gets write.lock.
+// Open the search index now rather than on the first search: its copy on DataPath is restored
+// to local disk here (~30 s for 100k orders), or, if there's no usable copy, a rebuild from the
+// order files starts in the background. Closed on shutdown: the final sync of the copy, then
+// write.lock is released for the next process (a restart can overlap this one).
 if (app.Services.GetRequiredService<IOrderItemSearcher>() is LuceneOrderItemSearcher luceneOrderItemSearcher)
 {
     luceneOrderItemSearcher.EnsureOpen();

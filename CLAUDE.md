@@ -120,11 +120,15 @@ aktuella läget på grenen, inte bara startpunkten för det arbete som återstå
 - Datamodellen är redan ett dokumentaggregat: varje läsning hämtar hela ordern med `LogItemsList`,
   `AttachmentList` och `SierraInfo`. All sökning, statistik och bulkdata går via `IOrderItemSearcher`,
   aldrig via `DbContext`.
-- **Sökning:** `LuceneOrderItemSearcher` — ett Lucene.NET-index på disk under `DataPath/search-index/`,
-  samma i drift och isolerat läge. Elasticsearch är borttaget helt; mallar och chillin-texter ligger
-  som filer under `DataPath` (`FileTemplateService`, `FileChillinTextRepository`). Indexet byggs om
-  från orderfilerna när det saknas eller när `SchemaVersion` höjts — höj den när dokumentformatet
-  ändras. Endast en process åt gången kan ha indexet öppet (Lucenes `write.lock`).
+- **Sökning:** `LuceneOrderItemSearcher` — ett Lucene.NET-index på lokal disk (temp-katalogen) med
+  en kopia under `DataPath/search-index/`, samma i drift och isolerat läge. Elasticsearch är
+  borttaget helt; mallar och chillin-texter ligger som filer under `DataPath` (`FileTemplateService`,
+  `FileChillinTextRepository`). Uppstart läser tillbaka kopian; saknas den, eller har `SchemaVersion`
+  höjts (höj den när dokumentformatet ändras), byggs indexet om från orderfilerna i bakgrunden och
+  `Status.Rebuilding` är sann tills det är klart — kod som behöver *alla* ordrar (schemalagda jobb)
+  ska vänta på det. Skäl och mätningar: "Ersätt Elasticsearch med Lucene.NET" i TODO-filen
+  (`/home` i App Service är en nätverksdisk med ~10 ms per filoperation). Endast en process åt
+  gången kan ha indexet öppet (Lucenes `write.lock` på kopian).
 - **Isolerat läge (fas 6/10):** `Chillin:Isolated=true` slår om ett antal DI-registreringar i
   `Bootstrapper.cs` till filbaserade fejkar (mail, media, låntagaruppslag, FOLIO) för en avskuren
   testserver utan riktiga integrationer. Se `IsolationGuard` och "Fastställda designbeslut" ovan.

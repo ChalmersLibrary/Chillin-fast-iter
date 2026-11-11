@@ -59,7 +59,7 @@ namespace Chalmers.ILL.Controllers.SurfaceControllers
 
             try
             {
-                var count = _orderItemSearcher.Rebuild(OrderFileReader.ReadAll(_config.DataPath, _log));
+                var count = _orderItemSearcher.Rebuild(OrderFileReader.ReadInParallel(OrderFileReader.FilesNewestFirst(_config.DataPath), _log));
 
                 json.Success = true;
                 json.Message = "Reindexed " + count + " orders.";

@@ -21,7 +21,8 @@ namespace Chalmers.ILL.Migration
     //   3. Optionally, count the orders in the search index and compare to the file count ("kör om
     //      ES-indexeringen efteråt och jämför träffantal mot databasen" - the index is Lucene now).
     //      The searcher is handed over unopened: it opens on that first count and builds itself
-    //      from the files just written, the same way the app does at startup.
+    //      from the files just written - synchronously, unlike the app's background rebuild - and
+    //      writes the copy under DataPath/search-index that the app restores at startup.
     public class MigrationRunner
     {
         private readonly IOrderItemSource _source;

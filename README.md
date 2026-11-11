@@ -14,7 +14,7 @@ state - they will keep changing until that TODO list is checked off.
 1. [.NET SDK 10](https://dotnet.microsoft.com/download) or later.
 2. For full/live mode: Microsoft Graph and FOLIO credentials (mail and patron lookups). Not
    required for isolated mode below. Search needs no server - the search index is a Lucene index
-   under the data path, built from the order files on first start.
+   on local disk with a copy under the data path, built from the order files on first start.
 
 ## Setup
 1. Clone this repository.
