@@ -2664,7 +2664,7 @@ tjänst ur driften och testservern.
     kopian alltid är en hel commit.
   - Krasch: varje ändring skriver först sitt NodeId till `DataPath/search-index-pending.txt`, och
     en sparning tömmer det den täcker. Uppstart indexerar om de ordrarna från orderfilerna.
-  - Ingen kopia, eller en från äldre `SchemaVersion`: ombyggnad i bakgrunden, nyaste först, 16
+  - Ingen kopia, eller en från äldre `SchemaVersion`: ombyggnad i bakgrunden, nyaste först, 8
     filer läses parallellt. Sidhuvudet visar "Sökindexet byggs om (X av Y ordrar)", och
     `SystemSurfaceController` hoppar över de schemalagda jobben (`Update`, automatiska mail) tills
     den är klar — de hittar sina ordrar via indexet, och mailkällan kopplar inkommande mail till
@@ -2680,11 +2680,12 @@ tjänst ur driften och testservern.
   och snabbtestservern slutade svara (2026-11-11). Lokalt med 100 000 ordrar: gamla versionen 2 GB
   och inget svar på 20 s; nya 6,5 min, högst 1 010 MB, inloggningssidan högst 0,5 s och sökning
   0,3–1,1 s under hela ombyggnaden.
-- [ ] **Verifiera lokalt index med kopia på snabbtestservern** — 🖐️ med de 100 000 testordrarna:
-  tid för återläsning vid omstart, tid för ombyggnad i bakgrunden med parallell läsning (ta bort
-  `search-index/`), och en ändring följd av omstart. Ta sedan bort testordrarna
-  (`/LoadTestData/Remove`) och revertera mätkoden på `claudeborgen` (`f206104`, `8b5aedb`,
-  `6b7ae10`, `36c4375`).
+- [x] **Verifiera lokalt index med kopia på snabbtestservern** — 🖐️ med 100 000 testordrar
+  (2026-11-12): ombyggnad i bakgrunden 631 s (mot 3 394 s med indexet på `/home`) och appen svarar
+  under tiden; återläsning vid omstart 7–9 s (28,5 s första gången, med ett äldre index i fler
+  segment); en ändring följd av omstart finns kvar, och en ändring följd av `pkill -9 dotnet`
+  indexeras om vid uppstart ("ikapp med 1 ordrar"). Testordrarna är borttagna och mätkoden
+  (`Isolated/LoadTestDataController.cs`) borttagen från `claudeborgen`.
 - [ ] **Kör migreringsverktyget med `--elasticsearch-url` vid driftsättningen** — 🖐️ mot den
   gamla ES-servern, så att mallar och chillin-texter följer med. Kontrollera antalet mallar i
   rapporten mot mallsidan i den gamla appen.
