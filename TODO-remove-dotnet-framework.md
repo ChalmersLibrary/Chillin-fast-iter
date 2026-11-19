@@ -666,6 +666,9 @@ statusdropdownen — var alla omedelbart synliga i en webbläsare och alla osynl
   rebuild, samma read-only-begränsning som SDK-installationen tidigare — nu genomförd och verifierad).
   Skärmdumpar av login → ifylld → inloggad (Desk-vy) → inställningssidan tagna och skickade till
   användaren, hela flödet verifierat visuellt i en riktig webbläsare.
+  *(2026-11-19: `browser-check/` är borttagen. Playwright för Node fungerade när `e2e/` byggdes
+  2026-10-01, och e2e-sviten har sedan dess ersatt skripten; hänvisningarna till dem nedan är
+  historik.)*
 
 - [x] **Se till att appen går att starta med så få beroenden som möjligt**
   För att brytpunkten ska vara användbar direkt måste inloggningssidan och startsidan gå att rendera

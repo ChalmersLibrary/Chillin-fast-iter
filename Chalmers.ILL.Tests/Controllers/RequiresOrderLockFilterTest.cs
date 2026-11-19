@@ -18,7 +18,7 @@ namespace Chalmers.ILL.Tests.Controllers
     // two-user browser test, after LoginSurfaceController's memberId=0 bug was already fixed):
     // no mutation controller besides OrderItemSurfaceController itself ever checked EditedBy, so
     // a locked order could still be edited by a different member - the lock only gated which
-    // HTML got rendered. IsolatedModeSmokeTest/browser-check would exercise the real HTTP
+    // HTML got rendered. The e2e LOCK scenarios (e2e/tests/locks.spec.ts) exercise the real HTTP
     // pipeline; these tests exercise the filter's own decision logic directly, the same way
     // ViewerReadOnlyFilterTest does for the sibling role-gating filter.
     [TestClass]
