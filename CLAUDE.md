@@ -24,7 +24,8 @@ Projektet genomgår två migreringar i följd:
    att de är akuta.
 
    **Brytpunkten efter fas 2** är den punkt där appen för första gången går att köra i webbläsare
-   (Kestrel i Linux-containern). Där sätts Chromium/Puppeteer upp, och därifrån ska webbläsarkontroll
+   (Kestrel i Linux-containern). Där sattes Chromium upp (numera körs
+   webbläsartesterna med Playwright i [e2e/](e2e/README.md)), och därifrån ska webbläsarkontroll
    användas löpande genom fas 3–8 — inte sparas till slutet.
 
    **Fas 11** är avstämningslistan för genomtestningen före driftsättning, inklusive de punkter från
