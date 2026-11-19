@@ -9,7 +9,10 @@ import * as path from "path";
 // carries Administrator. "Desk" is out of use entirely (Lars 2026-10-02) and is deliberately not
 // handed out here - among other things it is what sends a login to /disk/, the page that says the
 // disk app is no longer used.
-export type Role = "superadmin" | "admin" | "viewer" | "roleless";
+// objektspecialist/objektspecialistit are Claudeborgen's roles (claudeborgen/DESIGN.md): the object
+// owner who asks Claude for changes, and IT who steps in when Claude gets stuck. Both are read-only
+// in Chillin itself, like Viewer.
+export type Role = "superadmin" | "admin" | "viewer" | "roleless" | "objektspecialist" | "objektspecialistit";
 
 export const PASSWORD = "e2e-password"; // throwaway DataPath only, never a real credential
 
@@ -18,6 +21,8 @@ const ROLES: Record<Role, string[]> = {
   admin: ["Administrator"],
   viewer: ["Viewer"],
   roleless: [],
+  objektspecialist: ["ObjektSpecialist"],
+  objektspecialistit: ["ObjektSpecialistIT"],
 };
 
 // ASP.NET Core Identity PasswordHasherCompatibilityMode.IdentityV2 (what FileMembershipProvider

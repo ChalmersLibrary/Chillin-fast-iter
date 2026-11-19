@@ -13,7 +13,7 @@ körbara Playwright-test i `e2e/tests/`, och därefter körs de utan Claude (`np
 - **ID:** prefix efter område (se [Områden](#områden)) + löpnummer. Återanvänd aldrig ett ID; stryk
   en rad (`~~…~~`) om den inte längre gäller.
 - **Roll:** börja med vem som gör det (`Som Administrator`, `Som Viewer`, `Som två användare`). Finns:
-  superadmin, admin, viewer, roleless (se roll-tabellen längst ned).
+  superadmin, admin, viewer, roleless, objektspecialist, objektspecialistit (se roll-tabellen längst ned).
 - **Förväntat resultat** i en mening. Skriv gärna *varför* om felet är ett tidigare fel du hittat
   (”regression för 0762fd9”) — då vet vi att raden inte får tas bort.
 - `[ ]` = ännu inte automatiserad, `[x]` = automatiserad (filen och testets ID står i kolumnen nedan).
@@ -39,6 +39,7 @@ Prefixen följer appens ytor. De är inte heliga — hittar du en bättre indeln
 | `API` | Maskin-till-maskin, utan inloggad användare: QR-skanning vid ut-/återlämning och data till Sierra | `BookCirculationSurfaceController` (`Loaned`/`Returned`), `PublicDataSurfaceController` — de två som fas 0a släppte ur globala `[Authorize]` |
 | `INBOX` | Inkommande beställningar: mail som blir ordrar när mailhämtningen körs | `SystemSurfaceController.Update`, `FileMailWebApi` (inkorgen är `DataPath/mail/inbox` i isolerat läge) |
 | `RT` | Realtid: att en ändring i ett fönster syns i ett annat via SignalR | `notificationHub`, `updateStream` i `chalmers.ill.js` |
+| `CLAUDE` | Claudeborgen på startsidan: idéchatt, arbete som följs live, ändringsloggen, "Behöver IT", paus. Mot FakeClaude i appen | `claudeborgen/dotnet/Claudeborgen.Web` (`ClaudeController`, `Views/Claudeborgen/*`) |
 
 Två ytor är medvetet utelämnade:
 
@@ -134,6 +135,10 @@ allt som gäller så länge appen körs på en enda instans, men inte mer än s�
 | LIST-008 | Sök-dropdownens snabbval hittar de förlorade ordrarna | `tests/list.spec.ts` |
 | LIST-009 | Sökning utan träffar säger det i stället för att fallera | `tests/list.spec.ts` |
 | LIST-010 | Värde med kolon är sökbart inom citattecken | `tests/list.spec.ts` |
+| CLAUDE-001 | En idé i startsidans chatt: Shift+Enter ger ny rad, Enter skickar utan omladdning, idén blir arbete | `tests/claude.spec.ts` |
+| CLAUDE-002 | Ett varv följs live till gröna tester, och det klara arbetet hamnar i startsidans ändringslogg | `tests/claude.spec.ts` |
+| CLAUDE-003 | Claude frågar i stället för att gissa, och ägarens egen ändringsloggtext står kvar efter nästa varv | `tests/claude.spec.ts` |
+| CLAUDE-004 | Ett kraschat varv syns för IT, som kan pausa och återuppta utvecklingen; Viewer läser utan formulär | `tests/claude.spec.ts` |
 
 ## Att automatisera (börja skriva här)
 
@@ -284,3 +289,9 @@ den rollen).
 | admin | Administrator | ja | ja | ja | nej |
 | viewer | Viewer | ja (läsa) | nej (stoppas, utom `[AllowViewer]`) | ja (läsa; lösenord är självbetjäning) | nej |
 | roleless | *(inga)* | nej (stoppas helt) | nej | nej | nej |
+| objektspecialist | ObjektSpecialist | ja (läsa) | nej (stoppas, utom `[AllowViewer]`) | ej prövat | nej |
+| objektspecialistit | ObjektSpecialistIT | ja (läsa) | nej (stoppas, utom `[AllowViewer]`) | ej prövat | nej |
+
+`objektspecialist` och `objektspecialistit` är Claudeborgens roller (se `claudeborgen/DESIGN.md`) och
+används bara i `CLAUDE`-scenarierna. I Chillin är de läsroller som Viewer; kolumnerna ovan är
+`ViewerReadOnlyFilter`s läsning och inte prövade av egna ROLE-scenarier.
